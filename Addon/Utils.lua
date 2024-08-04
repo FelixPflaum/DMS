@@ -67,15 +67,10 @@ end
 ---@param arg1 any If table will print out its content.
 ---@param ... any Will be ignored if arg1 is a table, otherwise beahves like print()
 function DMS:PrintDebug(arg1, ...)
-    if not DMS_Settings.debug then
+    if not DMS_Settings or not DMS_Settings.debug then
         return
     end
     if type(arg1) == "table" then
-        local count = 0
-        for _ in pairs(arg1) do
-            count = count + 1
-        end
-        print(tostring(arg1) .. " size: " .. count)
         PrintTable(arg1, 1)
     else
         print(arg1, ...)

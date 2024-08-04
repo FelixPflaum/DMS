@@ -1,7 +1,7 @@
 ---@class AddonEnv
 local DMS = select(2, ...)
 
----@class (exact) SettingsTable
+---@class SettingsTable
 local defaultSettings = {
     firstStart = true,
     version = 1,
@@ -52,5 +52,6 @@ DMS:OnAddonLoaded(function()
     UpdateSettings()
     FillMissing(DMS_Settings, defaultSettings)
 
+    ---@class (exact) AddonSettings : SettingsTable
     DMS.settings = DMS_Settings
 end)

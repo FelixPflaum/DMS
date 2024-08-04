@@ -102,11 +102,12 @@ function strsplit(delimiter, subject, pieces)
     return "","","","","","","","","","";
 end
 
+---@alias FramePoint  "TOPLEFT" | "TOPRIGHT" | "BOTTOMLEFT" | "BOTTOMRIGHT" | "TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER"
 
 ---@param self WoWFrame
----@param point string
+---@param point FramePoint
 ---@param relativeFrame WoWFrame
----@param relativePoint string
+---@param relativePoint FramePoint
 ---@param ofsx number
 ---@param ofsy number
 ---@overload fun(self:WoWFrame, point:string, relativeFrame:WoWFrame, relativePoint:string): boolean
@@ -138,9 +139,17 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field SetScrollChild fun(self:WoWFrame, child:WoWFrame):nil
 ---@field ClearAllPoints fun(self:WoWFrame):nil
 ---@field CreateFontString fun(self:WoWFrame, name:string|nil, layer:any, inherits: any):FontString
+---@field SetFrameStrata fun(self:WoWFrame, strata:string) [Wiki](https://warcraft.wiki.gg/wiki/Frame_Strata)
+---@field SetScale fun(self:WoWFrame, scale:number)
+---@field IsShown fun(self:WoWFrame):boolean
 local WoWFrameDummy = {
     SetPoint = SetPointDummy
 }
+
+---@class ButtonFrameTemplate : WoWFrame
+---@field TitleText FontString
+---@field portrait any
+---@field CloseButton WoWFrame
 
 ---@class WoWGameTooltip : WoWFrame
 ---@field SetOwner fun(self:WoWFrame, owner:WoWFrame, anchor:string):nil
@@ -160,6 +169,9 @@ local WoWFrameDummy = {
 local FontStringDummy = {
 
 }
+
+---@param frame WoWFrame
+function ButtonFrameTemplate_HideButtonBar(frame) end
 
 ---Creates a Frame object. 
 ---@param frameType string Type of the frame; e.g. "Frame" or "Button".
@@ -215,6 +227,9 @@ end
 function GetSpellBonusDamage(schoolNum)
     return 123;
 end
+
+---@return boolean
+function IsControlKeyDown() end
 
 function GetSpellBonusHealing()
     return 123;
@@ -597,16 +612,19 @@ function IsInGuild() end
 ---Requests updated guild roster information from the server. 
 function GuildRoster() end
 
-C_Timer = {}
-
 ---@class TimerHandle
 ---@field IsCancelled fun(self:TimerHandle)
 ---@field Cancel fun(self:TimerHandle)
 ---@field Invoke fun(self:TimerHandle)
 
+---@class FunctionContainer
+---@field Cancel fun()
+---@field IsCanceled fun():boolean
+
 ---@param interval number Interval in seconds.
 ---@param callback fun(t:TimerHandle)
 ---@param interations integer|nil nil for inf
+---@return FunctionContainer
 function C_Timer.NewTicker(interval, callback, interations) end
 
 ---Returns the system uptime of your computer in seconds, with millisecond precision. 

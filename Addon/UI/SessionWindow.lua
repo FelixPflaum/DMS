@@ -7,47 +7,11 @@ local LibWindow = LibStub("LibWindow-1.1")
 local LibDialog = LibStub("LibDialog-1.1")
 local L = DMS:GetLocalization()
 
-DMS.UI = DMS.UI or {}
-DMS.UI.SessionWindow = {}
-
----@type LootSessionClient|nil
-local currentClientSession = nil
----@type LootSessionHost|nil
-local currentHostSession = nil
-
----------------------------------------------------------------------------
---- Events
----------------------------------------------------------------------------
-
----@alias SessionWindowEvent
----| "ITEM_SELECTED"
----| "AWARD_CLICKED"
----| "AWARD_REVERT_CLICKED"
----| "DISENCHANT_CLICKED"
----| "CLOSE_CLICKED"
-
----@type table<SessionWindowEvent, fun(event:SessionWindowEvent, ...)[]>
-local callbacks = {}
-
----@param event SessionWindowEvent
----@param callback fun(event:SessionWindowEvent, ...)
-function DMS.UI.SessionWindow:RegisterEvent(event, callback)
-    callbacks[event] = callbacks[event] or {}
-    table.insert(callbacks[event], callback)
-end
-
----@param event SessionWindowEvent
-local function FireEvent(event, ...)
-    if callbacks[event] then
-        for _, cb in ipairs(callbacks[event]) do
-            cb(...)
-        end
-    end
-end
-
----------------------------------------------------------------------------
---- Events
----------------------------------------------------------------------------
+---@class SessionWindowController
+---@field frame SessionWindow
+---@field client LootSessionClient|nil
+---@field host LootSessionHost|nil
+local Controller = {}
 
 ---Get path to an image file of the addon.
 ---@param imgName string The name of the image.
@@ -55,165 +19,189 @@ local function GetImagePath(imgName)
     return [[Interface\AddOns\]] .. addonName .. [[\UI\img\]] .. imgName
 end
 
-local WIDTH = 600
+---------------------------------------------------------------------------
+--- Status Headers
+---------------------------------------------------------------------------
 
-local function CreateMainFrame()
+---@param parent SessionWindow
+local function CreateStatusHeaders(parent)
+    ---@class SessionWindow
+    parent = parent
+
+    local fontLabel = "GameTooltipTextSmall"
+    local fontValue = fontLabel
+
+    parent.HostNameLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
+    parent.HostNameLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 65, -6)
+    parent.HostNameLabel:SetText(L["Host:"])
+
+    parent.HostName = parent:CreateFontString(nil, "OVERLAY", fontValue)
+    parent.HostName:SetPoint("TOPLEFT", parent.HostNameLabel, "TOPRIGHT", 10, 0)
+    parent.HostName:SetText("---")
+
+    parent.SessionStatus = parent:CreateFontString(nil, "OVERLAY", fontValue)
+    parent.SessionStatus:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -35, -6)
+    parent.SessionStatus:SetText("---")
+
+    parent.SessionStatusLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
+    parent.SessionStatusLabel:SetPoint("TOPRIGHT", parent.SessionStatus, "TOPLEFT", -10, 0)
+    parent.SessionStatusLabel:SetText(L["Status:"])
+
+    parent.ClientsStatus = parent:CreateFontString(nil, "OVERLAY", fontValue)
+    parent.ClientsStatus:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, -37)
+    parent.ClientsStatus:SetText("---")
+
+    parent.ClientsStatusLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
+    parent.ClientsStatusLabel:SetPoint("TOPRIGHT", parent.ClientsStatus, "TOPLEFT", -10, 0)
+    parent.ClientsStatusLabel:SetText(L["Players ready:"])
+end
+
+---@param text string
+function Controller:SetHostName(text)
+    self.frame.HostName:SetText(text)
+end
+
+---@param text string
+function Controller:SetSessionStatus(text)
+    self.frame.SessionStatus:SetText(text)
+end
+
+---@param candidates table<string, LootCandidate>
+function Controller:SetConnected(candidates)
+    local count = 0
+    local ready = 0
+    for _, v in pairs(candidates) do
+        count = count + 1
+        if v.isReady then
+            ready = ready + 1
+        else
+
+        end
+    end
+    self.frame.ClientsStatus:SetText(ready .. "/" .. count)
+end
+
+---------------------------------------------------------------------------
+--- Main Window
+---------------------------------------------------------------------------
+
+local WIDTH = 600
+local HEIGHT = 400
+
+local function CreateWindow()
+    ---@class SessionWindow : ButtonFrameTemplate
     local frame = CreateFrame("Frame", "DMSSessionWindow", UIParent, "ButtonFrameTemplate")
     frame:Hide()
     frame:SetFrameStrata("DIALOG")
     frame:SetPoint("CENTER", 0, 0)
     frame:SetWidth(WIDTH)
-    frame:SetHeight(400)
+    frame:SetHeight(HEIGHT)
     frame:SetClampedToScreen(true)
-
     ButtonFrameTemplate_HideButtonBar(frame)
-
     LibWindow:Embed(frame)
-    frame:RegisterConfig(DMS.settings.UI.SessionWindow)
+    frame:RegisterConfig(DMS.settings.UI.SessionWindow) ---@diagnostic disable-line: undefined-field
     frame:SetScale(DMS.settings.UI.SessionWindow.scale or 1.0)
-    frame:RestorePosition()
+    frame:RestorePosition() ---@diagnostic disable-line: undefined-field
     frame:EnableMouse(true)
-    frame:MakeDraggable()
-    frame:SetScript("OnMouseWheel", function(f, delta)
-        if IsControlKeyDown() then
-            LibWindow.OnMouseWheel(f, delta)
-        end
-    end)
-
+    frame:MakeDraggable() ---@diagnostic disable-line: undefined-field
+    frame:SetScript("OnMouseWheel", function(f, d) if IsControlKeyDown() then LibWindow.OnMouseWheel(f, d) end end)
     frame.TitleText:SetText(addonName)
     frame.portrait:SetTexture(GetImagePath("logo.png"))
+    frame.CloseButton:SetScript("OnClick", function() Controller:CloseClicked() end)
 
-    frame.CloseButton:SetScript("OnClick", function()
-        if currentSession and currentSession:IsHost() then
-            LibDialog:Spawn({
-                text = "Do you want to abort the loot session?",
-                on_cancel = function(self, data, reason) end,
-                buttons = {
-                    {
-                        text = "Abort",
-                        on_click = function(self, mouseButton, down)
-                            print("You clicked a button 1.")
-                            FireEvent("CLOSE_CLICKED")
-                        end,
-                    },
-                    {
-                        text = "Minimize",
-                        on_click = function(self, mouseButton, down)
-                            print("You clicked a button 2.")
-                            DMS.UI.SessionWindow:Hide()
-                        end,
-                    },
+    CreateStatusHeaders(frame)
+
+    return frame
+end
+
+function Controller:Show()
+    if not self.frame then
+        self.frame = CreateWindow()
+    end
+    self.frame:Show()
+end
+
+function Controller:Hide()
+    if self.client and self.client.isFinished then
+        self.client = nil
+    end
+    if self.host and self.host.isFinished then
+        self.host = nil
+    end
+    self.frame:Hide()
+end
+
+function Controller:CloseClicked()
+    if self.host then
+        LibDialog:Spawn({
+            text = "Do you want to abort the loot session?",
+            on_cancel = function(self, data, reason) end,
+            buttons = {
+                {
+                    text = "Abort",
+                    on_click = function()
+                        Controller.host:Destroy()
+                        Controller.host = nil
+                        Controller:Hide()
+                    end,
                 },
-            })
-            return
+                {
+                    text = "Minimize",
+                    on_click = function()
+                        Controller:Hide()
+                    end,
+                },
+            },
+        })
+        return
+    end
+    self:Hide()
+    if self.client and not self.client.isFinished then
+        DMS:PrintWarn(L["Session is still running. You can reopen the window with /dms open"])
+    end
+end
+
+---@param clientSession LootSessionClient
+function Controller:SetClient(clientSession)
+    self:SetHostName(clientSession.hostName)
+    self:SetSessionStatus(L["Running"])
+
+    self.client = clientSession
+
+    clientSession.OnSessionEnd:RegisterCallback(function()
+        self:SetSessionStatus(L["Ended"])
+        if not self.frame:IsShown() then
+            self:Hide()
         end
-        DMS.UI.SessionWindow:Hide()
     end)
 
-    return frame
+    clientSession.OnCandidateUpdate:RegisterCallback(function()
+        self:SetConnected(clientSession.candidates)
+    end)
 end
-
-local function CreateStatusHeader(frame)
-    local fontLabel = "GameFontNormalMed2"
-    local fontValue = fontLabel
-
-    frame.labelHost = frame:CreateFontString(nil, "OVERLAY", fontLabel);
-    frame.labelHost:SetPoint("TOPLEFT", 65, -35);
-    frame.labelHost:SetText("Host:");
-
-    frame.hostName = frame:CreateFontString(nil, "OVERLAY", fontValue);
-    frame.hostName:SetPoint("TOPLEFT", frame.labelHost, "TOPRIGHT", 10, 0);
-    frame.hostName:SetText("---");
-
-    frame.labelStatus = frame:CreateFontString(nil, "OVERLAY", fontLabel);
-    frame.labelStatus:SetPoint("TOPLEFT", frame.labelHost, "TOPRIGHT", 100, 0);
-    frame.labelStatus:SetText("Status:");
-
-    frame.statusString = frame:CreateFontString(nil, "OVERLAY", fontValue);
-    frame.statusString:SetPoint("TOPLEFT", frame.labelStatus, "TOPRIGHT", 10, 0);
-    frame.statusString:SetText("---");
-
-    frame.labelConnected = frame:CreateFontString(nil, "OVERLAY", fontLabel);
-    frame.labelConnected:SetPoint("TOPLEFT", frame.labelStatus, "TOPRIGHT", 100, 0);
-    frame.labelConnected:SetText("Connected:");
-
-    frame.connectedPlayers = frame:CreateFontString(nil, "OVERLAY", fontValue);
-    frame.connectedPlayers:SetPoint("TOPLEFT", frame.labelConnected, "TOPRIGHT", 10, 0);
-    frame.connectedPlayers:SetText("---");
-end
-
----Create the session window frame.
-local function CreateWindow()
-    local frame = CreateMainFrame()
-    CreateStatusHeader(frame)
-    return frame
-end
-
-local window = nil
 
 ---------------------------------------------------------------------------
 --- API
 ---------------------------------------------------------------------------
 
-function DMS.UI.SessionWindow:Show()
-    if not window then
-        window = CreateWindow()
-    end
-    window:Show()
-end
-
-function DMS.UI.SessionWindow:Hide()
-    if not window then
-        return
-    end
-    if currentClientSession and currentClientSession.isFinished then
-        currentClientSession = nil
-    end
-    if currentHostSession and currentHostSession.isFinished then
-        currentHostSession = nil
-    end
-    window:Hide()
-end
-
----Set session info for header.
----@param host string Name of the player that started the session.
----@param connected string How many players are responding.
----@param status string A status string shown in the header.
-local function SetSessionInfo(host, connected, status)
-    if not window then
-        window = CreateWindow()
-    end
-    window.hostName:SetText(host)
-    window.statusString:SetText(status)
-    window.connectedPlayers:SetText(connected)
-end
-
----@param client LootSessionClient
-local function HookupClient(client)
-    if not window or not currentClientSession then
-        return
-    end
-
-    client.OnSessionEnd:RegisterCallback(function()
-        SetSessionInfo(currentClientSession.hostName, "0", L["Ended"])
-    end)
-
-    client.OnCandidateUpdate:RegisterCallback(function()
-        local numCandidates = 0
-        for _ in pairs(client.candidates) do
-            numCandidates = numCandidates + 1
-        end
-        SetSessionInfo(currentClientSession.hostName, numCandidates, L["Running"])
-    end)
-end
-
 DMS.Session.Client.OnClientStart:RegisterCallback(function(session)
-    DMS.UI.SessionWindow:Show()
-    SetSessionInfo(session.hostName, "0", session.isFinished and L["Ended"] or L["Running"])
-    currentClientSession = session
+    if Controller.client then
+        DMS:PrintDebug("Got new session start but client for UI already set!")
+        return
+    end
+
+    Controller:Show()
     local hostSession = DMS.Session.Host:GetSession()
     if hostSession and hostSession.sessionGUID == session.sessionGUID then
-        currentHostSession = hostSession
+        Controller.host = hostSession
     end
-    HookupClient(currentClientSession)
+    Controller:SetClient(session)
+end)
+
+DMS:RegisterSlashCommand("open", L["Opens session window if a session is running."], function(args)
+    if not Controller.client or Controller.client.isFinished then
+        DMS:PrintError(L["No session is running!"])
+        return
+    end
+    Controller:Show()
 end)

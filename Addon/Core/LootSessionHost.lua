@@ -44,7 +44,7 @@ local Comm = DMS.Session.Comm
 ---@field isFinished boolean
 ---@field itemCount integer
 ---@field items table<string, LootSessionHostItem>
----@field timers {expires:number, exec:fun(sess:LootSessionHost)}[]
+---@field timers table<string, {expires:number, exec:fun(sess:LootSessionHost)}>
 local LootSessionHost = {}
 ---@diagnostic disable-next-line: inject-field
 LootSessionHost.__index = LootSessionHost
