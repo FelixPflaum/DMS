@@ -24,6 +24,7 @@ Locale/Localization.lua
 
 Classes/EventEmitter.lua
 Classes/UniqueRoll.lua
+Classes/UniqueTimers.lua
 
 System/Events.lua
 System/Net.lua

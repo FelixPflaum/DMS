@@ -71,8 +71,9 @@ function Controller:SetConnected(candidates)
     local count = 0
     local ready = 0
     for _, v in pairs(candidates) do
+        DMS:PrintDebug(v)
         count = count + 1
-        if v.isReady then
+        if v.isResponding then
             ready = ready + 1
         else
 

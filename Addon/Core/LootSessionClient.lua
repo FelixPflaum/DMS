@@ -11,6 +11,7 @@ local Comm = DMS.Session.Comm
 ---@field responses LootResponses
 ---@field candidates table<string, LootCandidate>
 ---@field isFinished boolean
+---@field keepaliveTimer TimerHandle|nil
 local LootSessionClient = {}
 ---@diagnostic disable-next-line: inject-field
 LootSessionClient.__index = LootSessionClient
@@ -47,25 +48,37 @@ function LootSessionClient:Setup()
     self.OnCandidateUpdate = DMS:NewEventEmitter()
 
     Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
+
+    local s = self
+    self.keepaliveTimer = C_Timer.NewTicker(20, function(t)
+        s:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+    end)
+    self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+end
+
+function LootSessionClient:SendToHost(opcode, data)
+    DMS:PrintDebug("Sending to host", opcode)
+    Net:SendWhisper(Comm.PREFIX, self.hostName, opcode, data)
 end
 
 function LootSessionClient:End()
-    if not self.isFinished then
-        self.OnSessionEnd:Trigger()
-        Net:UnregisterObj(Comm.PREFIX, self)
+    if self.isFinished then
+        return
+    end
+    if self.keepaliveTimer then
+        self.keepaliveTimer:Cancel()
     end
     self.isFinished = true
+    self.OnSessionEnd:Trigger()
+    Net:UnregisterObj(Comm.PREFIX, self)
+    
 end
 
 ---@param list Packet_LootCandidate[]
 function LootSessionClient:UpdateCandidates(list)
     for _, pc in ipairs(list) do
         local candidate = Comm:Packet_ReadCandidate(pc)
-        if self.candidates[candidate.name] then
-            -- TODO: update item data?
-        else
-            self.candidates[candidate.name] = candidate
-        end
+        self.candidates[candidate.name] = candidate
     end
     self.OnCandidateUpdate:Trigger()
 end
@@ -75,11 +88,17 @@ end
 ---@param opcode OpCode
 ---@param data any
 function LootSessionClient:OnMsgReceived(prefix, sender, opcode, data)
+    if opcode > Comm.OpCodes.MAX_HMSG then return end
+
     if opcode == Comm.OpCodes.HMSG_CANDIDATES_UPDATE then
-        ---@cast data Packet_LootCandidate[]
+        ---@cast data Packet_LootCandidate|Packet_LootCandidate[]
         DMS:PrintDebug("Recieved msg", sender, "HMSG_CANDIDATES_UPDATE")
         DMS:PrintDebug(data)
-        self:UpdateCandidates(data)
+        if data.c then
+            self:UpdateCandidates({data})
+        else
+            self:UpdateCandidates(data)
+        end
     else
         DMS:PrintDebug("Recieved msg", opcode)
         DMS:PrintDebug(data)

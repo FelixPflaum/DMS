@@ -617,14 +617,10 @@ function GuildRoster() end
 ---@field Cancel fun(self:TimerHandle)
 ---@field Invoke fun(self:TimerHandle)
 
----@class FunctionContainer
----@field Cancel fun()
----@field IsCanceled fun():boolean
-
 ---@param interval number Interval in seconds.
 ---@param callback fun(t:TimerHandle)
 ---@param interations integer|nil nil for inf
----@return FunctionContainer
+---@return TimerHandle
 function C_Timer.NewTicker(interval, callback, interations) end
 
 ---Returns the system uptime of your computer in seconds, with millisecond precision. 

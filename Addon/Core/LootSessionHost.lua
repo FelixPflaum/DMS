@@ -7,15 +7,15 @@ DMS.Session.Host = {}
 local Net = DMS.Net
 local Comm = DMS.Session.Comm
 
----@alias CommTarget "group"|"guild"|"self"
+---@alias CommTarget "group"|"self"
 
 ---@class (exact) LootCandidate
 ---@field name string
 ---@field classId integer
 ---@field isOffline boolean
 ---@field leftGroup boolean
----@field isReady boolean
----@field lastMessage integer
+---@field isResponding boolean
+---@field lastMessage number GetTime()
 
 ---@class (exact) LootSessionHostItemClient
 ---@field candidate LootCandidate
@@ -44,7 +44,7 @@ local Comm = DMS.Session.Comm
 ---@field isFinished boolean
 ---@field itemCount integer
 ---@field items table<string, LootSessionHostItem>
----@field timers table<string, {expires:number, exec:fun(sess:LootSessionHost)}>
+---@field timers UniqueTimers
 local LootSessionHost = {}
 ---@diagnostic disable-next-line: inject-field
 LootSessionHost.__index = LootSessionHost
@@ -60,11 +60,90 @@ local function NewLootSessionHost(target)
         isFinished = false,
         itemCount = 0,
         items = {},
-        timers = {},
+        timers = DMS:NewUniqueTimers(),
     }
     setmetatable(session, LootSessionHost)
     session:Setup()
     return session
+end
+
+local updateTimerKey = "mainUpdate"
+
+function LootSessionHost:Setup()
+    DMS:RegisterEvent("GROUP_ROSTER_UPDATE", self)
+    DMS:RegisterEvent("GROUP_LEFT", self)
+
+    DMS:PrintSuccess("Started a new host session for " .. self.target)
+    DMS:PrintDebug("Session GUID", self.sessionGUID)
+    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_MakeSessionHost(self))
+
+    self:UpdateCandidateList()
+
+    Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
+
+
+    self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
+
+    -- TODO: Update responses if player db changes (points)
+end
+
+function LootSessionHost:Destroy()
+    if self.isFinished then
+        return
+    end
+
+    self.isFinished = true
+
+    DMS:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
+    DMS:UnregisterEvent("GROUP_LEFT", self)
+
+    self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
+end
+
+function LootSessionHost:TimerUpdate()
+    if self.isFinished then return end
+    local nowgt = GetTime()
+
+    -- Update candidates
+    ---@type table<string, LootCandidate>
+    local changedLootCandidates = {}
+    for _, candidate in pairs(self.candidates) do
+        local oldIsResponding = candidate.isResponding
+        candidate.isResponding = candidate.lastMessage < nowgt - 25
+        if oldIsResponding ~= candidate.isResponding then
+            changedLootCandidates[candidate.name] = candidate
+        end
+    end
+    ---@type Packet_LootCandidate[]
+    local lcPacketList = {}
+    for _, lc in pairs(changedLootCandidates) do
+        table.insert(lcPacketList, Comm:Packet_Candidate(lc))
+    end
+    self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
+
+    -- Restart timer
+    self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
+end
+
+---@param prefix string
+---@param sender string
+---@param opcode OpCode
+---@param data any
+function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
+    if opcode < Comm.OpCodes.MAX_HMSG then return end
+
+    DMS:PrintDebug("Received client msg", sender, opcode)
+    local candidate = self.candidates[sender]
+    if not candidate then return end
+
+    if opcode == Comm.OpCodes.CMSG_IM_HERE then
+        local update = not candidate.isResponding
+        candidate.isResponding = true
+        candidate.lastMessage = GetTime()
+        if update then
+            self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, Comm:Packet_Candidate(candidate))
+        end
+    end
 end
 
 ---Send comm message to target channel.
@@ -87,37 +166,10 @@ function LootSessionHost:Broadcast(opcode, data)
             DMS:PrintError("Tried to broadcast to group but not in a group! Ending session.")
             self:Destroy()
         end
-    elseif self.target == "guild" then
-        channel = "GUILD"
     end
 
     DMS:PrintDebug("Sending broadcast", channel, opcode)
     Net:Send(Comm.PREFIX, channel, opcode, data)
-end
-
-function LootSessionHost:Setup()
-    DMS:RegisterEvent("GROUP_ROSTER_UPDATE", self)
-    DMS:RegisterEvent("GROUP_LEFT", self)
-
-    DMS:PrintSuccess("Started a new host session for " .. self.target)
-    DMS:PrintDebug("Session GUID", self.sessionGUID)
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_MakeSessionHost(self))
-
-    self:UpdateCandidateList()
-    -- TODO: Update responses if player db changes (points)
-end
-
-function LootSessionHost:Destroy()
-    if self.isFinished then
-        return
-    end
-
-    self.isFinished = true
-
-    DMS:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
-    DMS:UnregisterEvent("GROUP_LEFT", self)
-
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
 end
 
 function LootSessionHost:GROUP_LEFT()
@@ -130,7 +182,10 @@ end
 
 function LootSessionHost:GROUP_ROSTER_UPDATE()
     DMS:PrintDebug("LootSessionHost GROUP_ROSTER_UPDATE")
-    self:UpdateCandidateList()
+    local tkey = "groupupdate"
+    if self.timers:HasTimer(tkey) then return end
+    DMS:PrintDebug("Start UpdateCandidateList timer")
+    self.timers:StartUnique(tkey, 5, "UpdateCandidateList", self)
 end
 
 ---Create list of loot candidates, i.e. list of all raid members at this point in time.
@@ -139,7 +194,7 @@ function LootSessionHost:UpdateCandidateList()
     ---@type table<string, LootCandidate>
     local newList = {}
     local prefix = ""
-    local changed = 0
+    local changed = false
     ---@type table<string, LootCandidate>
     local changedLootCandidates = {}
 
@@ -152,8 +207,6 @@ function LootSessionHost:UpdateCandidateList()
             DMS:PrintError("Tried to update candidates but not in a group! Ending session.")
             self:Destroy()
         end
-    elseif self.target == "guild" then
-        prefix = "" -- Not supported, same as self test mode
     else
         prefix = ""
     end
@@ -165,7 +218,7 @@ function LootSessionHost:UpdateCandidateList()
             classId = select(3, UnitClass("player")),
             isOffline = false,
             leftGroup = false,
-            isReady = false,
+            isResponding = false,
             lastMessage = 0,
         }
     else
@@ -178,7 +231,7 @@ function LootSessionHost:UpdateCandidateList()
                 classId = select(3, UnitClass(unit)),
                 isOffline = UnitIsConnected(unit),
                 leftGroup = false,
-                isReady = false,
+                isResponding = false,
                 lastMessage = 0,
             }
         end
@@ -190,18 +243,18 @@ function LootSessionHost:UpdateCandidateList()
         if newEntry == nil then
             if not oldEntry.leftGroup then
                 oldEntry.leftGroup = true
-                changed = changed + 1
+                changed = true
                 changedLootCandidates[oldName] = oldEntry
             end
         else
             if oldEntry.leftGroup then
                 oldEntry.leftGroup = false
-                changed = changed + 1
+                changed = true
                 changedLootCandidates[oldName] = oldEntry
             end
             if oldEntry.isOffline ~= newEntry.isOffline then
                 oldEntry.isOffline = newEntry.isOffline
-                changed = changed + 1
+                changed = true
                 changedLootCandidates[oldName] = oldEntry
             end
         end
@@ -210,12 +263,12 @@ function LootSessionHost:UpdateCandidateList()
     for newName, newEntry in pairs(newList) do
         if not self.candidates[newName] then
             self.candidates[newName] = newEntry
-            changed = changed + 1
+            changed = true
             changedLootCandidates[newName] = newEntry
         end
     end
 
-    if changed > 0 then
+    if changed then
         --- Add new member to open and non-awarded items
         for _, item in pairs(self.items) do
             if not item.awardedTo and not item.parentGUID then
@@ -264,10 +317,8 @@ function DMS.Session.Host:Start(target)
         if not IsInRaid() and not IsInGroup() then
             return L["Host target group does not work outside of a group!"]
         end
-    elseif target == "guild" then
-        -- TODO
     elseif target ~= "self" then
-        return L["Invalid host target! Valid values are: %s, %s and %s."]:format("group", "guild", "self")
+        return L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
     end
     DMS:PrintDebug("Starting host session with target: ", target)
     hostSession = NewLootSessionHost(target)

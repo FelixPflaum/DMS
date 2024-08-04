@@ -195,6 +195,9 @@ local opcodes = {
     HMSG_SESSION = 1,
     HMSG_SESSION_END = 2,
     HMSG_CANDIDATES_UPDATE = 3,
+
+    MAX_HMSG = 99,
+    CMSG_IM_HERE = 100
 }
 
 local Comm = {
@@ -254,7 +257,7 @@ function Comm:Packet_Candidate(candidate)
     if candidate.leftGroup then
         data.s = data.s + 0x2
     end
-    if candidate.isReady then
+    if candidate.isResponding then
         data.s = data.s + 0x4
     end
     return data
@@ -268,7 +271,7 @@ function Comm:Packet_ReadCandidate(data)
         classId = data.c,
         isOffline = bit.band(data.s, 0x1) > 0,
         leftGroup = bit.band(data.s, 0x2) > 0,
-        isReady = bit.band(data.s, 0x4) > 0,
+        isResponding = bit.band(data.s, 0x4) > 0,
         lastMessage = 0,
     }
     return lc

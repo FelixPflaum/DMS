@@ -2,7 +2,7 @@
 local DMS = select(2, ...)
 
 ---@class (exact) UniqueTimers
----@field _timers table<string, FunctionContainer>
+---@field _timers table<string, TimerHandle>
 local UniqueTimers = {}
 ---@diagnostic disable-next-line: inject-field
 UniqueTimers.__index = UniqueTimers
@@ -41,6 +41,11 @@ function UniqueTimers:CancelAll()
     for _, fc in pairs(self._timers) do
         fc:Cancel()
     end
+end
+
+---@param key string
+function UniqueTimers:HasTimer(key)
+    return self._timers[key] ~= nil
 end
 
 ---@param key string
