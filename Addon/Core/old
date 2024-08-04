@@ -1,0 +1,272 @@
+
+---@param duration number How many seconds the timer runs.
+---@param exec fun(session:LootSession)
+function LootSession:AddTimer(duration, exec)
+    table.insert(self.timers.timers, {
+        expires = GetTime() + duration,
+        exec = exec,
+    })
+end
+
+function LootSession:TIMER_UPDATE()
+    local now = GetTime()
+
+    for i = #self.timers.timers, 1, -1 do
+        local t = self.timers.timers[i]
+        if t.expires <= now then
+            t.exec(self)
+        end
+    end
+
+    -- TODO: check timer on rolls
+
+    for _, candidate in pairs(self.candidates) do
+        candidate.isReady = now < candidate.lastMessage + CANDIDATE_READY_TIMEOUT
+    end
+end
+
+function LootSession:StartTimer()
+    local sess = self
+    C_Timer.NewTicker(1, function(timer)
+        if sess.isFinished then
+            timer:Cancel()
+        end
+        DMS:PrintDebug("Session timer update")
+        sess:TIMER_UPDATE()
+    end)
+end
+
+---Sets next item after the last awarded item to be unveiled.
+function LootSession:UnveilNextItem()
+    ---@type LootSessionItem[]
+    local orderedItem = {}
+
+    for _, sessionItem in pairs(self.items) do
+        table.insert(orderedItem, sessionItem)
+    end
+
+    table.sort(orderedItem, function(a, b)
+        return a.order < b.order
+    end)
+
+    for _, sessionItem in ipairs(orderedItem) do
+        if not sessionItem.awardedTo then
+            if sessionItem.veiled then
+                sessionItem.veiled = false
+                self.OnItemUnveiled:Trigger(self, sessionItem)
+            end
+            return
+        end
+    end
+end
+
+---Add an item to the loot session.
+---@param itemId integer
+---@return boolean itemAdded
+---@return string|nil errorMessage
+function LootSession:AddItem(itemId)
+    if self.isFinished then
+        return false, "session was already finished"
+    end
+
+    if not self:IsHost() then
+        return false, "only the host can add items"
+    end
+
+    ---@type LootSessionItem|nil
+    local parentItem = nil
+    for _, existingItem in pairs(self.items) do
+        if existingItem.itemId == itemId then
+            local parentGuid = existingItem.parentGUID
+            if parentGuid then
+                parentItem = self.items[parentGuid]
+                break
+            end
+            parentItem = existingItem
+        end
+    end
+
+    ---@type LootSessionItem
+    local lootItem
+
+    if parentItem then
+        parentItem.duplicateGUIDs = parentItem.duplicateGUIDs or {}
+
+        lootItem = {
+            distributionGUID = DMS:MakeGUID(),
+            order = parentItem.order + #parentItem.duplicateGUIDs + 1,
+            itemId = itemId,
+            status = "copyParent",
+            veiled = parentItem.veiled,
+            startTime = parentItem.startTime,
+            endTime = parentItem.endTime,
+            responses = parentItem.responses,
+            roller = parentItem.roller,
+            parentGUID = parentItem.distributionGUID,
+        }
+
+        table.insert(parentItem.duplicateGUIDs, lootItem.distributionGUID)
+    else
+        ---@type table<string, LootSessionItemClient>
+        local candidateResponseList = {}
+        for name, candidate in pairs(self.candidates) do
+            candidateResponseList[name] = {
+                candidate = candidate,
+                response = defaultResonses.notsent,
+            }
+        end
+
+        lootItem = {
+            distributionGUID = DMS:MakeGUID(),
+            order = self.itemCount * 100,
+            itemId = itemId,
+            status = "waiting",
+            veiled = true,
+            startTime = time(),
+            endTime = time() + DMS.settings.lootSession.timeout,
+            responses = candidateResponseList,
+            roller = DMS:NewUniqueRoller(),
+        }
+
+        self:AddTimer(DMS.settings.lootSession.timeout, function(session)
+            if lootItem.status == "waiting" then
+                lootItem.status = "timeout"
+                for _, itemClient in pairs(lootItem.responses) do
+                    if not itemClient.response.canSelect then
+                        itemClient.response = defaltResponses.timeout
+                        session.OnItemClientUpdate:Trigger(session, lootItem, itemClient)
+                    end
+                end
+                -- TODO COMM: send update
+            end
+        end)
+    end
+
+    self.itemCount = self.itemCount + 1
+    self.items[lootItem.distributionGUID] = lootItem
+    self.OnItemAdded:Trigger(self, lootItem)
+    self:UnveilNextItem()
+
+    -- TODO COMM: send item, set responses to sent, set timer, set to unknown if no ack
+
+    return true
+end
+
+---Set response for a player.
+---@param distGUID string
+---@param playerName string
+---@param responseId integer
+---@param hostOverride boolean|nil Override response.
+---@return boolean started
+---@return string|nil errorMessage
+function LootSession:SetResponse(distGUID, playerName, responseId, hostOverride)
+    if self.isFinished then
+        return false, "session already finished"
+    end
+
+    local lootItem = self.items[distGUID]
+    if not lootItem then
+        return false, "invalid dist guid"
+    end
+
+    if lootItem.parentGUID then
+        return false, "item is a duplicate, can only respond to parent"
+    end
+
+    if lootItem.status ~= "waiting" then
+        return false, "rolls are already closed"
+    end
+
+    local lootItemClient = lootItem.responses[playerName]
+    if not lootItemClient then
+        return false, "client unknown"
+    end
+
+    if lootItemClient.response.canSelect and not hostOverride then
+        return false, "already responded"
+    end
+
+    local response = self.ResponseCheck:GetResponseById(responseId)
+
+    if not response then
+        return false, "invalid response"
+    end
+
+    if response.isPointsRoll then
+        local player = DB:GetPlayer(playerName)
+        if not player then
+            return false, "player not in database"
+        end
+        lootItemClient.points = player.points
+    end
+
+    if not lootItemClient.roll then
+        lootItemClient.roll = lootItem.roller:GetRoll()
+    end
+
+    lootItemClient.response = response
+    self.OnItemClientUpdate:Trigger(self, lootItem, lootItemClient)
+    return true
+end
+
+---Award an item.
+---@param distGUID string
+---@param playerName string
+---@return boolean success
+---@return string|nil errorMessage
+function LootSession:AwardItem(distGUID, playerName)
+    if self.isFinished then
+        return false, "session already finished"
+    end
+
+    local item = self.items[distGUID]
+    if not item then
+        return false, "item does not exist"
+    end
+
+    local itemClient = item.responses[playerName]
+    if not itemClient then
+        return false, "client unknown"
+    end
+
+    item.awardedTo = playerName
+
+    -- TODO: update DBs
+
+    local channel = DMS:SelectGroupChannel()
+    if channel then
+        SendChatMessage(L["Awarded %s for %s to %s"]:format(item.itemId, itemClient.response.displayString, playerName), channel)
+    end
+
+    self.OnItemAwarded:Trigger(self, item, itemClient)
+    self:UnveilNextItem()
+
+    return true
+end
+
+function LootSession:RevertAward(distGUID)
+    if self.isFinished then
+        return false, "session already finished"
+    end
+
+    local item = self.items[distGUID]
+    if not item then
+        return false, "item does not exist"
+    end
+
+    local winner = item.awardedTo
+    if not winner then
+        return false, "item wasn't awarded"
+    end
+
+    local itemClient = item.responses[winner]
+    if not itemClient then
+        return false, "client not found"
+    end
+
+    -- TODO: DB changes
+
+    item.awardedTo = nil
+
+    self.OnItemAwardReverted:Trigger(self, item, itemClient)
+end
