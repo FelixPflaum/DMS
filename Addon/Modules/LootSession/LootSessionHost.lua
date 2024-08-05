@@ -114,7 +114,7 @@ function LootSessionHost:TimerUpdate()
     local nowgt = GetTime()
 
     -- Update candidates
-    -- TODO: offline and leftgroup
+    -- TODO: offline and leftgroup, only send if changed
     ---@type table<string, LootCandidate>
     local changedLootCandidates = {}
     for _, candidate in pairs(self.candidates) do

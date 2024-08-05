@@ -13,7 +13,7 @@ GameTooltip = {
     SetScript = SetScript,
 }
 
-AceGUIWidgetLSMlists = {font={}};
+AceGUIWidgetLSMlists = { font = {} };
 
 bit = {
     band = function(arg1, arg2) return 0 end,
@@ -42,7 +42,6 @@ function GetInventoryItemLink(unit, slotId) end
 ---@return string subtext
 function GetSpellSubtext(spellId) end
 
-
 ---Unit damage returns information about your current damage stats.
 ---@param unit string
 ---@return number lowDmg
@@ -54,7 +53,7 @@ function GetSpellSubtext(spellId) end
 ---@return number percentmod
 function UnitDamage(unit) end
 
----Returns the unit's ranged damage and speed. 
+---Returns the unit's ranged damage and speed.
 ---@param unit string
 ---@return number speed
 ---@return number lowDmg
@@ -99,7 +98,7 @@ end
 ---@param subject string
 ---@param pieces number|nil
 function strsplit(delimiter, subject, pieces)
-    return "","","","","","","","","","";
+    return "", "", "", "", "", "", "", "", "", "";
 end
 
 ---@alias FramePoint  "TOPLEFT" | "TOPRIGHT" | "BOTTOMLEFT" | "BOTTOMRIGHT" | "TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER"
@@ -173,7 +172,7 @@ local FontStringDummy = {
 ---@param frame WoWFrame
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
----Creates a Frame object. 
+---Creates a Frame object.
 ---@param frameType string Type of the frame; e.g. "Frame" or "Button".
 ---@param frameName string|nil
 ---@param parentFrame WoWFrame|nil
@@ -181,13 +180,15 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@return WoWFrame
 function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
 
---- name, rank, icon, castTime, minRange, maxRange 
+--- name, rank, icon, castTime, minRange, maxRange
 function GetSpellInfo(spellId_spellName_spellLink)
     return "name", "rank", "icon", 1, 1, 1;
 end
 
 function UIDropDownMenu_SetWidth(dropDown, width) end
+
 function UIDropDownMenu_Initialize(dropDown, initFunc) end
+
 function UIDropDownMenu_CreateInfo()
     return {
         arg1 = "",
@@ -197,7 +198,9 @@ function UIDropDownMenu_CreateInfo()
         text = "",
     }
 end
+
 function UIDropDownMenu_SetText(self, text) end
+
 --- See UIDropDownMenu_CreateInfo
 function UIDropDownMenu_AddButton(buttonInfo) end
 
@@ -212,7 +215,7 @@ function GetMacroSpell(actionId)
     return 123;
 end
 
-function  UnitName(unit)
+function UnitName(unit)
     return "name";
 end
 
@@ -266,7 +269,7 @@ function GetRangedHaste() end
 ---@return number
 function GetShieldBlock() end
 
----Gets the player's current mana regeneration rates (in mana per 1 seconds). 
+---Gets the player's current mana regeneration rates (in mana per 1 seconds).
 ---@return number base @Full regen while outside the fsr
 ---@return number casting @Regen from mp5 and uninterrupted spirit/int regen
 function GetManaRegen() end
@@ -280,7 +283,7 @@ function UnitAttackSpeed(unit)
     return 1.5, 1.2;
 end
 
---- Returns information about an item. 
+--- Returns information about an item.
 ---@param itemID_itemString_itemName_itemLink string|number @ItemLink, Name or ID
 ---@return string itemName
 ---@return string itemLink
@@ -309,7 +312,7 @@ function GetInventoryItemDurability(slot)
     return 123;
 end
 
----Returns information about a specified talent in a specified tab. 
+---Returns information about a specified talent in a specified tab.
 ---@param tree any
 ---@param talent any
 ---@return string name
@@ -358,7 +361,7 @@ function UnitRace(unit)
     return "localized", "English";
 end
 
----Returns info about one of the unit's stats (strength, agility, stamina, intellect, spirit). 
+---Returns info about one of the unit's stats (strength, agility, stamina, intellect, spirit).
 ---@param unit string
 ---@param statID number
 ---@return number base @The unit's base stat.
@@ -492,18 +495,23 @@ function UnitCreatureType(unitId)
 end
 
 function InterfaceOptionsFrame_OpenToCategory(panelName) end
+
 function InterfaceOptions_AddCategory(frame) end
+
 InterfaceOptionsFrameAddOns = {};
 function OptionsListButtonToggle_OnClick() end
+
 function ChatConfigFrame_PlayCheckboxSound() end
+
 function EditBox_ClearFocus() end
+
 function GameTooltip_Hide() end
 
 function GetWeaponEnchantInfo()
     return true, 1, 1, 1, true, 1, 1, 1;
 end
 
----Returns information on a glyph socket. 
+---Returns information on a glyph socket.
 ---@param socketID number glyph [Glyph SocketID|socket index]] (1 to GetNumGlyphSockets() )
 ---@param talentGroup number|nil (dual) specialization index (1 to GetNumTalentGroups(...)).
 ---@return boolean enabled
@@ -525,11 +533,11 @@ C_Timer = {
 ---@return number offhandExpertise
 function GetExpertise() end
 
----Returns the percentage of target's armory your physical attacks ignore due to armor penetration. 
+---Returns the percentage of target's armory your physical attacks ignore due to armor penetration.
 ---@return number armorPenPct
 function GetArmorPenetration() end
 
----Retrieves the number of combo points gained by a player. 
+---Retrieves the number of combo points gained by a player.
 ---@param unit "player"|"vehicle"
 ---@param target "target"
 ---@return integer
@@ -541,7 +549,7 @@ function GetComboPoints(unit, target) end
 ---@return boolean
 function UnitIsUnit(unit1, unit2) end
 
----Retrieves information about a specific SpellBook item 
+---Retrieves information about a specific SpellBook item
 ---@param entryName string
 ---@return string skillType The type of the spell (known values: "SPELL", "PETACTION", "FUTURESPELL", "FLYOUT")
 ---@return integer contextualID For SPELL and FUTURESPELL this is the spellID. For PetAction is it an integer value that is troublesome to use outside of two functions related solely to the PetBarUI. For Flyout, it is the FlyoutID.
@@ -577,12 +585,12 @@ function IsPlayerSpell(spellID) end
 LE_PARTY_CATEGORY_HOME = ""
 LE_PARTY_CATEGORY_INSTANCE = ""
 
----Returns the number of players in the group. 
+---Returns the number of players in the group.
 ---@param groupType any If omitted, defaults to INSTANCE if applicable, HOME otherwise. LE_PARTY_CATEGORY_HOME|LE_PARTY_CATEGORY_INSTANCE
 ---@return integer numGroupMembers total number of players in the group (either party or raid), 0 if not in a group.
 function GetNumGroupMembers(groupType) end
 
----Returns true if the player is in a raid. 
+---Returns true if the player is in a raid.
 ---@param groupType any If omitted, defaults to INSTANCE if applicable, HOME otherwise. LE_PARTY_CATEGORY_HOME|LE_PARTY_CATEGORY_INSTANCE
 ---@return boolean isInRaid true if the player is currently in a groupType raid group (if groupType was not specified, true if in any type of raid), false otherwise
 function IsInRaid(groupType) end
@@ -604,12 +612,12 @@ function SendChatMessage(msg, chatType, languageID, target) end
 
 C_Engraving = {}
 ---@return boolean
-C_Engraving.IsEngravingEnabled = function ()end
+C_Engraving.IsEngravingEnabled = function() end
 
 ---@return boolean
 function IsInGuild() end
 
----Requests updated guild roster information from the server. 
+---Requests updated guild roster information from the server.
 function GuildRoster() end
 
 ---@class TimerHandle
@@ -623,6 +631,12 @@ function GuildRoster() end
 ---@return TimerHandle
 function C_Timer.NewTicker(interval, callback, interations) end
 
----Returns the system uptime of your computer in seconds, with millisecond precision. 
+---Returns the system uptime of your computer in seconds, with millisecond precision.
 ---@return number
 function GetTime() end
+
+---@param classID integer
+---@return string className
+---@return string classFile
+---@return integer classId
+function GetClassInfo(classID) end
