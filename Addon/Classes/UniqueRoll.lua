@@ -1,8 +1,7 @@
---- Allows picking random unique numbers in [1, 100] range.
-
 ---@class AddonEnv
 local DMS = select(2, ...)
 
+---Allows picking random unique numbers in [1, 100] range.
 ---@class (exact) UniqueRoller
 ---@field _rolls integer[]
 local UniqueRoller = {}

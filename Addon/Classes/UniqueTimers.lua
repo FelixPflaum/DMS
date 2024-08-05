@@ -8,10 +8,12 @@ local UniqueTimers = {}
 UniqueTimers.__index = UniqueTimers
 
 ---Set a timer if one with key doesn't already exist.
----@param key string
----@param callback fun(key:string)|string
----@param obj table|nil
-function UniqueTimers:StartUnique(key, duration, callback, obj, noError)
+---@param key string The key for the timer. Must be unique, will error if it already exist.
+---@param callback fun(key:string)|string Callback function or name of the function to call on object. If string then the function object[callback](object, key, ...) will be the callback.
+---@param object table|nil
+---@param noError boolean|nil If true will not error if timer with key already exists.
+---@param ... any Arbitrary args that will be given to the callback function, after key.
+function UniqueTimers:StartUnique(key, duration, callback, object, noError, ...)
     if self._timers[key] then
         if noError then
             return
@@ -19,21 +21,22 @@ function UniqueTimers:StartUnique(key, duration, callback, obj, noError)
         error("Timer with key " .. key .. " already exists!")
     end
 
-    local s = self
+    local _self = self
+    local args = {...}
 
     if type(callback) == "function" then
-        s._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
-            s._timers[key] = nil
-            callback(key)
+        _self._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
+            _self._timers[key] = nil
+            callback(key, unpack(args))
         end)
         return
     end
 
-    assert(obj, "obj can't be nil if callback is a string!")
+    assert(object, "obj can't be nil if callback is a string!")
 
-    s._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
-        s._timers[key] = nil
-        obj["callback"](obj, key)
+    _self._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
+        _self._timers[key] = nil
+        object["callback"](object, key, unpack(args))
     end)
 end
 
@@ -55,9 +58,8 @@ function UniqueTimers:Cancel(key)
     end
 end
 
----Get a new UniqueRoll instance. Can be used to generate unique rolls.
 ---@return UniqueTimers
-function DMS:NewUniqueTimers()
+function DMS.NewUniqueTimers()
     ---@type UniqueTimers
     local t = { _timers = {} }
     setmetatable(t, UniqueTimers)

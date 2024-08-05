@@ -5,7 +5,6 @@ local EventEmitter = {}
 EventEmitter.__index = EventEmitter
 
 ---Regsiter a callback for the event.
----@param callback fun(...):nil
 function EventEmitter:RegisterCallback(callback)
     table.insert(self._callbacks, callback)
 end
@@ -19,15 +18,12 @@ function EventEmitter:Trigger(...)
 end
 
 --[[
-
 Create an EventEmitter that provides callback registration and trigger functions.
-
 The following template can be copy&pasted to use luals type support.
 
 ---@class EventEmitter
----@field RegisterCallback fun(self:EventEmitter, cb:fun(self:EventEmitter, arg:any))
+---@field RegisterCallback fun(self:EventEmitter, cb:fun(arg:any))
 ---@field Trigger fun(self:EventEmitter, arg:any)
-
 ]]
 
 function DMS:NewEventEmitter()
