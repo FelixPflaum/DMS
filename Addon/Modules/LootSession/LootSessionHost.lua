@@ -88,12 +88,11 @@ function LootSessionHost:Setup()
 
     DMS:PrintSuccess("Started a new host session for " .. self.target)
     LogDebug("Session GUID", self.sessionGUID)
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_HtC_LootSession(self))
-
-    self:UpdateCandidateList()
 
     Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
 
+    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_HtC_LootSession(self))
+    self:UpdateCandidateList()
 
     self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
 
@@ -101,15 +100,11 @@ function LootSessionHost:Setup()
 end
 
 function LootSessionHost:Destroy()
-    if self.isFinished then
-        return
-    end
-
+    if self.isFinished then return end
     self.isFinished = true
-
     DMS:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
     DMS:UnregisterEvent("GROUP_LEFT", self)
-
+    Net:UnregisterObj(Comm.PREFIX, self)
     self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
     self.OnSessionEnd:Trigger()
 end
@@ -119,6 +114,7 @@ function LootSessionHost:TimerUpdate()
     local nowgt = GetTime()
 
     -- Update candidates
+    -- TODO: offline and leftgroup
     ---@type table<string, LootCandidate>
     local changedLootCandidates = {}
     for _, candidate in pairs(self.candidates) do
@@ -340,9 +336,9 @@ function LootSessionHost:UpdateCandidateList()
 
     if changed then
         if DMS.settings.debug then
-            print("Changed candidates:")
+            LogDebug("Changed candidates:")
             for _, lc in pairs(changedLootCandidates) do
-                print(" - ", lc.name)
+                LogDebug(" - ", lc.name)
             end
         end
 

@@ -29,14 +29,14 @@ Classes/UniqueTimers.lua
 System/Events.lua
 System/Net.lua
 System/SlashCommands.lua
+System/Settings.lua
 
 Database/Database.lua
 
-Core/ItemFunctions.lua
-Core/Settings.lua
-Core/LootSession.lua
-Core/LootSessionHost.lua
-Core/LootSessionClient.lua
+Modules/LootSession/ItemFunctions.lua
+Modules/LootSession/LootSession.lua
+Modules/LootSession/LootSessionHost.lua
+Modules/LootSession/LootSessionClient.lua
 
 UI/SettingsTab.lua
 UI/SessionWindow.lua

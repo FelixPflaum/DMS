@@ -84,7 +84,7 @@ function LootSessionClient:Setup()
     ---@diagnostic disable-next-line: inject-field
     self.OnItemUpdate = DMS:NewEventEmitter()
 
-    Net:RegisterObj(Comm.PREFIX, self, "Handler_OnHostMessageReceived")
+    Net:RegisterObj(Comm.PREFIX, self, "HandleEvent_OnHostMessageReceived")
 
     local s = self
     self.keepaliveTimer = C_Timer.NewTicker(20, function(t)

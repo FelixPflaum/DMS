@@ -67,11 +67,14 @@ end
 ---@param object table
 ---@param funcName string
 function Net:RegisterObj(prefix, object, funcName)
+    if object[funcName] == nil or type(object[funcName]) ~= "function" then
+        error(string.format("object.%s is not a function!", funcName))
+    end
     if not callbacks[prefix] then
         callbacks[prefix] = {}
         AceComm:RegisterComm(prefix, MessageReceived)
     end
-    table.insert(callbacks[prefix], { obj = object, funcName = funcName })
+    table.insert(callbacks[prefix], { object = object, funcName = funcName })
 end
 
 ---@param prefix string
@@ -98,25 +101,14 @@ end
 
 ---@param offset integer
 local function GetCpsTrackerPos(offset)
-    assert(math.abs(offset) >= cpsTrackerLen, "Offset must be withi dimensions of array.")
-    local pos = cpsTrackerLastPos - offset
+    assert(math.abs(offset) < cpsTrackerLen, "Offset must be within dimensions of array.")
+    local pos = cpsTrackerLastPos + offset
     if pos < 1 then
         pos = pos + cpsTrackerLen
     elseif pos > cpsTrackerLen then
         pos = pos - cpsTrackerLen
     end
     return pos
-end
-
----@param t {sentAt:number, size:integer}[]
----@return fun():{sentAt:number, size:integer}|nil
-local function cps_reverse_iterator(t)
-    local i = cpsTrackerLastPos + 1
-    local iEnd = GetCpsTrackerPos(1)
-    return function()
-        i = GetCpsTrackerPos(-1)
-        if i ~= iEnd then return t[i] end
-    end
 end
 
 ---@param msg string
@@ -128,17 +120,29 @@ local function TrackCPS(msg)
     cpsTracker[cpsTrackerLastPos].size = size
 
     local now = GetTime()
-    local cps1s = 0
-    local cps2s = 0
-    local cps5s = 0
-    for v in cps_reverse_iterator(cpsTracker) do
-        if now - v.sentAt <= 5 then
-            cps5s = cps5s + v.size / 5
-            if now - v.sentAt <= 2 then
-                cps2s = cps2s + v.size / 2
-                if now - v.sentAt <= 1 then
-                    cps1s = cps1s + v.size
-                end
+    local cps1s = 0.0
+    local cps2s = 0.0
+    local cps5s = 0.0
+
+    local offset = 1
+    while true do
+        offset = offset - 1
+        if offset == -cpsTrackerLen then
+            break
+        end
+        local i = GetCpsTrackerPos(offset)
+        local v = cpsTracker[i]
+        local delta = now - v.sentAt
+
+        if delta > 5 then
+            break
+        end
+
+        cps5s = cps5s + v.size / 5
+        if delta <= 2 then
+            cps2s = cps2s + v.size / 2
+            if delta <= 1 then
+                cps1s = cps1s + v.size
             end
         end
     end
