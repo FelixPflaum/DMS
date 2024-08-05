@@ -16,40 +16,40 @@ DMS.Session = {}
 ---@field displayString string
 ---@field color [number, number, number]
 
+---@class (exact) LootClientStatusList
+---@field sent LootClientStatus
+---@field waitingForResponse LootClientStatus
+---@field unknown LootClientStatus
+---@field responseTimeout LootClientStatus
+---@field responded LootClientStatus
 DMS.Session.LootStatus = {
     ---@type LootClientStatus
-    dataNotSent = {
+    sent = { -- Loot data sent, waiting for answer...
         id = 1,
-        displayString = L["Loot data not yet sent"],
-        color = { 1, 0.5, 0 },
-    },
-    ---@type LootClientStatus
-    dataSent = {
-        id = 2,
         displayString = L["Loot data sent, waiting for answer..."],
         color = { 1, 0.5, 0 },
     },
     ---@type LootClientStatus
-    waitingForResponse = {
-        id = 3,
+    waitingForResponse = { -- Waiting for response selection...
+        id = 2,
         displayString = L["Waiting for response selection..."],
         color = { 1, 1, 0 },
     },
     ---@type LootClientStatus
-    unknown = {
-        id = 4,
+    unknown = { -- Unknown, offline or addon not installed
+        id = 3,
         displayString = L["Unknown, offline or addon not installed"],
         color = { 0.5, 0.5, 0.5 },
     },
     ---@type LootClientStatus
-    responseTimeout = {
-        id = 5,
+    responseTimeout = { -- Did not respond in time
+        id = 4,
         displayString = L["Did not respond in time"],
         color = { 1, 0, 0 },
     },
     ---@type LootClientStatus
-    responded = {
-        id = 6,
+    responded = { -- Response given
+        id = 5,
         displayString = L["Response given"],
         color = { 0.5, 1, 0.5 },
     },
@@ -195,9 +195,13 @@ local opcodes = {
     HMSG_SESSION = 1,
     HMSG_SESSION_END = 2,
     HMSG_CANDIDATES_UPDATE = 3,
+    HMSG_ITEM_ANNOUNCE = 4,
+    HMSG_ITEM_RESPONSE_UPDATE = 6,
 
     MAX_HMSG = 99,
-    CMSG_IM_HERE = 100
+    CMSG_IM_HERE = 100,
+    CMSG_ITEM_ACK = 101,
+    CMSG_ITEM_RESPONSE = 102,
 }
 
 local Comm = {
@@ -212,29 +216,38 @@ DMS.Session.Comm = Comm
 ---@field c integer
 ---@field s integer
 
----@class (exact) Packet_LootSessionItemClient
+---@class (exact) Packet_HtC_LootSessionItemClient
 ---@field candidate string
----@field responseId integer
+---@field responseId integer|nil
 ---@field statusId integer
----@field roll [integer,integer]|nil
+---@field roll integer|nil
+---@field sanity integer|nil
 
----@class (exact) Packet_LootSessionItem
+---@class (exact) Packet_HtC_LootSessionItem
 ---@field guid string
 ---@field order integer
 ---@field itemId integer
 ---@field veiled boolean
 ---@field endTime integer
----@field responses Packet_LootSessionItemClient[]
+---@field responses nil|Packet_HtC_LootSessionItemClient[]
 ---@field awardedTo string|nil
 
----@class (exact) Packet_LootSession
+---@class (exact) Packet_HtC_LootResponseUpdate
+---@field itemGuid string
+---@field client Packet_HtC_LootSessionItemClient
+
+---@class (exact) Packet_HtC_LootSession
 ---@field guid string
 ---@field responses LootResponse[]
 ---@field commVersion integer
 
+---@class (exact) Packet_CtH_LootClientResponse
+---@field itemGuid string
+---@field responseId integer
+
 ---@param host LootSessionHost
-function Comm:Packet_MakeSessionHost(host)
-    ---@type Packet_LootSession
+function Comm:Packet_HtC_LootSession(host)
+    ---@type Packet_HtC_LootSession
     local sp = {
         guid = host.sessionGUID,
         commVersion = self.VERSION,
@@ -244,7 +257,7 @@ function Comm:Packet_MakeSessionHost(host)
 end
 
 ---@param candidate LootCandidate
-function Comm:Packet_Candidate(candidate)
+function Comm:Packet_LootCandidate(candidate)
     ---@type Packet_LootCandidate
     local data = {
         n = candidate.name,
@@ -263,8 +276,18 @@ function Comm:Packet_Candidate(candidate)
     return data
 end
 
+---@param candidates table<string, LootCandidate>
+function Comm:Packet_LootCandidate_List(candidates)
+    ---@type Packet_LootCandidate[]
+    local lcPacketList = {}
+    for _, lc in pairs(candidates) do
+        table.insert(lcPacketList, self:Packet_LootCandidate(lc))
+    end
+    return lcPacketList
+end
+
 ---@param data Packet_LootCandidate
-function Comm:Packet_ReadCandidate(data)
+function Comm:Packet_Read_LootCandidate(data)
     ---@type LootCandidate
     local lc = {
         name = data.n,
@@ -275,4 +298,66 @@ function Comm:Packet_ReadCandidate(data)
         lastMessage = 0,
     }
     return lc
+end
+
+---@param response LootSessionHostItemClient
+function Comm:Packet_HtC_LootSessionItemClient(response)
+    ---@type Packet_HtC_LootSessionItemClient
+    local pic = {
+        candidate = response.candidate.name,
+        responseId = response.response and response.response.id or nil,
+        statusId = response.status.id,
+        roll = response.roll,
+    }
+    return pic
+end
+
+---@param responseTable table<string, LootSessionHostItemClient>
+function Comm:Packet_HtC_LootSessionItemClient_List(responseTable)
+    ---@type Packet_HtC_LootSessionItemClient[]
+    local picList = {}
+    for _, v in pairs(responseTable) do
+        table.insert(picList, self:Packet_HtC_LootSessionItemClient(v))
+    end
+    return picList
+end
+
+---@param itemGuid string
+---@param clientData LootSessionHostItemClient
+function Comm:Packet_HtC_LootResponseUpdate(itemGuid, clientData)
+    ---@type Packet_HtC_LootResponseUpdate
+    local ru = {
+        itemGuid = itemGuid,
+        client = self:Packet_HtC_LootSessionItemClient(clientData)
+    }
+    return ru
+end
+
+---@param item LootSessionHostItem
+function Comm:Packet_HtC_LootSessionItem(item)
+    ---@type Packet_HtC_LootSessionItem
+    local pitem = {
+        guid = item.distributionGUID,
+        order = item.order,
+        itemId = item.itemId,
+        veiled = item.veiled,
+        endTime = item.endTime,
+    }
+    if not item.veiled then
+        pitem.awardedTo = item.awardedTo
+        pitem.responses = self:Packet_HtC_LootSessionItemClient_List(item.responses)
+    end
+    return pitem
+end
+
+---@param itemGuid string
+---@param responseId integer
+---@return Packet_CtH_LootClientResponse
+function Comm:Packet_CtH_LootClientResponse(itemGuid, responseId)
+    ---@type Packet_CtH_LootClientResponse
+    local lcr = {
+        itemGuid = itemGuid,
+        responseId = responseId,
+    }
+    return lcr
 end

@@ -6,6 +6,11 @@ DMS.Session.Host = {}
 
 local Net = DMS.Net
 local Comm = DMS.Session.Comm
+local LootStatus = DMS.Session.LootStatus
+
+local function LogDebug(...)
+    DMS:PrintDebug("Host:", ...)
+end
 
 ---@alias CommTarget "group"|"self"
 
@@ -21,7 +26,8 @@ local Comm = DMS.Session.Comm
 ---@field candidate LootCandidate
 ---@field status LootClientStatus
 ---@field response LootResponse|nil
----@field roll [integer,integer]|nil
+---@field roll integer|nil
+---@field sanity integer|nil
 
 ---@class (exact) LootSessionHostItem
 ---@field distributionGUID string Unique id for that specific loot distribution.
@@ -29,9 +35,10 @@ local Comm = DMS.Session.Comm
 ---@field parentGUID string|nil If this item is a duplicate this will be the guid of the main item, i.e. the one people respond to.
 ---@field duplicateGUIDs string[]|nil If duplicates of the item exist their guids will be in here.
 ---@field itemId integer
----@field veiled boolean
+---@field veiled boolean Details are not sent to clients until item is unveiled.
 ---@field startTime integer
 ---@field endTime integer
+---@field status "waiting"|"timeout"|"copy"
 ---@field roller UniqueRoller
 ---@field responses table<string, LootSessionHostItemClient>
 ---@field awardedTo string|nil
@@ -70,12 +77,18 @@ end
 local updateTimerKey = "mainUpdate"
 
 function LootSessionHost:Setup()
+    ---@class (exact) LSHostEndEvent
+    ---@field RegisterCallback fun(self:LSHostEndEvent, cb:fun())
+    ---@field Trigger fun(self:LSHostEndEvent)
+    ---@diagnostic disable-next-line: inject-field
+    self.OnSessionEnd = DMS:NewEventEmitter()
+
     DMS:RegisterEvent("GROUP_ROSTER_UPDATE", self)
     DMS:RegisterEvent("GROUP_LEFT", self)
 
     DMS:PrintSuccess("Started a new host session for " .. self.target)
-    DMS:PrintDebug("Session GUID", self.sessionGUID)
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_MakeSessionHost(self))
+    LogDebug("Session GUID", self.sessionGUID)
+    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_HtC_LootSession(self))
 
     self:UpdateCandidateList()
 
@@ -98,6 +111,7 @@ function LootSessionHost:Destroy()
     DMS:UnregisterEvent("GROUP_LEFT", self)
 
     self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
+    self.OnSessionEnd:Trigger()
 end
 
 function LootSessionHost:TimerUpdate()
@@ -114,15 +128,28 @@ function LootSessionHost:TimerUpdate()
             changedLootCandidates[candidate.name] = candidate
         end
     end
-    ---@type Packet_LootCandidate[]
-    local lcPacketList = {}
-    for _, lc in pairs(changedLootCandidates) do
-        table.insert(lcPacketList, Comm:Packet_Candidate(lc))
-    end
+
+    local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
     self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
 
     -- Restart timer
     self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
+end
+
+---Set response, does NOT check if response was already set!
+---@param item LootSessionHostItem
+---@param itemClient LootSessionHostItemClient
+---@param response LootResponse
+function LootSessionHost:SetItemResponse(item, itemClient, response)
+    itemClient.response = response
+    itemClient.roll = itemClient.roll or item.roller:GetRoll()
+    itemClient.status = LootStatus.responded
+    -- TODO: get sanity from DB
+    itemClient.sanity = response.isPointsRoll and 999 or nil
+    if not item.veiled then
+        self:Broadcast(Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE,
+            Comm:Packet_HtC_LootResponseUpdate(item.distributionGUID, itemClient))
+    end
 end
 
 ---@param prefix string
@@ -132,7 +159,7 @@ end
 function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
     if opcode < Comm.OpCodes.MAX_HMSG then return end
 
-    DMS:PrintDebug("Received client msg", sender, opcode)
+    LogDebug("Received client msg", sender, opcode)
     local candidate = self.candidates[sender]
     if not candidate then return end
 
@@ -141,7 +168,50 @@ function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
         candidate.isResponding = true
         candidate.lastMessage = GetTime()
         if update then
-            self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, Comm:Packet_Candidate(candidate))
+            self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, Comm:Packet_LootCandidate(candidate))
+        end
+    elseif opcode == Comm.OpCodes.CMSG_ITEM_RESPONSE then
+        ---@cast data Packet_CtH_LootClientResponse
+        local item = self.items[data.itemGuid]
+        if not item then
+            DMS:PrintError(sender .. " tried to respond to unknown item " .. data.itemGuid)
+            return
+        end
+        local itemClient = item.responses[sender]
+        if not itemClient then
+            DMS:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but candidate not known for that item")
+            return
+        end
+        if itemClient.response then
+            DMS:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but already responded")
+            return
+        end
+        local response = self.responses:GetResponse(data.responseId)
+        if not response then
+            DMS:PrintError(sender ..
+                " tried to respond to item " .. data.itemGuid .. " but response id " .. data.responseId .. " invalid")
+            return
+        end
+        self:SetItemResponse(item, itemClient, response)
+    elseif opcode == Comm.OpCodes.CMSG_ITEM_ACK then
+        ---@cast data string
+        local item = self.items[data]
+        if not item then
+            DMS:PrintError(sender .. " tried to respond to unknown item " .. data)
+            return
+        end
+        local itemClient = item.responses[sender]
+        if not itemClient then
+            DMS:PrintError(sender .. " tried to respond to item " .. data .. " but candidate client not known!")
+            return
+        end
+
+        if itemClient.status == LootStatus.sent then
+            itemClient.status = LootStatus.waitingForResponse
+            if not item.veiled then
+                self:Broadcast(Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE,
+                    Comm:Packet_HtC_LootResponseUpdate(item.distributionGUID, itemClient))
+            end
         end
     end
 end
@@ -151,7 +221,7 @@ end
 ---@param data any
 function LootSessionHost:Broadcast(opcode, data)
     if self.target == "self" then
-        DMS:PrintDebug("Sending broadcast whisper", opcode)
+        LogDebug("Sending broadcast whisper", opcode)
         Net:SendWhisper(Comm.PREFIX, UnitName("player"), opcode, data)
         return
     end
@@ -168,7 +238,7 @@ function LootSessionHost:Broadcast(opcode, data)
         end
     end
 
-    DMS:PrintDebug("Sending broadcast", channel, opcode)
+    LogDebug("Sending broadcast", channel, opcode)
     Net:Send(Comm.PREFIX, channel, opcode, data)
 end
 
@@ -181,10 +251,10 @@ function LootSessionHost:GROUP_LEFT()
 end
 
 function LootSessionHost:GROUP_ROSTER_UPDATE()
-    DMS:PrintDebug("LootSessionHost GROUP_ROSTER_UPDATE")
+    LogDebug("LootSessionHost GROUP_ROSTER_UPDATE")
     local tkey = "groupupdate"
     if self.timers:HasTimer(tkey) then return end
-    DMS:PrintDebug("Start UpdateCandidateList timer")
+    LogDebug("Start UpdateCandidateList timer")
     self.timers:StartUnique(tkey, 5, "UpdateCandidateList", self)
 end
 
@@ -269,20 +339,6 @@ function LootSessionHost:UpdateCandidateList()
     end
 
     if changed then
-        --- Add new member to open and non-awarded items
-        for _, item in pairs(self.items) do
-            if not item.awardedTo and not item.parentGUID then
-                for name, candidate in pairs(self.candidates) do
-                    if not item.responses[name] then
-                        item.responses[name] = {
-                            candidate = candidate,
-                            status = DMS.Session.LootStatus.dataNotSent,
-                        }
-                    end
-                end
-            end
-        end
-
         if DMS.settings.debug then
             print("Changed candidates:")
             for _, lc in pairs(changedLootCandidates) do
@@ -290,13 +346,148 @@ function LootSessionHost:UpdateCandidateList()
             end
         end
 
-        ---@type Packet_LootCandidate[]
-        local lcPacketList = {}
-        for _, lc in pairs(changedLootCandidates) do
-            table.insert(lcPacketList, Comm:Packet_Candidate(lc))
-        end
+        local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
         self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
     end
+end
+
+------------------------------------------------------------------
+--- Add Item
+------------------------------------------------------------------
+
+---Sets next item after the last awarded item to be unveiled.
+function LootSessionHost:UnveilNextItem()
+    ---@type LootSessionHostItem[]
+    local orderedItem = {}
+
+    for _, sessionItem in pairs(self.items) do
+        table.insert(orderedItem, sessionItem)
+    end
+
+    table.sort(orderedItem, function(a, b)
+        return a.order < b.order
+    end)
+
+    for _, sessionItem in ipairs(orderedItem) do
+        if not sessionItem.awardedTo then
+            if sessionItem.veiled then
+                LogDebug("Unveil item because it's the next to be awarded: ", sessionItem.distributionGUID, sessionItem.itemId)
+                sessionItem.veiled = false
+                self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(sessionItem))
+            end
+            return
+        elseif sessionItem.veiled then
+            LogDebug("Unveil item because already awarded: ", sessionItem.distributionGUID, sessionItem.itemId)
+            sessionItem.veiled = false
+            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(sessionItem))
+        end
+    end
+end
+
+function LootSessionHost:ItemStopRoll(guid)
+    local lootItem = self.items[guid]
+    if not lootItem then return end
+    LogDebug("ItemStopRoll", guid, lootItem.itemId)
+    if lootItem.status == "waiting" then
+        lootItem.status = "timeout"
+        for _, itemClient in pairs(lootItem.responses) do
+            if not itemClient.response and not itemClient.status == LootStatus.unknown then
+                itemClient.status = LootStatus.responseTimeout
+            end
+        end
+        if not lootItem.veiled then
+            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
+        end
+    end
+end
+
+---@param itemId integer
+---@return boolean itemAdded
+---@return string|nil errorMessage
+function LootSessionHost:ItemAdd(itemId)
+    if self.isFinished then
+        return false, "session was already finished"
+    end
+
+    ---@type LootSessionHostItem|nil
+    local parentItem = nil
+    for _, existingItem in pairs(self.items) do
+        if existingItem.itemId == itemId then
+            local parentGuid = existingItem.parentGUID
+            if parentGuid then
+                parentItem = self.items[parentGuid]
+                break
+            end
+            parentItem = existingItem
+        end
+    end
+
+    ---@type LootSessionHostItem
+    local lootItem
+
+    if parentItem then
+        parentItem.duplicateGUIDs = parentItem.duplicateGUIDs or {}
+
+        lootItem = {
+            distributionGUID = DMS:MakeGUID(),
+            order = parentItem.order + #parentItem.duplicateGUIDs + 1,
+            itemId = itemId,
+            veiled = parentItem.veiled,
+            startTime = parentItem.startTime,
+            endTime = parentItem.endTime,
+            status = "copy",
+            responses = parentItem.responses,
+            roller = parentItem.roller,
+            parentGUID = parentItem.distributionGUID,
+        }
+
+        table.insert(parentItem.duplicateGUIDs, lootItem.distributionGUID)
+    else
+        ---@type table<string, LootSessionHostItemClient>
+        local candidateResponseList = {}
+        for name, candidate in pairs(self.candidates) do
+            candidateResponseList[name] = {
+                candidate = candidate,
+                status = LootStatus.sent,
+            }
+        end
+
+        lootItem = {
+            distributionGUID = DMS:MakeGUID(),
+            order = self.itemCount * 100,
+            itemId = itemId,
+            veiled = true,
+            startTime = time(),
+            endTime = time() + DMS.settings.lootSession.timeout,
+            status = "waiting",
+            responses = candidateResponseList,
+            roller = DMS:NewUniqueRoller(),
+        }
+
+        self.timers:StartUnique(lootItem.distributionGUID, DMS.settings.lootSession.timeout, "ItemStopRoll", self)
+    end
+
+    LogDebug("ItemAdd", itemId, "have parent ", parentItem ~= nil, "guid:", lootItem.distributionGUID)
+
+    self.itemCount = self.itemCount + 1
+    self.items[lootItem.distributionGUID] = lootItem
+    self:UnveilNextItem()
+
+    self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
+
+    self.timers:StartUnique(lootItem.distributionGUID .. "ackcheck", 10, function(key)
+        LogDebug("ItemAdd ackcheck", itemId, "guid:", lootItem.distributionGUID)
+        for _, itemClient in pairs(lootItem.responses) do
+            if not itemClient.response then
+                itemClient.status = LootStatus.unknown
+            end
+        end
+        if not lootItem.veiled then
+            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
+        end
+    end)
+
+    return true
 end
 
 ------------------------------------------------------------------
@@ -320,8 +511,12 @@ function DMS.Session.Host:Start(target)
     elseif target ~= "self" then
         return L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
     end
-    DMS:PrintDebug("Starting host session with target: ", target)
+    LogDebug("Starting host session with target: ", target)
     hostSession = NewLootSessionHost(target)
+
+    hostSession.OnSessionEnd:RegisterCallback(function()
+        hostSession = nil
+    end)
 end
 
 function DMS.Session.Host:GetSession()
@@ -343,4 +538,18 @@ DMS:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
     end
     DMS:PrintSuccess("Destroy host session...")
     hostSession:Destroy()
+end)
+
+DMS:RegisterSlashCommand("add", L["Add items to a session."], function(args)
+    if not hostSession then
+        DMS:PrintWarn(L["No session is running."])
+        return
+    end
+    for _, itemLink in ipairs(args) do
+        local id = DMS.Item:GetIdFromLink(itemLink)
+        print(itemLink, id)
+        if id then
+            hostSession:ItemAdd(id)
+        end
+    end
 end)

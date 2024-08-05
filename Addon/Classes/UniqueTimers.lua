@@ -9,7 +9,7 @@ UniqueTimers.__index = UniqueTimers
 
 ---Set a timer if one with key doesn't already exist.
 ---@param key string
----@param callback fun()|string
+---@param callback fun(key:string)|string
 ---@param obj table|nil
 function UniqueTimers:StartUnique(key, duration, callback, obj, noError)
     if self._timers[key] then
@@ -24,7 +24,7 @@ function UniqueTimers:StartUnique(key, duration, callback, obj, noError)
     if type(callback) == "function" then
         s._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
             s._timers[key] = nil
-            callback()
+            callback(key)
         end)
         return
     end
@@ -33,7 +33,7 @@ function UniqueTimers:StartUnique(key, duration, callback, obj, noError)
 
     s._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
         s._timers[key] = nil
-        obj["callback"](obj)
+        obj["callback"](obj, key)
     end)
 end
 

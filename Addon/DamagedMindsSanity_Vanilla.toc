@@ -32,6 +32,7 @@ System/SlashCommands.lua
 
 Database/Database.lua
 
+Core/ItemFunctions.lua
 Core/Settings.lua
 Core/LootSession.lua
 Core/LootSessionHost.lua
