@@ -10,6 +10,10 @@ local function LogDebug(...)
     DMS:PrintDebug("Client:", ...)
 end
 
+------------------------------------------------------------------------------------
+--- Data Structure Types
+------------------------------------------------------------------------------------
+
 ---@class (exact) LootSessionItemClient
 ---@field candidate LootCandidate
 ---@field response LootResponse|nil
@@ -37,6 +41,10 @@ end
 local LootSessionClient = {}
 ---@diagnostic disable-next-line: inject-field
 LootSessionClient.__index = LootSessionClient
+
+------------------------------------------------------------------------------------
+--- Construction
+------------------------------------------------------------------------------------
 
 ---@param hostName string
 ---@param guid string
@@ -76,7 +84,7 @@ function LootSessionClient:Setup()
     ---@diagnostic disable-next-line: inject-field
     self.OnItemUpdate = DMS:NewEventEmitter()
 
-    Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
+    Net:RegisterObj(Comm.PREFIX, self, "Handler_OnHostMessageReceived")
 
     local s = self
     self.keepaliveTimer = C_Timer.NewTicker(20, function(t)
@@ -85,10 +93,9 @@ function LootSessionClient:Setup()
     self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
 end
 
-function LootSessionClient:SendToHost(opcode, data)
-    LogDebug("Sending to host", opcode)
-    Net:SendWhisper(Comm.PREFIX, self.hostName, opcode, data)
-end
+------------------------------------------------------------------------------------
+--- Misc Methods
+------------------------------------------------------------------------------------
 
 function LootSessionClient:End()
     if self.isFinished then
@@ -102,11 +109,23 @@ function LootSessionClient:End()
     Net:UnregisterObj(Comm.PREFIX, self)
 end
 
+------------------------------------------------------------------------------------
+--- Host Communiction
+------------------------------------------------------------------------------------
+
+---Send message to host.
+---@param opcode OpCode
+---@param data any
+function LootSessionClient:SendToHost(opcode, data)
+    LogDebug("Sending to host", opcode)
+    Net:SendWhisper(Comm.PREFIX, self.hostName, opcode, data)
+end
+
 ---@param prefix string
 ---@param sender string
 ---@param opcode OpCode
 ---@param data any
-function LootSessionClient:OnMsgReceived(prefix, sender, opcode, data)
+function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opcode, data)
     if opcode > Comm.OpCodes.MAX_HMSG then return end
     if self.hostName ~= sender then return end
 
@@ -115,30 +134,37 @@ function LootSessionClient:OnMsgReceived(prefix, sender, opcode, data)
         LogDebug("Recieved msg", sender, "HMSG_CANDIDATES_UPDATE")
         DMS:PrintDebug(data)
         if data.c then
-            self:OnPacket_LootCandidate({ data })
+            self:HandleMessage_LootCandidate({ data })
         else
-            self:OnPacket_LootCandidate(data)
+            self:HandleMessage_LootCandidate(data)
         end
     elseif opcode == Comm.OpCodes.HMSG_ITEM_ANNOUNCE then
         ---@cast data Packet_HtC_LootSessionItem
         LogDebug("Recieved msg", sender, "HMSG_ITEM_ANNOUNCE")
         DMS:PrintDebug(data)
-        self:OnPacket_LootSessionItem(data)
+        self:HandleMessage_LootSessionItem(data)
     elseif opcode == Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE then
         ---@cast data Packet_HtC_LootResponseUpdate
         LogDebug("Recieved msg", sender, "HMSG_ITEM_RESPONSE_UPDATE")
         DMS:PrintDebug(data)
-        self:OnPacket_LootResponseUpdate(data)
+        self:HandleMessage_LootResponseUpdate(data)
     else
         LogDebug("Recieved unknown msg", opcode)
         DMS:PrintDebug(data)
     end
 
-    --CMSG_ITEM_RESPONSE = 102,
+    --TODO: CMSG_ITEM_RESPONSE = 102,
+    --Spawn roll window/list if items are announced initially and endtime < now
+    --Send response from there via this client session
 end
 
+------------------------------------------------------------------------------------
+--- Candidate List
+------------------------------------------------------------------------------------
+
 ---@param list Packet_LootCandidate[]
-function LootSessionClient:OnPacket_LootCandidate(list)
+function LootSessionClient:HandleMessage_LootCandidate(list)
+    DMS:PrintDebug(list)
     for _, pc in ipairs(list) do
         local candidate = Comm:Packet_Read_LootCandidate(pc)
         self.candidates[candidate.name] = candidate
@@ -147,7 +173,7 @@ function LootSessionClient:OnPacket_LootCandidate(list)
 end
 
 ------------------------------------------------------------------
---- Item Updates
+--- Items
 ------------------------------------------------------------------
 
 ---@param data Packet_HtC_LootSessionItemClient
@@ -179,7 +205,7 @@ function LootSessionClient:Parse_Packet_LootSessionItemClient(data)
 end
 
 ---@param data Packet_HtC_LootResponseUpdate
-function LootSessionClient:OnPacket_LootResponseUpdate(data)
+function LootSessionClient:HandleMessage_LootResponseUpdate(data)
     local item = self.items[data.itemGuid]
     if not item then
         LogDebug("got item response update for unknown item", data.itemGuid)
@@ -194,7 +220,7 @@ function LootSessionClient:OnPacket_LootResponseUpdate(data)
 end
 
 ---@param data Packet_HtC_LootSessionItem
-function LootSessionClient:OnPacket_LootSessionItem(data)
+function LootSessionClient:HandleMessage_LootSessionItem(data)
     ---@type LootSessionClientItem
     local pitem = {
         guid = data.guid,
@@ -224,7 +250,7 @@ function LootSessionClient:OnPacket_LootSessionItem(data)
         pitem.responses = respList
     end
 
-    LogDebug("item updated OnPacket_LootSessionItem", pitem.guid)
+    LogDebug("item updated HandleMessage_LootSessionItem", pitem.guid)
     self.OnItemUpdate:Trigger(pitem)
 end
 
