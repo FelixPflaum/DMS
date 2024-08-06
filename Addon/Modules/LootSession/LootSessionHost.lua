@@ -340,7 +340,7 @@ function LootSessionHost:UpdateCandidateList()
     end
 
     if changed then
-        if Env.settings.debug then
+        if Env.settings.logLevel > 1 then
             LogDebug("Changed candidates:")
             for _, lc in pairs(changedLootCandidates) do
                 LogDebug(" - ", lc.name)

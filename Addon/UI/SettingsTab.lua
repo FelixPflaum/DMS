@@ -79,10 +79,15 @@ local function CreateOptionTable()
                 type = "group",
                 name = "Debug",
                 args = {
-                    debug = {
+                    logLevel = {
                         order = 1,
-                        type = "toggle",
-                        name = "Debug"
+                        type = "select",
+                        name = L["Debug Log Level"],
+                        values = {
+                            [1] = L["Off"],
+                            [2] = L["Debug"],
+                            [3] = L["Verbose Data"],
+                        }
                     },
                 }
             },

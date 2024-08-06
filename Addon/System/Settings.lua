@@ -1,11 +1,18 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
+---@enum LogLevel
+Env.LogLevel = {
+    NORMAL = 1,
+    DEBUG = 2,
+    VERBOSE = 3,
+}
+
 ---@class SettingsTable
 local defaultSettings = {
     firstStart = true,
-    version = 1,
-    debug = false,
+    version = 2,
+    logLevel = 1, ---@type LogLevel
     UI = {
         SessionWindow = {},
     },
@@ -13,8 +20,7 @@ local defaultSettings = {
         timeout = 90,
         responses = {
             buttonCount = 0,
-            ---@type {response:string, color:[number,number,number], pointRoll:boolean}[]
-            buttons = {},
+            buttons = {}, ---@type {response:string, color:[number,number,number], pointRoll:boolean}[]
         },
     },
 }
@@ -38,7 +44,7 @@ end
 ---Update settings table if neccessary.
 local function UpdateSettings()
     --TODO: this is a dev placeholder
-    if DMS_Settings.version < defaultSettings.version then
+    if DMS_Settings.version ~= defaultSettings.version then
         DMS_Settings = defaultSettings
     end
 end

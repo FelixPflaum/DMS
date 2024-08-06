@@ -132,7 +132,7 @@ function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opc
     if opcode == Comm.OpCodes.HMSG_CANDIDATES_UPDATE then
         ---@cast data Packet_LootCandidate|Packet_LootCandidate[]
         LogDebug("Recieved msg", sender, "HMSG_CANDIDATES_UPDATE")
-        Env:PrintDebug(data)
+        Env:PrintVerbose(data)
         if data.c then
             self:HandleMessage_LootCandidate({ data })
         else
@@ -141,16 +141,16 @@ function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opc
     elseif opcode == Comm.OpCodes.HMSG_ITEM_ANNOUNCE then
         ---@cast data Packet_HtC_LootSessionItem
         LogDebug("Recieved msg", sender, "HMSG_ITEM_ANNOUNCE")
-        Env:PrintDebug(data)
+        Env:PrintVerbose(data)
         self:HandleMessage_LootSessionItem(data)
     elseif opcode == Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE then
         ---@cast data Packet_HtC_LootResponseUpdate
         LogDebug("Recieved msg", sender, "HMSG_ITEM_RESPONSE_UPDATE")
-        Env:PrintDebug(data)
+        Env:PrintVerbose(data)
         self:HandleMessage_LootResponseUpdate(data)
     else
         LogDebug("Recieved unknown msg", opcode)
-        Env:PrintDebug(data)
+        Env:PrintVerbose(data)
     end
 
     --TODO: CMSG_ITEM_RESPONSE = 102,
@@ -164,7 +164,7 @@ end
 
 ---@param list Packet_LootCandidate[]
 function LootSessionClient:HandleMessage_LootCandidate(list)
-    Env:PrintDebug(list)
+    Env:PrintVerbose(list)
     for _, pc in ipairs(list) do
         local candidate = Comm:Packet_Read_LootCandidate(pc)
         self.candidates[candidate.name] = candidate
@@ -275,7 +275,7 @@ Env.Net:Register(Env.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
             return
         end
         LogDebug("HMSG_SESSION")
-        Env:PrintDebug(data)
+        Env:PrintVerbose(data)
 
         ---@type Packet_HtC_LootSession
         data = data

@@ -47,16 +47,32 @@ local function PrintTable(t, d, maxDepth)
     end
 end
 
----Print if debug output is on.
----@param arg1 any If table will print out its content.
----@param ... any Will be ignored if arg1 is a table, otherwise beahves like print()
-function Env:PrintDebug(arg1, ...)
-    if not DMS_Settings or not DMS_Settings.debug then
-        return
-    end
+---@param arg1 any
+---@param ... any 
+local function PrintDebug(arg1, ...)
     if type(arg1) == "table" then
         PrintTable(arg1, 1)
     else
         print(arg1, ...)
     end
+end
+
+---Print if debug output is on.
+---@param arg1 any If table will print out its content.
+---@param ... any Will be ignored if arg1 is a table, otherwise behaves like print()
+function Env:PrintDebug(arg1, ...)
+    if not DMS_Settings or DMS_Settings.logLevel == 1 then
+        return
+    end
+    PrintDebug(arg1, ...)
+end
+
+---Print if verbose output is on.
+---@param arg1 any If table will print out its content.
+---@param ... any Will be ignored if arg1 is a table, otherwise behaves like print()
+function Env:PrintVerbose(arg1, ...)
+    if not DMS_Settings or DMS_Settings.logLevel < 3 then
+        return
+    end
+    PrintDebug(arg1, ...)
 end

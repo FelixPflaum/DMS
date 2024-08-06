@@ -28,7 +28,7 @@ function Env:RegisterEvent(event, callbackOrObject)
     table.insert(eventHandlers[event], callbackOrObject)
     if #eventHandlers[event] == 1 then
         eventFrame:RegisterEvent(event)
-        self:PrintDebug("Registered event", event)
+        self:PrintDebug("Registered game event", event)
     end
     self:PrintDebug("Added event callback", event, callbackOrObject)
 end
@@ -44,7 +44,7 @@ function Env:UnregisterEvent(event, callbackOrObject)
             self:PrintDebug("Removed event callback", event, callbackOrObject)
             if #eventHandlers[event] == 0 then
                 eventFrame:UnregisterEvent(event)
-                self:PrintDebug("Unregistered event", event)
+                self:PrintDebug("Unregistered game event", event)
             end
             return
         end
