@@ -1,10 +1,10 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-local L = DMS:GetLocalization()
-local DB = DMS.Database
+local L = Env:GetLocalization()
+local DB = Env.Database
 
-DMS.Session = {}
+Env.Session = {}
 
 ----------------------------------------------------------------------------
 --- Loot Status
@@ -22,7 +22,7 @@ DMS.Session = {}
 ---@field unknown LootClientStatus
 ---@field responseTimeout LootClientStatus
 ---@field responded LootClientStatus
-DMS.Session.LootStatus = {
+Env.Session.LootStatus = {
     ---@type LootClientStatus
     sent = { -- Loot data sent, waiting for answer...
         id = 1,
@@ -58,7 +58,7 @@ DMS.Session.LootStatus = {
 ---Get status data by id.
 ---@param id integer
 ---@return LootClientStatus|nil Will return nothing if status doesn't exist.
-function DMS.Session.LootStatus:GetById(id)
+function Env.Session.LootStatus:GetById(id)
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then
             return status
@@ -70,7 +70,7 @@ end
 ---@param id integer
 ---@return string statusText Will be "UNKNOWN STATUS" if status with id doesn't exist.
 ---@return [number, number, number] colorInfo The RGB color data.
-function DMS.Session.LootStatus:GetDisplayFromId(id)
+function Env.Session.LootStatus:GetDisplayFromId(id)
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then
             return status.displayString, status.color
@@ -147,10 +147,10 @@ function LootResponses:GetAutoPass()
 end
 
 ---Create loot response data from current settings data.
-function DMS.Session:CreateLootResponses()
+function Env.Session:CreateLootResponses()
     local lrc = setmetatable({ responses = CreateDefaultResponseTable() }, LootResponses)
-    local numButtons = DMS.settings.lootSession.responses.buttonCount
-    local buttons = DMS.settings.lootSession.responses.buttons
+    local numButtons = Env.settings.lootSession.responses.buttonCount
+    local buttons = Env.settings.lootSession.responses.buttons
     local count = 0
     for i = 1, numButtons do
         local id = REPSONSE_ID_FIRST_CUSTOM + i - 1
@@ -178,7 +178,7 @@ end
 
 ---Create loot response data from received data.
 ---@param list LootResponse[]
-function DMS.Session:CreateLootClientResponsesFromComm(list)
+function Env.Session:CreateLootClientResponsesFromComm(list)
     local lrc = setmetatable({ responses = CreateDefaultResponseTable() }, LootResponses)
     for _, v in ipairs(list) do
         lrc.responses[v.id] = v
@@ -209,7 +209,7 @@ local Comm = {
     VERSION = 1,
     OpCodes = opcodes,
 }
-DMS.Session.Comm = Comm
+Env.Session.Comm = Comm
 
 ---@class (exact) Packet_LootCandidate
 ---@field n string
@@ -345,6 +345,7 @@ function Comm:Packet_HtC_LootSessionItem(item)
     }
     if not item.veiled then
         pitem.awardedTo = item.awardedTo
+        -- TODO: only send if not a child item, client should set to parent responses
         pitem.responses = self:Packet_HtC_LootSessionItemClient_List(item.responses)
     end
     return pitem

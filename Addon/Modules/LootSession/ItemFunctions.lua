@@ -1,11 +1,11 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-DMS.Item = {}
+Env.Item = {}
 
 ---@param itemLink string
 ---@return integer|nil
-function DMS.Item:GetIdFromLink(itemLink)
+function Env.Item:GetIdFromLink(itemLink)
     local match = itemLink:match("|Hitem:(%d+):")
     if match then
         local num = tonumber(match)

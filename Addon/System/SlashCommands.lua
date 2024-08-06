@@ -1,9 +1,9 @@
 ---@type string
 local addonName = select(1, ...)
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-local L = DMS:GetLocalization()
+local L = Env:GetLocalization()
 local AceConsole = LibStub("AceConsole-3.0")
 
 ---@type table<string, {callback:fun(args: string[]), description:string}>
@@ -31,7 +31,7 @@ end
 ---@param command string The command to add.
 ---@param description string
 ---@param callback fun(args: string[]): nil The function to call when the cmommand is used.
-function DMS:RegisterSlashCommand(command, description, callback)
+function Env:RegisterSlashCommand(command, description, callback)
     assert(registeredCommands[command] == nil, "Command with that name already exists!")
     registeredCommands[command] = {
         callback = callback,

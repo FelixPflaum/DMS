@@ -1,7 +1,7 @@
 ---@type string
 local ADDON_NAME = select(1, ...)
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 local eventFrame = CreateFrame("Frame")
 ---@type table<string, (table|fun(...))[]>
@@ -23,7 +23,7 @@ end)
 ---Register event callback.
 ---@param event string
 ---@param callbackOrObject table|fun(...:any):boolean|nil If table then the function table:EVENT(args) will be called.
-function DMS:RegisterEvent(event, callbackOrObject)
+function Env:RegisterEvent(event, callbackOrObject)
     eventHandlers[event] = eventHandlers[event] or {}
     table.insert(eventHandlers[event], callbackOrObject)
     if #eventHandlers[event] == 1 then
@@ -36,7 +36,7 @@ end
 ---Remove event callback.
 ---@param event string
 ---@param callbackOrObject table|fun(...:any):boolean|nil
-function DMS:UnregisterEvent(event, callbackOrObject)
+function Env:UnregisterEvent(event, callbackOrObject)
     if not eventHandlers[event] then return end
     for i, v in ipairs(eventHandlers[event]) do
         if v == callbackOrObject then
@@ -56,7 +56,7 @@ local addonLoadCallbacks = {}
 
 ---Add callback for when addon is loaded.
 ---@param callback fun(...:any):nil
-function DMS:OnAddonLoaded(callback)
+function Env:OnAddonLoaded(callback)
     if not addonLoadCallbacks then return end
     table.insert(addonLoadCallbacks, callback)
 end
@@ -68,7 +68,7 @@ local function AddonLoadedCallback(addonName)
             f()
         end
         addonLoadCallbacks = nil
-        DMS:UnregisterEvent("ADDON_LOADED", AddonLoadedCallback)
+        Env:UnregisterEvent("ADDON_LOADED", AddonLoadedCallback)
     end
 end
-DMS:RegisterEvent("ADDON_LOADED", AddonLoadedCallback)
+Env:RegisterEvent("ADDON_LOADED", AddonLoadedCallback)

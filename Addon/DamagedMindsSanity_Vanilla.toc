@@ -38,5 +38,6 @@ Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/LootSessionClient.lua
 
+UI/Components/IconButton.lua
 UI/SettingsTab.lua
 UI/SessionWindow.lua

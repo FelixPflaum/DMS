@@ -1,27 +1,11 @@
 ---@type string
 local addonName = select(1, ...)
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-DMS.IS_CLASSIC = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
-DMS.IS_CLASSIC_SOD = DMS.IS_CLASSIC and C_Engraving and C_Engraving.IsEngravingEnabled()
-DMS.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
-
----Create a simple unique identifier.
-function DMS:MakeGUID()
-    return time() .. "-" .. string.format("%08x", math.floor(math.random(0,0x7FFFFFFF)))
-end
-
----Return RAID or PARTY depending on the group type currently in.
----@return "RAID"|"PARTY"|nil channelIdentifier nil if not in raid or party
-function DMS:SelectGroupChannel()
-    if IsInRaid(LE_PARTY_CATEGORY_HOME) then
-        return "RAID"
-    end
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        return "PARTY"
-    end
-end
+Env.IS_CLASSIC = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+Env.IS_CLASSIC_SOD = Env.IS_CLASSIC and C_Engraving and C_Engraving.IsEngravingEnabled()
+Env.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 
 ---Print msg to chat, replacing default color.
 ---@param msg string The message to print.
@@ -33,19 +17,19 @@ end
 
 ---Print success message (green)
 ---@param msg string
-function DMS:PrintSuccess(msg)
+function Env:PrintSuccess(msg)
     PrintToChat(msg, "|cFF33FF33")
 end
 
 ---Print error message (red)
 ---@param msg string
-function DMS:PrintError(msg)
+function Env:PrintError(msg)
     PrintToChat(msg, "|cFFFF3333")
 end
 
 ---Print warning message (orange)
 ---@param msg string
-function DMS:PrintWarn(msg)
+function Env:PrintWarn(msg)
     PrintToChat(msg, "|cFFFFAA22")
 end
 
@@ -66,7 +50,7 @@ end
 ---Print if debug output is on.
 ---@param arg1 any If table will print out its content.
 ---@param ... any Will be ignored if arg1 is a table, otherwise beahves like print()
-function DMS:PrintDebug(arg1, ...)
+function Env:PrintDebug(arg1, ...)
     if not DMS_Settings or not DMS_Settings.debug then
         return
     end

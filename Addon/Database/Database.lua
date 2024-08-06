@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...);
+local Env = select(2, ...);
 
 ---Make a shallow copy of a table.
 ---@generic T : table
@@ -15,7 +15,7 @@ local function CopyTable(inTable)
     return outTable
 end
 
-DMS.Database = {}
+Env.Database = {}
 
 ---@class (exact) PlayerPointsChange
 ---@field timeStamp integer
@@ -43,7 +43,7 @@ DMS.Database = {}
 ---@field reverted boolean Award was reverted.
 ---@field revertReason string|nil An optional reason why the award was reverted.
 
-DMS:OnAddonLoaded(function()
+Env:OnAddonLoaded(function()
     if DMS_Database == nil then
         ---@class (exact) Database
         ---@field players table<string, PlayerEntry>
@@ -64,12 +64,12 @@ end)
 ---@class (exact) PlayerChangeEventEmitter
 ---@field RegisterCallback fun(self:PlayerChangeEventEmitter, cb:fun(arg:string))
 ---@field Trigger fun(self:PlayerChangeEventEmitter, arg:string)
-DMS.Database.OnPlayerChanged = DMS:NewEventEmitter()
+Env.Database.OnPlayerChanged = Env:NewEventEmitter()
 
 ---@class (exact) LootHistoryDbEventEmitter
 ---@field RegisterCallback fun(self:LootHistoryDbEventEmitter, cb:fun(entryGuid:string))
 ---@field Trigger fun(self:LootHistoryDbEventEmitter, entryGuid:string)
-DMS.Database.OnLootHistoryEntryChanged = DMS:NewEventEmitter()
+Env.Database.OnLootHistoryEntryChanged = Env:NewEventEmitter()
 
 ------------------------------------------------------------------
 --- Player API
@@ -78,7 +78,7 @@ DMS.Database.OnLootHistoryEntryChanged = DMS:NewEventEmitter()
 ---Get player entry.
 ---@param name string
 ---@return PlayerEntry|nil playerEntry Will be a copy of the data.
-function DMS.Database:GetPlayer(name)
+function Env.Database:GetPlayer(name)
     if DMS_Database.players[name] then
         return CopyTable(DMS_Database.players[name])
     end
@@ -86,7 +86,7 @@ end
 
 ---Add or update a player entry.
 ---@param entry PlayerEntry
-function DMS.Database:AddOrUpdatePlayer(entry)
+function Env.Database:AddOrUpdatePlayer(entry)
     DMS_Database.players[entry.playerName] = entry
     self.OnPlayerChanged:Trigger(entry.playerName)
 end
@@ -123,7 +123,7 @@ end
 ---@param filter HistoryFilter
 ---@param maxResults integer Default 100
 ---@return LootHistoryEntry[] history Will be a copy of the data.
-function DMS.Database:GetLootHistory(filter, maxResults)
+function Env.Database:GetLootHistory(filter, maxResults)
     local toGo = maxResults or 100
 
     ---@type LootHistoryEntry[]
@@ -145,7 +145,7 @@ end
 ---Get specific loot history entry.
 ---@param indexOrGUID integer|string
 ---@return LootHistoryEntry|nil entry Will be a copy of the data.
-function DMS.Database:GetLootHistoryEntry(indexOrGUID)
+function Env.Database:GetLootHistoryEntry(indexOrGUID)
     if type(indexOrGUID) == "number" then
         return CopyTable(DMS_Database.lootHistory[indexOrGUID])
     end
@@ -158,7 +158,7 @@ end
 
 ---Add or update an entry to the loot history.
 ---@param entry LootHistoryEntry
-function DMS.Database:AddOrUpdateLootHistoryEntry(entry)
+function Env.Database:AddOrUpdateLootHistoryEntry(entry)
     local existing = false
     for k, v in ipairs(DMS_Database.lootHistory) do
         if v.guid == entry.guid then

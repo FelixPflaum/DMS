@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 ---@class (exact) UniqueTimers
 ---@field _timers table<string, TimerHandle>
@@ -59,7 +59,7 @@ function UniqueTimers:Cancel(key)
 end
 
 ---@return UniqueTimers
-function DMS.NewUniqueTimers()
+function Env.NewUniqueTimers()
     ---@type UniqueTimers
     local t = { _timers = {} }
     setmetatable(t, UniqueTimers)

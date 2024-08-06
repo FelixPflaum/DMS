@@ -1,9 +1,9 @@
 ---@type string
 local addonName = select(1, ...)
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-local L = DMS:GetLocalization()
+local L = Env:GetLocalization()
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
@@ -13,11 +13,11 @@ local function CreateOptionTable()
     local optionTable = {
         type = "group",
         get = function(info)
-            return DMS.settings[info[#info]]
+            return Env.settings[info[#info]]
         end,
         set = function(info, val)
             ---@diagnostic disable-next-line: no-unknown
-            DMS.settings[info[#info]] = val
+            Env.settings[info[#info]] = val
         end,
         args = {
             responseGroup = {
@@ -25,11 +25,11 @@ local function CreateOptionTable()
                 type = "group",
                 name = L["Loot Responses"],
                 get = function(info)
-                    return DMS.settings.lootSession.responses[info[#info]]
+                    return Env.settings.lootSession.responses[info[#info]]
                 end,
                 set = function(info, val)
                     ---@diagnostic disable-next-line: no-unknown
-                    DMS.settings.lootSession.responses[info[#info]] = val
+                    Env.settings.lootSession.responses[info[#info]] = val
                 end,
                 args = {
                     desc = {
@@ -54,11 +54,11 @@ local function CreateOptionTable()
                 type = "group",
                 name = L["Loot Session"],
                 get = function(info)
-                    return DMS.settings.lootSession[info[#info]]
+                    return Env.settings.lootSession[info[#info]]
                 end,
                 set = function(info, val)
                     ---@diagnostic disable-next-line: no-unknown
-                    DMS.settings.lootSession[info[#info]] = val
+                    Env.settings.lootSession[info[#info]] = val
                 end,
                 args = {
                     timeout = {
@@ -94,8 +94,8 @@ local function CreateOptionTable()
     local perRow = 5
 
     for i = 1, maxResponseButtons do
-        if not DMS.settings.lootSession.responses.buttons[i] then
-            DMS.settings.lootSession.responses.buttons[i] = {
+        if not Env.settings.lootSession.responses.buttons[i] then
+            Env.settings.lootSession.responses.buttons[i] = {
                 response = "Button" .. i,
                 color = { 1, 1, 1 },
             }
@@ -106,12 +106,12 @@ local function CreateOptionTable()
             name = L["Button %d"]:format(i),
             desc = L["Set the response for button %d."]:format(i),
             type = "input",
-            get = function() return DMS.settings.lootSession.responses.buttons[i].response end,
+            get = function() return Env.settings.lootSession.responses.buttons[i].response end,
             set = function(info, value)
                 if value == "" then return end
-                DMS.settings.lootSession.responses.buttons[i].response = tostring(value)
+                Env.settings.lootSession.responses.buttons[i].response = tostring(value)
             end,
-            hidden = function() return DMS.settings.lootSession.responses.buttonCount < i end,
+            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
         }
         responseArgs["color" .. i] = {
             order = orderLast - i * perRow + 2,
@@ -119,9 +119,9 @@ local function CreateOptionTable()
             desc = L["Color used for response."],
             width = 0.4,
             type = "color",
-            get = function() return unpack(DMS.settings.lootSession.responses.buttons[i].color) end,
-            set = function(info, r, g, b, a) DMS.settings.lootSession.responses.buttons[i].color = { r, g, b } end,
-            hidden = function() return DMS.settings.lootSession.responses.buttonCount < i end,
+            get = function() return unpack(Env.settings.lootSession.responses.buttons[i].color) end,
+            set = function(info, r, g, b, a) Env.settings.lootSession.responses.buttons[i].color = { r, g, b } end,
+            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
         }
         responseArgs["sanity" .. i] = {
             order = orderLast - i * perRow + 3,
@@ -129,9 +129,9 @@ local function CreateOptionTable()
             name = L["Sanity Roll"],
             desc = L["Whether this response uses sanity."],
             width = 0.7,
-            get = function() return DMS.settings.lootSession.responses.buttons[i].pointRoll end,
-            set = function(info, val) DMS.settings.lootSession.responses.buttons[i].pointRoll = val end,
-            hidden = function() return DMS.settings.lootSession.responses.buttonCount < i end,
+            get = function() return Env.settings.lootSession.responses.buttons[i].pointRoll end,
+            set = function(info, val) Env.settings.lootSession.responses.buttons[i].pointRoll = val end,
+            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
         }
         responseArgs["up" .. i] = {
             order = orderLast - i * perRow + 4,
@@ -140,15 +140,15 @@ local function CreateOptionTable()
             width = 0.1,
             image = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up",
             disabled = function(info)
-                return i == DMS.settings.lootSession.responses.buttonCount
+                return i == Env.settings.lootSession.responses.buttonCount
             end,
             func = function()
-                local tempResponse = DMS.settings.lootSession.responses.buttons[i]
-                DMS.settings.lootSession.responses.buttons[i] = DMS.settings.lootSession.responses.buttons[i + 1]
-                DMS.settings.lootSession.responses.buttons[i + 1] = tempResponse
+                local tempResponse = Env.settings.lootSession.responses.buttons[i]
+                Env.settings.lootSession.responses.buttons[i] = Env.settings.lootSession.responses.buttons[i + 1]
+                Env.settings.lootSession.responses.buttons[i + 1] = tempResponse
             end,
             hidden = function()
-                return DMS.settings.lootSession.responses.buttonCount < i
+                return Env.settings.lootSession.responses.buttonCount < i
             end,
         }
         responseArgs["down" .. i] = {
@@ -161,12 +161,12 @@ local function CreateOptionTable()
                 return i == 1
             end,
             func = function()
-                local tempResponse = DMS.settings.lootSession.responses.buttons[i]
-                DMS.settings.lootSession.responses.buttons[i] = DMS.settings.lootSession.responses.buttons[i - 1]
-                DMS.settings.lootSession.responses.buttons[i - 1] = tempResponse
+                local tempResponse = Env.settings.lootSession.responses.buttons[i]
+                Env.settings.lootSession.responses.buttons[i] = Env.settings.lootSession.responses.buttons[i - 1]
+                Env.settings.lootSession.responses.buttons[i - 1] = tempResponse
             end,
             hidden = function()
-                return DMS.settings.lootSession.responses.buttonCount < i
+                return Env.settings.lootSession.responses.buttonCount < i
             end,
         }
     end
@@ -175,12 +175,12 @@ local function CreateOptionTable()
 end
 
 --- Setup SV tables, check settings and setup settings menu
-DMS:OnAddonLoaded(function()
+Env:OnAddonLoaded(function()
     AceConfigRegistry:RegisterOptionsTable(addonName, CreateOptionTable())
     AceConfigDialog:AddToBlizOptions(addonName, addonName)
 end)
 
-DMS:RegisterSlashCommand("config", L["Opens the config window."], function()
+Env:RegisterSlashCommand("config", L["Opens the config window."], function()
     InterfaceOptionsFrame_OpenToCategory(addonName)
     InterfaceOptionsFrame_OpenToCategory(addonName)
 end)

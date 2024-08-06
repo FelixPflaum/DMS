@@ -1,17 +1,20 @@
 ---@type string
 local addonName = select(1, ...)
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 local LibWindow = LibStub("LibWindow-1.1")
 local LibDialog = LibStub("LibDialog-1.1")
-local L = DMS:GetLocalization()
+local L = Env:GetLocalization()
 
 ---@class (exact) SessionWindowController
 ---@field frame SessionWindow
+---@field itemIcons IconButon[]
 ---@field client LootSessionClient|nil
 ---@field host LootSessionHost|nil
-local Controller = {}
+local Controller = {
+    itemIcons = {},
+}
 
 ---------------------------------------------------------------------------
 --- Helper TODO: move?
@@ -61,11 +64,11 @@ local function ShowCandidateTooltip(f)
     for _, v in pairs(Controller.client.candidates) do
         local nameStr = v.name
         if v.leftGroup then
-            nameStr = "|c" .. grey .. nameStr .. " ("..L["Left group"]..")"
+            nameStr = "|c" .. grey .. nameStr .. " (" .. L["Left group"] .. ")"
         elseif v.isOffline then
-            nameStr = "|c" .. grey .. nameStr .. " ("..L["Offline"]..")"
+            nameStr = "|c" .. grey .. nameStr .. " (" .. L["Offline"] .. ")"
         elseif not v.isResponding then
-            nameStr = "|c" .. grey .. nameStr .. " ("..L["Not responding"]..")"
+            nameStr = "|c" .. grey .. nameStr .. " (" .. L["Not responding"] .. ")"
         else
             nameStr = "|c" .. GetClassColor(v.classId).argbstr .. nameStr
         end
@@ -152,6 +155,56 @@ function Controller:SetCandidateList(candidates)
 end
 
 ---------------------------------------------------------------------------
+--- Item List
+---
+--- TODO
+--- Columns, start top left outside of main frame.
+---
+--- ItemFrame
+---     CheckMark
+---     SelectedBorder
+---     IconTexture
+---
+---
+---
+---------------------------------------------------------------------------
+
+function Controller:UpdateItemSelect()
+    ---@type LootSessionClientItem[]
+    local ordered = {}
+    for _, item in pairs(Controller.client.items) do
+        table.insert(ordered, item)
+    end
+    table.sort(ordered, function(a, b)
+        return a.order < b.order
+    end)
+
+    for k, item in ipairs(ordered) do
+        if not self.itemIcons[k] then
+            local newBtn = Env.UI.CreateIconButton(Controller.frame)
+            if k == 1 then
+                newBtn:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -10, 0)
+            else
+                newBtn:SetPoint("TOP", self.itemIcons[k - 1], "BOTTOM", 0, -2)
+            end
+            self.itemIcons[k] = newBtn
+        end
+        local btn = self.itemIcons[k]
+        btn:SetBorderColor("grey")
+        btn:SetItemData(item.itemId, item.guid)
+        btn:SetOnClick(function(guid) 
+            --TODO: item selection
+            print("Clicked item", guid) 
+        end)
+        btn:Show()
+    end
+
+    for i = #ordered + 1, #self.itemIcons do
+        self.itemIcons[i]:Hide()
+    end
+end
+
+---------------------------------------------------------------------------
 --- Main Window
 ---------------------------------------------------------------------------
 
@@ -169,8 +222,8 @@ local function CreateWindow()
     frame:SetClampedToScreen(true)
     ButtonFrameTemplate_HideButtonBar(frame)
     LibWindow:Embed(frame)
-    frame:RegisterConfig(DMS.settings.UI.SessionWindow) ---@diagnostic disable-line: undefined-field
-    frame:SetScale(DMS.settings.UI.SessionWindow.scale or 1.0)
+    frame:RegisterConfig(Env.settings.UI.SessionWindow) ---@diagnostic disable-line: undefined-field
+    frame:SetScale(Env.settings.UI.SessionWindow.scale or 1.0)
     frame:RestorePosition() ---@diagnostic disable-line: undefined-field
     frame:EnableMouse(true)
     frame:MakeDraggable() ---@diagnostic disable-line: undefined-field
@@ -227,26 +280,31 @@ function Controller:CloseClicked()
     end
     self:Hide()
     if self.client and not self.client.isFinished then
-        DMS:PrintWarn(L["Session is still running. You can reopen the window with /dms open"])
+        Env:PrintWarn(L["Session is still running. You can reopen the window with /dms open"])
     end
 end
 
 ---@param clientSession LootSessionClient
 function Controller:SetClient(clientSession)
-    self:SetHostName(clientSession.hostName)
-    self:SetSessionStatus(L["Running"], "green")
-
     self.client = clientSession
 
-    clientSession.OnSessionEnd:RegisterCallback(function()
+    self:SetHostName(self.client.hostName)
+    self:SetSessionStatus(L["Running"], "green")
+    self:UpdateItemSelect()
+
+    self.client.OnSessionEnd:RegisterCallback(function()
         self:SetSessionStatus(L["Ended"], "yellow")
         if not self.frame:IsShown() then
             self:Hide()
         end
     end)
 
-    clientSession.OnCandidateUpdate:RegisterCallback(function()
+    self.client.OnCandidateUpdate:RegisterCallback(function()
         self:SetCandidateList(clientSession.candidates)
+    end)
+
+    self.client.OnItemUpdate:RegisterCallback(function(item)
+        self:UpdateItemSelect()
     end)
 end
 
@@ -254,23 +312,23 @@ end
 --- API
 ---------------------------------------------------------------------------
 
-DMS.Session.Client.OnClientStart:RegisterCallback(function(session)
+Env.Session.Client.OnClientStart:RegisterCallback(function(session)
     if Controller.client then
-        DMS:PrintDebug("Got new session start but client for UI already set!")
+        Env:PrintDebug("Got new session start but client for UI already set!")
         return
     end
 
     Controller:Show()
-    local hostSession = DMS.Session.Host:GetSession()
+    local hostSession = Env.Session.Host:GetSession()
     if hostSession and hostSession.sessionGUID == session.sessionGUID then
         Controller.host = hostSession
     end
     Controller:SetClient(session)
 end)
 
-DMS:RegisterSlashCommand("open", L["Opens session window if a session is running."], function(args)
+Env:RegisterSlashCommand("open", L["Opens session window if a session is running."], function(args)
     if not Controller.client or Controller.client.isFinished then
-        DMS:PrintError(L["No session is running!"])
+        Env:PrintError(L["No session is running!"])
         return
     end
     Controller:Show()

@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...);
+local Env = select(2, ...);
 
 local clientlocale = GetLocale();
 ---@type table<string, string>
@@ -10,7 +10,7 @@ end});
 
 --- Add localization
 ---@param locale string
-function DMS:AddLocalization(locale)
+function Env:AddLocalization(locale)
 	if locale ~= clientlocale then
 		return;
 	end
@@ -18,6 +18,6 @@ function DMS:AddLocalization(locale)
 end
 
 --- Get localization table
-function DMS:GetLocalization()
+function Env:GetLocalization()
 	return localStrings;
 end

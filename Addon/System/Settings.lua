@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 ---@class SettingsTable
 local defaultSettings = {
@@ -44,7 +44,7 @@ local function UpdateSettings()
 end
 
 --- Setup SV tables, check settings and setup settings menu
-DMS:OnAddonLoaded(function()
+Env:OnAddonLoaded(function()
     if DMS_Settings == nil then
         DMS_Settings = defaultSettings
     end
@@ -53,5 +53,5 @@ DMS:OnAddonLoaded(function()
     FillMissing(DMS_Settings, defaultSettings)
 
     ---@class (exact) AddonSettings : SettingsTable
-    DMS.settings = DMS_Settings
+    Env.settings = DMS_Settings
 end)

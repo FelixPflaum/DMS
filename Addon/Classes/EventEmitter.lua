@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 local EventEmitter = {}
 EventEmitter.__index = EventEmitter
@@ -26,6 +26,6 @@ The following template can be copy&pasted to use luals type support.
 ---@field Trigger fun(self:EventEmitter, arg:any)
 ]]
 
-function DMS:NewEventEmitter()
+function Env:NewEventEmitter()
     return setmetatable({ _callbacks = {} }, EventEmitter)
 end

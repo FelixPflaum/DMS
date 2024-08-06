@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 local LibDeflate = LibStub("LibDeflate")
 local AceComm = LibStub("AceComm-3.0")
@@ -7,7 +7,7 @@ local AceSerializer = LibStub("AceSerializer-3.0")
 
 ---Provides functions for serialized and compressed addon communication.
 local Net = {}
-DMS.Net = Net
+Env.Net = Net
 
 ---@alias AddonCommCallback fun(prefix:string, sender:string, opcode:OpCode, data:any)
 
@@ -26,21 +26,21 @@ local function MessageReceived(prefix, text, channel, sender)
     ---@diagnostic disable-next-line: no-unknown
     local decoded = LibDeflate:DecodeForWoWAddonChannel(text)
     if not decoded then
-        DMS:PrintError("Could not decode message from " .. sender)
+        Env:PrintError("Could not decode message from " .. sender)
         return
     end
 
     ---@diagnostic disable-next-line: no-unknown
     local inflated = LibDeflate:DecompressDeflate(decoded)
     if not inflated then
-        DMS:PrintError("Could not inflate message from " .. sender)
+        Env:PrintError("Could not inflate message from " .. sender)
         return
     end
 
     ---@diagnostic disable-next-line: no-unknown
     local success, opcode, data = AceSerializer:Deserialize(inflated)
     if not success then
-        DMS:PrintError("Could not deserialized message from " .. sender)
+        Env:PrintError("Could not deserialized message from " .. sender)
         return
     end
 
@@ -153,16 +153,16 @@ local function TrackCPS(msg)
     local warnlimit2s = 1000
     local warnlimit5s = 600
     if cps1s > warnlimit1s then
-        DMS:PrintWarn("CPS last second over " .. warnlimit1s .. "! CPS: " .. cps1s)
+        Env:PrintWarn("CPS last second over " .. warnlimit1s .. "! CPS: " .. cps1s)
     end
     if cps2s > warnlimit2s then
-        DMS:PrintWarn("CPS last 2 seconds over " .. warnlimit2s .. "! CPS: " .. cps2s)
+        Env:PrintWarn("CPS last 2 seconds over " .. warnlimit2s .. "! CPS: " .. cps2s)
     end
     if cps5s > warnlimit5s then
-        DMS:PrintWarn("CPS last 5 seconds over " .. warnlimit5s .. "! CPS: " .. cps5s)
+        Env:PrintWarn("CPS last 5 seconds over " .. warnlimit5s .. "! CPS: " .. cps5s)
     end
 
-    DMS:PrintDebug("Net: Sending with size", size, "CPS", cps1s, "CPS/2s", cps2s, "CPS/5s", cps5s)
+    Env:PrintDebug("Net: Sending with size", size, "CPS", cps1s, "CPS/2s", cps2s, "CPS/5s", cps5s)
 end
 
 ---@param opcode OpCode

@@ -1,13 +1,13 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
-local L = DMS:GetLocalization()
-local Net = DMS.Net
-local Comm = DMS.Session.Comm
-local LootStatus = DMS.Session.LootStatus
+local L = Env:GetLocalization()
+local Net = Env.Net
+local Comm = Env.Session.Comm
+local LootStatus = Env.Session.LootStatus
 
 local function LogDebug(...)
-    DMS:PrintDebug("Client:", ...)
+    Env:PrintDebug("Client:", ...)
 end
 
 ------------------------------------------------------------------------------------
@@ -70,19 +70,19 @@ function LootSessionClient:Setup()
     ---@field RegisterCallback fun(self:LSClientEndEvent, cb:fun())
     ---@field Trigger fun(self:LSClientEndEvent)
     ---@diagnostic disable-next-line: inject-field
-    self.OnSessionEnd = DMS:NewEventEmitter()
+    self.OnSessionEnd = Env:NewEventEmitter()
 
     ---@class (exact) LSClientCandidateUpdateEvent
     ---@field RegisterCallback fun(self:LSClientCandidateUpdateEvent, cb:fun())
     ---@field Trigger fun(self:LSClientCandidateUpdateEvent)
     ---@diagnostic disable-next-line: inject-field
-    self.OnCandidateUpdate = DMS:NewEventEmitter()
+    self.OnCandidateUpdate = Env:NewEventEmitter()
 
     ---@class (exact) LSClientItemUpdateEvent
     ---@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:LootSessionClientItem))
     ---@field Trigger fun(self:LSClientItemUpdateEvent, item:LootSessionClientItem)
     ---@diagnostic disable-next-line: inject-field
-    self.OnItemUpdate = DMS:NewEventEmitter()
+    self.OnItemUpdate = Env:NewEventEmitter()
 
     Net:RegisterObj(Comm.PREFIX, self, "HandleEvent_OnHostMessageReceived")
 
@@ -132,7 +132,7 @@ function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opc
     if opcode == Comm.OpCodes.HMSG_CANDIDATES_UPDATE then
         ---@cast data Packet_LootCandidate|Packet_LootCandidate[]
         LogDebug("Recieved msg", sender, "HMSG_CANDIDATES_UPDATE")
-        DMS:PrintDebug(data)
+        Env:PrintDebug(data)
         if data.c then
             self:HandleMessage_LootCandidate({ data })
         else
@@ -141,16 +141,16 @@ function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opc
     elseif opcode == Comm.OpCodes.HMSG_ITEM_ANNOUNCE then
         ---@cast data Packet_HtC_LootSessionItem
         LogDebug("Recieved msg", sender, "HMSG_ITEM_ANNOUNCE")
-        DMS:PrintDebug(data)
+        Env:PrintDebug(data)
         self:HandleMessage_LootSessionItem(data)
     elseif opcode == Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE then
         ---@cast data Packet_HtC_LootResponseUpdate
         LogDebug("Recieved msg", sender, "HMSG_ITEM_RESPONSE_UPDATE")
-        DMS:PrintDebug(data)
+        Env:PrintDebug(data)
         self:HandleMessage_LootResponseUpdate(data)
     else
         LogDebug("Recieved unknown msg", opcode)
-        DMS:PrintDebug(data)
+        Env:PrintDebug(data)
     end
 
     --TODO: CMSG_ITEM_RESPONSE = 102,
@@ -164,7 +164,7 @@ end
 
 ---@param list Packet_LootCandidate[]
 function LootSessionClient:HandleMessage_LootCandidate(list)
-    DMS:PrintDebug(list)
+    Env:PrintDebug(list)
     for _, pc in ipairs(list) do
         local candidate = Comm:Packet_Read_LootCandidate(pc)
         self.candidates[candidate.name] = candidate
@@ -258,7 +258,7 @@ end
 --- API
 ------------------------------------------------------------------
 
-DMS.Session.Client = {}
+Env.Session.Client = {}
 
 ---@type LootSessionClient|nil
 local clientSession = nil
@@ -266,30 +266,30 @@ local clientSession = nil
 ---@class (exact) LootSessionClientStartEvent
 ---@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun(client:LootSessionClient))
 ---@field Trigger fun(self:LootSessionClientStartEvent, client:LootSessionClient)
-DMS.Session.Client.OnClientStart = DMS:NewEventEmitter()
+Env.Session.Client.OnClientStart = Env:NewEventEmitter()
 
-DMS.Net:Register(DMS.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
+Env.Net:Register(Env.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
     if opcode == Comm.OpCodes.HMSG_SESSION then
         if clientSession then
             LogDebug("Received HMSG_SESSION from", sender, "but already have a session.")
             return
         end
         LogDebug("HMSG_SESSION")
-        DMS:PrintDebug(data)
+        Env:PrintDebug(data)
 
         ---@type Packet_HtC_LootSession
         data = data
         if Comm.VERSION ~= data.commVersion then
-            DMS:PrintError(L["Received session from %s with API version %d"]:format(sender, data.commVersion))
+            Env:PrintError(L["Received session from %s with API version %d"]:format(sender, data.commVersion))
             if Comm.VERSION < data.commVersion then
-                DMS:PrintError(L["Your addon version is outdated! Your API version: %d"]:format(Comm.VERSION))
+                Env:PrintError(L["Your addon version is outdated! Your API version: %d"]:format(Comm.VERSION))
             else
-                DMS:PrintError(L["Host's addon version is outdated! Your API version: %d"]:format(Comm.VERSION))
+                Env:PrintError(L["Host's addon version is outdated! Your API version: %d"]:format(Comm.VERSION))
             end
             return
         end
-        clientSession = NewLootSessionClient(sender, data.guid, DMS.Session:CreateLootClientResponsesFromComm(data.responses))
-        DMS.Session.Client.OnClientStart:Trigger(clientSession)
+        clientSession = NewLootSessionClient(sender, data.guid, Env.Session:CreateLootClientResponsesFromComm(data.responses))
+        Env.Session.Client.OnClientStart:Trigger(clientSession)
     elseif opcode == Comm.OpCodes.HMSG_SESSION_END then
         LogDebug("Recieved msg", sender, "HMSG_SESSION_END")
         if clientSession and clientSession.hostName == sender then
@@ -299,7 +299,7 @@ DMS.Net:Register(DMS.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
     end
 end)
 
-DMS:RegisterSlashCommand("rtest", "respiond to item test", function(args)
+Env:RegisterSlashCommand("rtest", "respiond to item test", function(args)
     print("respond to", args[1], "with", args[2])
     ---@type Packet_CtH_LootClientResponse
     local p = {

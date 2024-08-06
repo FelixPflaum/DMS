@@ -1,15 +1,20 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
-local L = DMS:GetLocalization()
+local Env = select(2, ...)
+local L = Env:GetLocalization()
 
-DMS.Session.Host = {}
+Env.Session.Host = {}
 
-local Net = DMS.Net
-local Comm = DMS.Session.Comm
-local LootStatus = DMS.Session.LootStatus
+local Net = Env.Net
+local Comm = Env.Session.Comm
+local LootStatus = Env.Session.LootStatus
 
 local function LogDebug(...)
-    DMS:PrintDebug("Host:", ...)
+    Env:PrintDebug("Host:", ...)
+end
+
+---Create a simple unique identifier.
+local function MakeGUID()
+    return time() .. "-" .. string.format("%08x", math.floor(math.random(0,0x7FFFFFFF)))
 end
 
 ---@alias CommTarget "group"|"self"
@@ -60,14 +65,14 @@ LootSessionHost.__index = LootSessionHost
 local function NewLootSessionHost(target)
     ---@type LootSessionHost
     local session = {
-        sessionGUID = DMS:MakeGUID(),
+        sessionGUID = MakeGUID(),
         target = target,
-        responses = DMS.Session:CreateLootResponses(),
+        responses = Env.Session:CreateLootResponses(),
         candidates = {},
         isFinished = false,
         itemCount = 0,
         items = {},
-        timers = DMS:NewUniqueTimers(),
+        timers = Env:NewUniqueTimers(),
     }
     setmetatable(session, LootSessionHost)
     session:Setup()
@@ -81,12 +86,12 @@ function LootSessionHost:Setup()
     ---@field RegisterCallback fun(self:LSHostEndEvent, cb:fun())
     ---@field Trigger fun(self:LSHostEndEvent)
     ---@diagnostic disable-next-line: inject-field
-    self.OnSessionEnd = DMS:NewEventEmitter()
+    self.OnSessionEnd = Env:NewEventEmitter()
 
-    DMS:RegisterEvent("GROUP_ROSTER_UPDATE", self)
-    DMS:RegisterEvent("GROUP_LEFT", self)
+    Env:RegisterEvent("GROUP_ROSTER_UPDATE", self)
+    Env:RegisterEvent("GROUP_LEFT", self)
 
-    DMS:PrintSuccess("Started a new host session for " .. self.target)
+    Env:PrintSuccess("Started a new host session for " .. self.target)
     LogDebug("Session GUID", self.sessionGUID)
 
     Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
@@ -102,8 +107,8 @@ end
 function LootSessionHost:Destroy()
     if self.isFinished then return end
     self.isFinished = true
-    DMS:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
-    DMS:UnregisterEvent("GROUP_LEFT", self)
+    Env:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
+    Env:UnregisterEvent("GROUP_LEFT", self)
     Net:UnregisterObj(Comm.PREFIX, self)
     self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
     self.OnSessionEnd:Trigger()
@@ -170,21 +175,21 @@ function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
         ---@cast data Packet_CtH_LootClientResponse
         local item = self.items[data.itemGuid]
         if not item then
-            DMS:PrintError(sender .. " tried to respond to unknown item " .. data.itemGuid)
+            Env:PrintError(sender .. " tried to respond to unknown item " .. data.itemGuid)
             return
         end
         local itemClient = item.responses[sender]
         if not itemClient then
-            DMS:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but candidate not known for that item")
+            Env:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but candidate not known for that item")
             return
         end
         if itemClient.response then
-            DMS:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but already responded")
+            Env:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but already responded")
             return
         end
         local response = self.responses:GetResponse(data.responseId)
         if not response then
-            DMS:PrintError(sender ..
+            Env:PrintError(sender ..
                 " tried to respond to item " .. data.itemGuid .. " but response id " .. data.responseId .. " invalid")
             return
         end
@@ -193,12 +198,12 @@ function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
         ---@cast data string
         local item = self.items[data]
         if not item then
-            DMS:PrintError(sender .. " tried to respond to unknown item " .. data)
+            Env:PrintError(sender .. " tried to respond to unknown item " .. data)
             return
         end
         local itemClient = item.responses[sender]
         if not itemClient then
-            DMS:PrintError(sender .. " tried to respond to item " .. data .. " but candidate client not known!")
+            Env:PrintError(sender .. " tried to respond to item " .. data .. " but candidate client not known!")
             return
         end
 
@@ -229,7 +234,7 @@ function LootSessionHost:Broadcast(opcode, data)
         elseif IsInGroup() then
             channel = "PARTY"
         else
-            DMS:PrintError("Tried to broadcast to group but not in a group! Ending session.")
+            Env:PrintError("Tried to broadcast to group but not in a group! Ending session.")
             self:Destroy()
         end
     end
@@ -241,7 +246,7 @@ end
 function LootSessionHost:GROUP_LEFT()
     if self.isFinished then return end
     if self.target == "group" then
-        DMS:PrintError("Session host destroyed because you left the group!")
+        Env:PrintError("Session host destroyed because you left the group!")
         self:Destroy()
     end
 end
@@ -270,7 +275,7 @@ function LootSessionHost:UpdateCandidateList()
         elseif IsInGroup() then
             prefix = "party"
         else
-            DMS:PrintError("Tried to update candidates but not in a group! Ending session.")
+            Env:PrintError("Tried to update candidates but not in a group! Ending session.")
             self:Destroy()
         end
     else
@@ -335,7 +340,7 @@ function LootSessionHost:UpdateCandidateList()
     end
 
     if changed then
-        if DMS.settings.debug then
+        if Env.settings.debug then
             LogDebug("Changed candidates:")
             for _, lc in pairs(changedLootCandidates) do
                 LogDebug(" - ", lc.name)
@@ -425,7 +430,7 @@ function LootSessionHost:ItemAdd(itemId)
         parentItem.duplicateGUIDs = parentItem.duplicateGUIDs or {}
 
         lootItem = {
-            distributionGUID = DMS:MakeGUID(),
+            distributionGUID = MakeGUID(),
             order = parentItem.order + #parentItem.duplicateGUIDs + 1,
             itemId = itemId,
             veiled = parentItem.veiled,
@@ -449,18 +454,18 @@ function LootSessionHost:ItemAdd(itemId)
         end
 
         lootItem = {
-            distributionGUID = DMS:MakeGUID(),
+            distributionGUID = MakeGUID(),
             order = self.itemCount * 100,
             itemId = itemId,
             veiled = true,
             startTime = time(),
-            endTime = time() + DMS.settings.lootSession.timeout,
+            endTime = time() + Env.settings.lootSession.timeout,
             status = "waiting",
             responses = candidateResponseList,
-            roller = DMS:NewUniqueRoller(),
+            roller = Env:NewUniqueRoller(),
         }
 
-        self.timers:StartUnique(lootItem.distributionGUID, DMS.settings.lootSession.timeout, "ItemStopRoll", self)
+        self.timers:StartUnique(lootItem.distributionGUID, Env.settings.lootSession.timeout, "ItemStopRoll", self)
     end
 
     LogDebug("ItemAdd", itemId, "have parent ", parentItem ~= nil, "guid:", lootItem.distributionGUID)
@@ -496,7 +501,7 @@ local hostSession = nil
 ---Start a new host session.
 ---@param target CommTarget
 ---@return string|nil errorMessage
-function DMS.Session.Host:Start(target)
+function Env.Session.Host:Start(target)
     if hostSession and not hostSession.isFinished then
         return L["A host session is already running."]
     end
@@ -515,34 +520,34 @@ function DMS.Session.Host:Start(target)
     end)
 end
 
-function DMS.Session.Host:GetSession()
+function Env.Session.Host:GetSession()
     return hostSession
 end
 
-DMS:RegisterSlashCommand("host", L["Start a new loot session."], function(args)
+Env:RegisterSlashCommand("host", L["Start a new loot session."], function(args)
     local target = args[1] or "group"
-    local err = DMS.Session.Host:Start(target)
+    local err = Env.Session.Host:Start(target)
     if err then
-        DMS:PrintError(err)
+        Env:PrintError(err)
     end
 end)
 
-DMS:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
+Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
     if not hostSession then
-        DMS:PrintWarn(L["No session is running."])
+        Env:PrintWarn(L["No session is running."])
         return
     end
-    DMS:PrintSuccess("Destroy host session...")
+    Env:PrintSuccess("Destroy host session...")
     hostSession:Destroy()
 end)
 
-DMS:RegisterSlashCommand("add", L["Add items to a session."], function(args)
+Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
     if not hostSession then
-        DMS:PrintWarn(L["No session is running."])
+        Env:PrintWarn(L["No session is running."])
         return
     end
     for _, itemLink in ipairs(args) do
-        local id = DMS.Item:GetIdFromLink(itemLink)
+        local id = Env.Item:GetIdFromLink(itemLink)
         print(itemLink, id)
         if id then
             hostSession:ItemAdd(id)

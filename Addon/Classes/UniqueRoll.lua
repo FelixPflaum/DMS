@@ -1,5 +1,5 @@
 ---@class AddonEnv
-local DMS = select(2, ...)
+local Env = select(2, ...)
 
 ---Allows picking random unique numbers in [1, 100] range.
 ---@class (exact) UniqueRoller
@@ -31,7 +31,7 @@ end
 
 ---Get a new UniqueRoll instance. Can be used to generate unique rolls.
 ---@return UniqueRoller
-function DMS:NewUniqueRoller()
+function Env:NewUniqueRoller()
     ---@type UniqueRoller
     local ur = { _rolls = MakeRollTable() }
     setmetatable(ur, UniqueRoller)
