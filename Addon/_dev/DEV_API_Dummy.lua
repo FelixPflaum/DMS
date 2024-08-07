@@ -344,6 +344,7 @@ local ScriptRegionResizing = {
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
 ---Creates a Frame object.
+---@return WoWFrame
 ---@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrame
 ---@overload fun(frameType:"Button", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrameButton
 ---@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): GameTooltip
@@ -414,6 +415,10 @@ end
 
 ---@return boolean
 function IsControlKeyDown() end
+---@return boolean
+function IsAltKeyDown() end
+---@return boolean
+function IsShiftKeyDown() end
 
 function GetSpellBonusHealing()
     return 123;
@@ -854,7 +859,7 @@ Enum.ItemQuality = {
 ---@field hyperlink string 	
 ---@field isFiltered boolean 	
 ---@field hasNoValue boolean 	
----@field itemID number 	
+---@field itemID integer 	
 ---@field isBound boolean
 
 ---comment

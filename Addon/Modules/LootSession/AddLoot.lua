@@ -25,7 +25,7 @@ local function ItemLinkSplit(str)
 end
 
 ---Get tradeable items from bags. Optionally only return numItems, sorted from lowest remaining time to highest.
----@param numItems number|nil 
+---@param numItems number|nil
 local function GetTradeableItemsFromBags(numItems)
     ---@type {itemId:integer, remainingTrageTimer:number}[]
     local items = {}
@@ -83,5 +83,18 @@ Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
         LF:Show()
     else
         Env:PrintWarn(L["No items added!"])
+    end
+end)
+
+---@param self any
+---@param button string|"LeftButton"
+hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
+    print("test", IsAltKeyDown())
+    if IsAltKeyDown() then
+        local itemInfo = C_Container.GetContainerItemInfo(self:GetParent():GetID(), self:GetID())
+        if itemInfo then
+            Env.UI.LootWindow:AddItem(itemInfo.itemID)
+            Env.UI.LootWindow:Show()
+        end
     end
 end)
