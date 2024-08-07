@@ -98,3 +98,21 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button
         end
     end
 end)
+
+-- Add items to (new) session when add button in LootWindow is clicked.
+Env:OnAddonLoaded(function(...)
+    Env.UI.LootWindow.OnAddItemsClicked:RegisterCallback(function(items)
+        local hostSession = Env.Session.Host:GetSession()
+        if not hostSession then
+            local session, err = Env.Session.Host:Start("self")
+            if not session or err then
+                if err then Env:PrintError(err) end
+                return
+            end
+            hostSession = session
+        end
+        for _, v in ipairs(items) do
+            hostSession:ItemAdd(v)
+        end
+    end)
+end)

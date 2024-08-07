@@ -17,6 +17,18 @@ Env.UI.LootWindow = Controller
 local items = {} ---@type LootWindowListItem[]
 local frame ---@type ButtonWindow
 local st ---@type ST_ScrollingTable
+---@type fun(items:integer[])|nil
+local onAddToSession
+
+---------------------------------------------------------------------------
+--- Events
+---------------------------------------------------------------------------
+
+---@class LootWindowAddEventEmitter
+---@field RegisterCallback fun(self:LootWindowAddEventEmitter, cb:fun(items:integer[]))
+---@field Trigger fun(self:LootWindowAddEventEmitter, items:integer[])
+---@diagnostic disable-next-line: inject-field
+Controller.OnAddItemsClicked = Env:NewEventEmitter()
 
 ---------------------------------------------------------------------------
 --- Frame Script Handlers
@@ -33,18 +45,12 @@ local function ButtonScript_Close()
 end
 
 local function Script_AddToSession()
-    local hostSession = Env.Session.Host:GetSession()
-    if not hostSession then
-        local session, err = Env.Session.Host:Start("self")
-        if not session or err then
-            if err then Env:PrintError(err) end
-            return
-        end
-        hostSession = session
-    end
+    ---@type integer[]
+    local list = {}
     for _, v in ipairs(items) do
-        hostSession:ItemAdd(v.itemId)
+        table.insert(list, v.itemId)
     end
+    Controller.OnAddItemsClicked:Trigger(list)
     ButtonScript_Close()
 end
 
