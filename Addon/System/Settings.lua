@@ -15,6 +15,7 @@ local defaultSettings = {
     logLevel = 1, ---@type LogLevel
     UI = {
         SessionWindow = {},
+        LootAddWindow = {},
     },
     lootSession = {
         timeout = 90,
@@ -30,13 +31,13 @@ local defaultSettings = {
 ---@param defaultTable table<string, any>
 local function FillMissing(inputTable, defaultTable)
     for k, v in pairs(defaultTable) do
-        if inputTable[k] == nil then
-            if type(v) == "table" then
+        if type(v) == "table" then
+            if inputTable[k] == nil then
                 inputTable[k] = {}
-                FillMissing(inputTable[k], v)
-            else
-                inputTable[k] = v
             end
+            FillMissing(inputTable[k], v)
+        elseif inputTable[k] == nil then
+            inputTable[k] = v
         end
     end
 end

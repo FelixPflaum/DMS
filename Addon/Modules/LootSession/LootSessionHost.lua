@@ -500,17 +500,18 @@ local hostSession = nil
 
 ---Start a new host session.
 ---@param target CommTarget
+---@return LootSessionHost|nil
 ---@return string|nil errorMessage
 function Env.Session.Host:Start(target)
     if hostSession and not hostSession.isFinished then
-        return L["A host session is already running."]
+        return nil, L["A host session is already running."]
     end
     if target == "group" then
         if not IsInRaid() and not IsInGroup() then
-            return L["Host target group does not work outside of a group!"]
+            return nil, L["Host target group does not work outside of a group!"]
         end
     elseif target ~= "self" then
-        return L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
+        return nil,  L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
     end
     LogDebug("Starting host session with target: ", target)
     hostSession = NewLootSessionHost(target)
@@ -518,6 +519,8 @@ function Env.Session.Host:Start(target)
     hostSession.OnSessionEnd:RegisterCallback(function()
         hostSession = nil
     end)
+
+    return hostSession
 end
 
 function Env.Session.Host:GetSession()
@@ -526,7 +529,7 @@ end
 
 Env:RegisterSlashCommand("host", L["Start a new loot session."], function(args)
     local target = args[1] or "group"
-    local err = Env.Session.Host:Start(target)
+    local sess, err = Env.Session.Host:Start(target)
     if err then
         Env:PrintError(err)
     end
@@ -539,18 +542,4 @@ Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
     end
     Env:PrintSuccess("Destroy host session...")
     hostSession:Destroy()
-end)
-
-Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
-    if not hostSession then
-        Env:PrintWarn(L["No session is running."])
-        return
-    end
-    for _, itemLink in ipairs(args) do
-        local id = Env.Item:GetIdFromLink(itemLink)
-        print(itemLink, id)
-        if id then
-            hostSession:ItemAdd(id)
-        end
-    end
 end)

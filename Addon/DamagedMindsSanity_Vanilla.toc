@@ -1,15 +1,15 @@
 ## Interface: 11503
-## Title: DamagedMindsSanity
+## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
 ## Version: 0.0.1
-## Notes: -
+## Notes: It just works!
 ## SavedVariables: DMS_Settings, DMS_Database
 
 Libs\Ace3\LibStub\LibStub.lua
 Libs\Ace3\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\Ace3\AceGUI-3.0\AceGUI-3.0.xml
 Libs\Ace3\AceConsole-3.0\AceConsole-3.0.xml
 Libs\Ace3\AceConfig-3.0\AceConfig-3.0.xml
-Libs\Ace3\AceGUI-3.0\AceGUI-3.0.xml
 Libs\LibSharedMedia-3.0\lib.xml
 Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 Libs\LibWindow-1.1\LibWindow-1.1.lua
@@ -17,6 +17,7 @@ Libs\LibDeflate\LibDeflate.lua
 Libs\Ace3\AceComm-3.0\AceComm-3.0.xml
 Libs\Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
 Libs\LibDialog-1.0\LibDialog-1.0.lua
+Libs\lib-st\Core.lua
 
 Utils.lua
 
@@ -38,6 +39,9 @@ Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/LootSessionClient.lua
 
+UI/UIFunctions.lua
 UI/Components/IconButton.lua
+UI/Components/ButtonWindow.lua
 UI/SettingsTab.lua
 UI/SessionWindow.lua
+UI/LootAddWindow.lua

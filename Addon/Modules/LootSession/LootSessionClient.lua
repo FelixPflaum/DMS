@@ -86,9 +86,8 @@ function LootSessionClient:Setup()
 
     Net:RegisterObj(Comm.PREFIX, self, "HandleEvent_OnHostMessageReceived")
 
-    local s = self
     self.keepaliveTimer = C_Timer.NewTicker(20, function(t)
-        s:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+        self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
     end)
     self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
 end

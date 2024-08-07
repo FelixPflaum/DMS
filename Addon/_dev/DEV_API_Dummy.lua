@@ -5,6 +5,7 @@ WorldFrame = CreateFrame("");
 
 local function SetScript(self, eventName, func) end
 
+---@class GameTooltip
 GameTooltip = {
     SetOwner = function(self, frame, anchor) end,
     SetText = function(self, text, a, r, g, b, wrap) end,
@@ -101,24 +102,11 @@ function strsplit(delimiter, subject, pieces)
     return "", "", "", "", "", "", "", "", "", "";
 end
 
----@alias FramePoint  "TOPLEFT" | "TOPRIGHT" | "BOTTOMLEFT" | "BOTTOMRIGHT" | "TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER"
+---@alias DrawLayer "BACKGROUND"|"BORDER"|"ARTWORK"|"OVERLAY"|"HIGHLIGHT"
 
----@param self WoWFrame
----@param point FramePoint
----@param relativeFrame WoWFrame
----@param relativePoint FramePoint
----@param ofsx number
----@param ofsy number
----@overload fun(self:WoWFrame, point:string, relativeFrame:WoWFrame, relativePoint:string): boolean
----@overload fun(self:WoWFrame, point:string, ofsx:number, ofsy:number): boolean
-local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, ofsy) end
-
----@class WoWFrame
+---@class WoWFrame : ScriptRegionResizing
+---@field SetFrameLevel fun(self:WoWFrame, level:integer)
 ---@field GetParent fun(self:WoWFrame):WoWFrame|nil
----@field SetWidth fun(self:WoWFrame, w:number):nil
----@field SetHeight fun(self:WoWFrame, h:number):nil
----@field GetWidth fun(self:WoWFrame):number
----@field GetHeight fun(self:WoWFrame):number
 ---@field SetClampedToScreen fun(self:WoWFrame, enable:boolean):nil
 ---@field SetMovable fun(self:WoWFrame, enable:boolean):nil
 ---@field EnableMouse fun(self:WoWFrame, enable:boolean):nil
@@ -136,16 +124,13 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field StopMovingOrSizing any
 ---@field SetClipsChildren fun(self:WoWFrame, enable:boolean):nil
 ---@field ScrollBar WoWFrame
----@field SetSize fun(self:WoWFrame, w:number, h:number):nil
 ---@field SetScrollChild fun(self:WoWFrame, child:WoWFrame):nil
 ---@field ClearAllPoints fun(self:WoWFrame):nil
 ---@field CreateFontString fun(self:WoWFrame, name:string|nil, layer:any, inherits: any):FontString
+---@field CreateTexture fun(self:WoWFrame, name:string|nil, drawLayer:DrawLayer|nil, templateName:string|nil, subLevel:number|nil):Texture -- https://warcraft.wiki.gg/wiki/API_Frame_CreateTexture
 ---@field SetFrameStrata fun(self:WoWFrame, strata:string) [Wiki](https://warcraft.wiki.gg/wiki/Frame_Strata)
 ---@field SetScale fun(self:WoWFrame, scale:number)
 ---@field IsShown fun(self:WoWFrame):boolean
-local WoWFrameDummy = {
-    SetPoint = SetPointDummy
-}
 
 ---@class ButtonFrameTemplate : WoWFrame
 ---@field TitleText FontString
@@ -169,6 +154,28 @@ local WoWFrameDummy = {
 ---@field SetFont fun(self:WoWFrame, path:string, height:number, flags:string|nil);
 local FontStringDummy = {
 
+}
+
+---@alias FramePoint  "TOPLEFT" | "TOPRIGHT" | "BOTTOMLEFT" | "BOTTOMRIGHT" | "TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER"
+
+---@param self ScriptRegionResizing
+---@param point FramePoint
+---@param relativeFrame WoWFrame
+---@param relativePoint FramePoint
+---@param ofsx number
+---@param ofsy number
+---@overload fun(self:WoWFrame, point:string, relativeFrame:WoWFrame, relativePoint:string): boolean
+---@overload fun(self:WoWFrame, point:string, ofsx:number, ofsy:number): boolean
+local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, ofsy) end
+
+---@class ScriptRegionResizing : Region
+---@field SetWidth fun(self:ScriptRegionResizing, w:number):nil
+---@field SetHeight fun(self:ScriptRegionResizing, h:number):nil
+---@field GetWidth fun(self:ScriptRegionResizing):number
+---@field GetHeight fun(self:ScriptRegionResizing):number
+---@field SetSize fun(self:ScriptRegionResizing, w:number, h:number):nil
+local ScriptRegionResizing = {
+    SetPoint = SetPointDummy
 }
 
 ---@class Font : FontInstance -- https://warcraft.wiki.gg/wiki/UIOBJECT_Font
@@ -219,7 +226,7 @@ local FontStringDummy = {
 ---@field SetScale fun(self:Region, scale) -- Sets the size scaling of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetScale
 ---@field SetVertexColor fun(self:Region, colorR, colorG, colorB [, a]) -- Sets the vertex shading color of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetVertexColor
 
----@class TextureBase : Region
+---@class TextureBase : ScriptRegionResizing
 ---@field ClearTextureSlice fun(self:TextureBase) -- https://warcraft.wiki.gg/wiki/API_TextureBase_ClearTextureSlice
 ---@field GetAtlas fun(self:TextureBase):atlas  -- Returns the atlas for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetAtlas
 ---@field GetBlendMode fun(self:TextureBase):blendMode  -- Returns the blend mode of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetBlendMode
@@ -251,10 +258,10 @@ local FontStringDummy = {
 ---@field SetSnapToPixelGrid fun(self:TextureBase, [snap]) -- Sets the texture to snap to the pixel grid. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetSnapToPixelGrid
 ---@field SetTexCoord fun(self:TextureBase, left, right, top, bottom) -- Sets the coordinates for cropping or transforming the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexCoord
 ---@field SetTexelSnappingBias fun(self:TextureBase, bias) -- Returns the texel snapping bias for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexelSnappingBias
----@field SetTexture fun(self:TextureBase, [textureAsset, wrapModeHorizontal, wrapModeVertical, filterMode]) -- Sets the texture to an image. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexture
+---@field SetTexture fun(self:TextureBase, textureAsset, wrapModeHorizontal, wrapModeVertical, filterMode) -- Sets the texture to an image. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexture
 ---@field SetTextureSliceMargins fun(self:TextureBase, left, top, right, bottom) -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTextureSliceMargins
 ---@field SetTextureSliceMode fun(self:TextureBase, sliceMode) -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTextureSliceMode
----@field SetVertTile fun(self:TextureBase, [tiling]) -- Sets whether the texture should tile vertically. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetVertTile
+---@field SetVertTile fun(self:TextureBase, tiling) -- Sets whether the texture should tile vertically. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetVertTile
 ---@field SetVertexOffset fun(self:TextureBase, vertexIndex, offsetX, offsetY) -- Sets a vertex offset for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetVertexOffset
 
 ---@class Texture : TextureBase https://warcraft.wiki.gg/wiki/UIOBJECT_Texture
@@ -333,11 +340,9 @@ local FontStringDummy = {
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
 ---Creates a Frame object.
----@param frameType string Type of the frame; e.g. "Frame" or "Button".
----@param frameName string|nil
----@param parentFrame WoWFrame|nil
----@param inheritsFrame string|nil
----@return WoWFrame|WoWFrameButton
+---@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): WoWFrame
+---@overload fun(frameType:"Button", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): WoWFrameButton
+---@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): GameTooltip
 function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
 
 --- name, rank, icon, castTime, minRange, maxRange
@@ -364,6 +369,11 @@ C_Item = {}
 ---@param id number|string Item ID, Link or name
 function C_Item.GetItemInfoInstant(id) end
 GetItemInfoInstant = C_Item.GetItemInfoInstant
+
+---Return the icon texture for the item. 
+---@param itemID integer
+---@return string
+function GetItemIcon(itemID) end
 
 function UIDropDownMenu_SetText(self, text) end
 
