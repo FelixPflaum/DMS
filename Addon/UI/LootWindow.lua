@@ -17,10 +17,11 @@ local st ---@type ST_ScrollingTable
 
 local function ButtonScript_Close()
     frame:Hide()
+    LootList:Clear()
 end
 
 local function Script_AddToSession()
-    Env.Session.LootList:AddListToSession()
+    LootList:AddListToSession()
     ButtonScript_Close()
 end
 
@@ -86,10 +87,7 @@ end)
 
 ---Update shown table content.
 LootList.OnListUpdate:RegisterCallback(function (items)
-    if #items == 0 then
-        ButtonScript_Close()
-        return
-    end
+    if #items == 0 then return end
 
     frame:Show()
 

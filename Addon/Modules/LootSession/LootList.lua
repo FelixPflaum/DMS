@@ -140,3 +140,8 @@ function LootList:Remove(index)
     table.remove(itemList, index)
     LootList.OnListUpdate:Trigger(itemList)
 end
+
+function LootList:Clear()
+    itemList = {}
+    LootList.OnListUpdate:Trigger(itemList)
+end
