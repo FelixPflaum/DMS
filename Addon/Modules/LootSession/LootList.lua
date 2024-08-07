@@ -3,6 +3,20 @@ local Env = select(2, ...)
 
 local L = Env:GetLocalization()
 
+---@class (exact) LootList
+local LootList = {}
+Env.Session.LootList = LootList
+
+---@alias LootListItem integer
+---@type LootListItem[]
+local itemList = {}
+
+---@class LootlistAddEventEmitter
+---@field RegisterCallback fun(self:LootlistAddEventEmitter, cb:fun(items:LootListItem[]))
+---@field Trigger fun(self:LootlistAddEventEmitter, items:LootListItem[])
+---@diagnostic disable-next-line: inject-field
+LootList.OnListUpdate = Env:NewEventEmitter()
+
 ---Split multiple connected itemlinks.
 ---@param str string
 ---@return string[]
@@ -55,17 +69,15 @@ local function GetTradeableItemsFromBags(numItems)
 end
 
 Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
-    local LF = Env.UI.LootWindow
-
     if not args[1] then
         local items = GetTradeableItemsFromBags()
         for _, v in ipairs(items) do
-            LF:AddItem(v.itemId)
+            table.insert(itemList, v.itemId)
         end
     elseif tonumber(args[1]) and tonumber(args[1]) < 50 then
         local items = GetTradeableItemsFromBags(tonumber(args[1]))
         for _, v in ipairs(items) do
-            LF:AddItem(v.itemId)
+            table.insert(itemList, v.itemId)
         end
     else
         for _, arg in ipairs(args) do
@@ -73,46 +85,59 @@ Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
             for _, v in pairs(links) do
                 local id = Env.Item:GetIdFromLink(v)
                 if id then
-                    LF:AddItem(id)
+                    table.insert(itemList, id)
                 end
             end
         end
     end
-
-    if LF:HaveItems() then
-        LF:Show()
-    else
-        Env:PrintWarn(L["No items added!"])
-    end
+    LootList.OnListUpdate:Trigger(itemList)
 end)
 
 ---@param self any
 ---@param button string|"LeftButton"
 hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
-    print("test", IsAltKeyDown())
     if IsAltKeyDown() then
         local itemInfo = C_Container.GetContainerItemInfo(self:GetParent():GetID(), self:GetID())
         if itemInfo then
-            Env.UI.LootWindow:AddItem(itemInfo.itemID)
-            Env.UI.LootWindow:Show()
+            table.insert(itemList, itemInfo.itemID)
+            print(#itemList)
+            LootList.OnListUpdate:Trigger(itemList)
         end
     end
 end)
 
--- Add items to (new) session when add button in LootWindow is clicked.
-Env:OnAddonLoaded(function(...)
-    Env.UI.LootWindow.OnAddItemsClicked:RegisterCallback(function(items)
-        local hostSession = Env.Session.Host:GetSession()
-        if not hostSession then
-            local session, err = Env.Session.Host:Start("self")
-            if not session or err then
-                if err then Env:PrintError(err) end
-                return
-            end
-            hostSession = session
+-- Add current items in list to (new) session.
+function LootList:AddListToSession()
+    if #itemList == 0 then
+        return
+    end
+
+    local hostSession = Env.Session.Host:GetSession()
+    if not hostSession then
+        local session, err = Env.Session.Host:Start("self")
+        if not session or err then
+            if err then Env:PrintError(err) end
+            return
         end
-        for _, v in ipairs(items) do
-            hostSession:ItemAdd(v)
-        end
-    end)
-end)
+        hostSession = session
+    end
+    for _, v in ipairs(itemList) do
+        hostSession:ItemAdd(v)
+    end
+
+    itemList = {}
+    LootList.OnListUpdate:Trigger(itemList)
+end
+
+---Does list currently contain items.
+function LootList:HaveItems()
+    return #itemList > 0
+end
+
+---Remove item at index.
+---@param index integer
+function LootList:Remove(index)
+    if #itemList < index then return end
+    table.remove(itemList, index)
+    LootList.OnListUpdate:Trigger(itemList)
+end

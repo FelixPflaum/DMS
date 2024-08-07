@@ -38,7 +38,7 @@ Database/Database.lua
 Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/LootSessionClient.lua
-Modules/LootSession/AddLoot.lua
+Modules/LootSession/LootList.lua
 
 UI/UIFunctions.lua
 UI/Components/IconButton.lua

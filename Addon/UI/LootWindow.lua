@@ -6,62 +6,28 @@ local L = Env:GetLocalization()
 local ScrollingTable = LibStub("ScrollingTable")
 local GetImagePath = Env.UI.GetImagePath
 local ShowItemTooltip = Env.UI.ShowItemTooltip
+local LootList = Env.Session.LootList
 
----@class (exact) LootWindowController
-local Controller = {}
-Env.UI = Env.UI or {}
-Env.UI.LootWindow = Controller
-
----@alias LootWindowListItem {itemId:integer}
-
-local items = {} ---@type LootWindowListItem[]
 local frame ---@type ButtonWindow
 local st ---@type ST_ScrollingTable
----@type fun(items:integer[])|nil
-local onAddToSession
-
----------------------------------------------------------------------------
---- Events
----------------------------------------------------------------------------
-
----@class LootWindowAddEventEmitter
----@field RegisterCallback fun(self:LootWindowAddEventEmitter, cb:fun(items:integer[]))
----@field Trigger fun(self:LootWindowAddEventEmitter, items:integer[])
----@diagnostic disable-next-line: inject-field
-Controller.OnAddItemsClicked = Env:NewEventEmitter()
 
 ---------------------------------------------------------------------------
 --- Frame Script Handlers
 ---------------------------------------------------------------------------
 
-local ROW_HEIGHT = 30
-
-local UpdateTable
-
 local function ButtonScript_Close()
-    wipe(items)
-    UpdateTable()
     frame:Hide()
 end
 
 local function Script_AddToSession()
-    ---@type integer[]
-    local list = {}
-    for _, v in ipairs(items) do
-        table.insert(list, v.itemId)
-    end
-    Controller.OnAddItemsClicked:Trigger(list)
+    Env.Session.LootList:AddListToSession()
     ButtonScript_Close()
 end
 
 ---@type ST_CellUpdateFunc
 local function Script_TableRemoveClicked(rowFrame, cellFrame, data, cols, row, realrow, column)
     if column == 3 then
-        table.remove(items, realrow)
-        UpdateTable()
-        if #items == 0 then
-            ButtonScript_Close()
-        end
+        LootList:Remove(realrow)
     end
     return false
 end
@@ -69,6 +35,8 @@ end
 ---------------------------------------------------------------------------
 --- Create Frames
 ---------------------------------------------------------------------------
+
+local ROW_HEIGHT = 30
 
 ---Display item icon and show tooltip on hover.
 ---@type ST_CellUpdateFunc
@@ -113,39 +81,24 @@ Env:OnAddonLoaded(function()
 end)
 
 ---------------------------------------------------------------------------
---- Local Functions
+--- Event Hooks
 ---------------------------------------------------------------------------
 
 ---Update shown table content.
-function UpdateTable()
+LootList.OnListUpdate:RegisterCallback(function (items)
+    if #items == 0 then
+        ButtonScript_Close()
+        return
+    end
+
+    frame:Show()
+
     ---@type ST_DataMinimal[]
     local dataTable = {}
-    for k, v in ipairs(items) do
-        local _, itemLink = GetItemInfo(v.itemId)
-        local itemIcon = GetItemIcon(v.itemId)
+    for k, itemId in ipairs(items) do
+        local _, itemLink = GetItemInfo(itemId)
+        local itemIcon = GetItemIcon(itemId)
         table.insert(dataTable, { itemIcon, itemLink, k })
     end
     st:SetData(dataTable, true)
-end
-
----------------------------------------------------------------------------
---- Controller Functions
----------------------------------------------------------------------------
-
----Show the window.
-function Controller:Show()
-    frame:Show()
-end
-
----Add item to the window.
----@param itemId integer
-function Controller:AddItem(itemId)
-    ---@type LootWindowListItem
-    local entry = { itemId = itemId }
-    table.insert(items, entry)
-    UpdateTable()
-end
-
-function Controller:HaveItems()
-    return #items > 0
-end
+end)
