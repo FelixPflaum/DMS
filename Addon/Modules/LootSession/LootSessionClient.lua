@@ -47,16 +47,16 @@ Env.Session.Client = LootSessionClient
 ------------------------------------------------------------------------------------
 
 ---@class (exact) LootSessionClientStartEvent
----@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun(client:LootSessionClient))
----@field Trigger fun(self:LootSessionClientStartEvent, client:LootSessionClient)
+---@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun())
+---@field Trigger fun(self:LootSessionClientStartEvent)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnClientStart = Env:NewEventEmitter()
+LootSessionClient.OnStart = Env:NewEventEmitter()
 
 ---@class (exact) LSClientEndEvent
 ---@field RegisterCallback fun(self:LSClientEndEvent, cb:fun())
 ---@field Trigger fun(self:LSClientEndEvent)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnSessionEnd = Env:NewEventEmitter()
+LootSessionClient.OnEnd = Env:NewEventEmitter()
 
 ---@class (exact) LSClientCandidateUpdateEvent
 ---@field RegisterCallback fun(self:LSClientCandidateUpdateEvent, cb:fun())
@@ -90,7 +90,7 @@ local function InitClient(hostName, guid, responses)
     end)
     LootSessionClient:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
 
-    LootSessionClient.OnClientStart:Trigger(LootSessionClient)
+    LootSessionClient.OnStart:Trigger()
 end
 
 local function EndSession()
@@ -103,7 +103,7 @@ local function EndSession()
     end
     LootSessionClient.isRunning = false
     Net:UnregisterObj(Comm.PREFIX, LootSessionClient)
-    LootSessionClient.OnSessionEnd:Trigger()
+    LootSessionClient.OnEnd:Trigger()
 end
 
 ------------------------------------------------------------------------------------

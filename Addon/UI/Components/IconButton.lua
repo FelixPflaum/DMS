@@ -42,14 +42,16 @@ local function SetItemData(self, itemId, arg)
     self.clickCallbackArg = arg
 end
 
--- varargs: texture
-local function CreateIconButton(parent)
+---@param parent WoWFrame
+---@param size number
+---@return IconButon
+local function CreateIconButton(parent, size)
     ---@class (exact) IconButon : WoWFrameButton
     ---@field onClickCallback fun(arg:any)|nil
     ---@field itemId integer|nil
     ---@field clickCallbackArg any
     local iicon = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    iicon:SetSize(40, 40)
+    iicon:SetSize(size, size)
     iicon:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
     iicon:GetHighlightTexture():SetBlendMode("ADD")
     iicon:SetNormalTexture([[Interface\InventoryItems\WoWUnknownItem01]])

@@ -26,6 +26,8 @@ end
 --- Status Headers
 ---------------------------------------------------------------------------
 
+-- Frame Script Handlers
+
 ---@param anchorFrame WoWFrame
 local function ShowCandidateTooltip(anchorFrame)
     local tooltipText = ""
@@ -46,6 +48,8 @@ local function ShowCandidateTooltip(anchorFrame)
     GameTooltip:SetOwner(anchorFrame, "ANCHOR_BOTTOMRIGHT")
     GameTooltip:SetText(tooltipText)
 end
+
+-- Create Frames
 
 local function CreateStatusHeaders()
     local fontLabel = "GameTooltipTextSmall"
@@ -80,36 +84,24 @@ local function CreateStatusHeaders()
     frame.ClientsStatusLabel:SetScript("OnLeave", GameTooltip_Hide)
 end
 
----@param text string
-local function HeaderSetHostName(text)
-    frame.HostName:SetText(text)
-end
+-- Event Hooks
 
----@param text string
----@param color "green"|"yellow"|"red"|nil
-local function HeaderSetSessionStatus(text, color)
-    if color then
-        if color == "red" then
-            text = "|cFFRR4444" .. text
-        elseif color == "yellow" then
-            text = "|cFFFFFF44" .. text
-        elseif color == "green" then
-            text = "|cFF44FF44" .. text
-        end
-    end
-    frame.SessionStatus:SetText(text)
-end
+Client.OnStart:RegisterCallback(function()
+    frame.HostName:SetText(Client.hostName)
+    frame.SessionStatus:SetText("|cFF44FF44" .. L["Running"])
+end)
 
----@param candidates table<string, LootCandidate>
-local function HeaderSetCandidateList(candidates)
+Client.OnEnd:RegisterCallback(function()
+    frame.SessionStatus:SetText("|cFFFFFF44" .. L["Ended"])
+end)
+
+Client.OnCandidateUpdate:RegisterCallback(function()
     local count = 0
     local ready = 0
-    for _, v in pairs(candidates) do
+    for _, candidate in pairs(Client.candidates) do
         count = count + 1
-        if v.isResponding then
+        if candidate.isResponding and not candidate.isOffline and not candidate.leftGroup then
             ready = ready + 1
-        else
-
         end
     end
     local text = ready .. "/" .. count
@@ -117,11 +109,47 @@ local function HeaderSetCandidateList(candidates)
         text = "|cFFFFFF44" .. text
     end
     frame.ClientsStatus:SetText(text)
-end
+end)
 
 ---------------------------------------------------------------------------
 --- Item List
 ---------------------------------------------------------------------------
+
+-- Frame Script Handlers
+
+---@param guid string
+local function Script_SelectItem(guid)
+    --TODO: item selection
+    print("Clicked item", guid)
+end
+
+-- Create Frames
+
+local MAX_ICONS_PER_COLUMN = 9
+local SELECT_ICON_SIZE = 40
+local ICON_SLECT_OFFSET_X = -10
+
+---@param index integer
+local function GetOrCreateItemSelectIcon(index)
+    if itemIcons[index] then
+        return itemIcons[index]
+    end
+
+    local newBtn = Env.UI.CreateIconButton(frame, SELECT_ICON_SIZE)
+    itemIcons[index] = newBtn
+
+    if index == 1 then
+        newBtn:SetPoint("TOPRIGHT", frame, "TOPLEFT", ICON_SLECT_OFFSET_X, 0)
+    elseif math.fmod(index - 1, MAX_ICONS_PER_COLUMN) == 0 then
+        local column = math.ceil(index / MAX_ICONS_PER_COLUMN)
+        local columnOffset = ICON_SLECT_OFFSET_X - (SELECT_ICON_SIZE + 5) * (column - 1)
+        newBtn:SetPoint("TOPRIGHT", frame, "TOPLEFT", columnOffset, 0)
+    else
+        newBtn:SetPoint("TOP", itemIcons[index - 1], "BOTTOM", 0, -2)
+    end
+
+    return newBtn
+end
 
 local function UpdateItemSelect()
     ---@type LootSessionClientItem[]
@@ -134,22 +162,10 @@ local function UpdateItemSelect()
     end)
 
     for k, item in ipairs(ordered) do
-        if not itemIcons[k] then
-            local newBtn = Env.UI.CreateIconButton(frame)
-            if k == 1 then
-                newBtn:SetPoint("TOPRIGHT", frame, "TOPLEFT", -10, 0)
-            else
-                newBtn:SetPoint("TOP", itemIcons[k - 1], "BOTTOM", 0, -2)
-            end
-            itemIcons[k] = newBtn
-        end
-        local btn = itemIcons[k]
+        local btn = GetOrCreateItemSelectIcon(k)
         btn:SetBorderColor("grey")
         btn:SetItemData(item.itemId, item.guid)
-        btn:SetOnClick(function(guid)
-            --TODO: item selection
-            print("Clicked item", guid)
-        end)
+        btn:SetOnClick(Script_SelectItem)
         btn:Show()
     end
 
@@ -157,6 +173,16 @@ local function UpdateItemSelect()
         itemIcons[i]:Hide()
     end
 end
+
+-- Event Hooks
+
+Client.OnItemUpdate:RegisterCallback(function(item)
+    UpdateItemSelect()
+end)
+
+Client.OnStart:RegisterCallback(function()
+    UpdateItemSelect()
+end)
 
 ---------------------------------------------------------------------------
 --- Main Window
@@ -222,23 +248,8 @@ function Controller:CloseClicked()
     end
 end
 
-Client.OnSessionEnd:RegisterCallback(function()
-    HeaderSetSessionStatus(L["Ended"], "yellow")
-end)
-
-Client.OnCandidateUpdate:RegisterCallback(function()
-    HeaderSetCandidateList(Client.candidates)
-end)
-
-Client.OnItemUpdate:RegisterCallback(function(item)
-    UpdateItemSelect()
-end)
-
-Client.OnClientStart:RegisterCallback(function(client)
+Client.OnStart:RegisterCallback(function()
     frame:Show()
-    HeaderSetHostName(Client.hostName)
-    HeaderSetSessionStatus(L["Running"], "green")
-    UpdateItemSelect()
 end)
 
 ---------------------------------------------------------------------------
