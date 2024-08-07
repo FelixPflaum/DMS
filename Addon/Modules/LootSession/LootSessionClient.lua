@@ -35,77 +35,75 @@ end
 ---@field hostName string
 ---@field responses LootResponses
 ---@field candidates table<string, LootCandidate>
----@field isFinished boolean
+---@field isRunning boolean
 ---@field keepaliveTimer TimerHandle|nil
 ---@field items table<string, LootSessionClientItem>
 local LootSessionClient = {}
----@diagnostic disable-next-line: inject-field
-LootSessionClient.__index = LootSessionClient
+
+Env.Session.Client = LootSessionClient
 
 ------------------------------------------------------------------------------------
 --- Construction
 ------------------------------------------------------------------------------------
 
+---@class (exact) LootSessionClientStartEvent
+---@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun(client:LootSessionClient))
+---@field Trigger fun(self:LootSessionClientStartEvent, client:LootSessionClient)
+---@diagnostic disable-next-line: inject-field
+LootSessionClient.OnClientStart = Env:NewEventEmitter()
+
+---@class (exact) LSClientEndEvent
+---@field RegisterCallback fun(self:LSClientEndEvent, cb:fun())
+---@field Trigger fun(self:LSClientEndEvent)
+---@diagnostic disable-next-line: inject-field
+LootSessionClient.OnSessionEnd = Env:NewEventEmitter()
+
+---@class (exact) LSClientCandidateUpdateEvent
+---@field RegisterCallback fun(self:LSClientCandidateUpdateEvent, cb:fun())
+---@field Trigger fun(self:LSClientCandidateUpdateEvent)
+---@diagnostic disable-next-line: inject-field
+LootSessionClient.OnCandidateUpdate = Env:NewEventEmitter()
+
+---@class (exact) LSClientItemUpdateEvent
+---@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:LootSessionClientItem))
+---@field Trigger fun(self:LSClientItemUpdateEvent, item:LootSessionClientItem)
+---@diagnostic disable-next-line: inject-field
+LootSessionClient.OnItemUpdate = Env:NewEventEmitter()
+
+---Reset and initialize client session.
 ---@param hostName string
 ---@param guid string
 ---@param responses LootResponses
----@return LootSessionClient
-local function NewLootSessionClient(hostName, guid, responses)
-    ---@type LootSessionClient
-    local clientSession = {
-        sessionGUID = guid,
-        hostName = hostName,
-        responses = responses,
-        candidates = {},
-        isFinished = false,
-        items = {},
-    }
-    setmetatable(clientSession, LootSessionClient)
-    clientSession:Setup()
-    return clientSession
-end
+local function InitClient(hostName, guid, responses)
+    LootSessionClient.sessionGUID = guid
+    LootSessionClient.hostName = hostName
+    LootSessionClient.responses = responses
+    LootSessionClient.candidates = {}
+    LootSessionClient.isRunning = true
+    LootSessionClient.keepaliveTimer = nil
+    LootSessionClient.items = {}
 
-function LootSessionClient:Setup()
-    ---@class (exact) LSClientEndEvent
-    ---@field RegisterCallback fun(self:LSClientEndEvent, cb:fun())
-    ---@field Trigger fun(self:LSClientEndEvent)
-    ---@diagnostic disable-next-line: inject-field
-    self.OnSessionEnd = Env:NewEventEmitter()
+    Net:RegisterObj(Comm.PREFIX, LootSessionClient, "HandleEvent_OnHostMessageReceived")
 
-    ---@class (exact) LSClientCandidateUpdateEvent
-    ---@field RegisterCallback fun(self:LSClientCandidateUpdateEvent, cb:fun())
-    ---@field Trigger fun(self:LSClientCandidateUpdateEvent)
-    ---@diagnostic disable-next-line: inject-field
-    self.OnCandidateUpdate = Env:NewEventEmitter()
-
-    ---@class (exact) LSClientItemUpdateEvent
-    ---@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:LootSessionClientItem))
-    ---@field Trigger fun(self:LSClientItemUpdateEvent, item:LootSessionClientItem)
-    ---@diagnostic disable-next-line: inject-field
-    self.OnItemUpdate = Env:NewEventEmitter()
-
-    Net:RegisterObj(Comm.PREFIX, self, "HandleEvent_OnHostMessageReceived")
-
-    self.keepaliveTimer = C_Timer.NewTicker(20, function(t)
-        self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+    LootSessionClient.keepaliveTimer = C_Timer.NewTicker(20, function(t)
+        LootSessionClient:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
     end)
-    self:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+    LootSessionClient:SendToHost(Comm.OpCodes.CMSG_IM_HERE)
+
+    LootSessionClient.OnClientStart:Trigger(LootSessionClient)
 end
 
-------------------------------------------------------------------------------------
---- Misc Methods
-------------------------------------------------------------------------------------
-
-function LootSessionClient:End()
-    if self.isFinished then
+local function EndSession()
+    if not LootSessionClient.isRunning then
         return
     end
-    if self.keepaliveTimer then
-        self.keepaliveTimer:Cancel()
+    if LootSessionClient.keepaliveTimer then
+        LootSessionClient.keepaliveTimer:Cancel()
+        LootSessionClient.keepaliveTimer = nil
     end
-    self.isFinished = true
-    self.OnSessionEnd:Trigger()
-    Net:UnregisterObj(Comm.PREFIX, self)
+    LootSessionClient.isRunning = false
+    Net:UnregisterObj(Comm.PREFIX, LootSessionClient)
+    LootSessionClient.OnSessionEnd:Trigger()
 end
 
 ------------------------------------------------------------------------------------
@@ -257,19 +255,9 @@ end
 --- API
 ------------------------------------------------------------------
 
-Env.Session.Client = {}
-
----@type LootSessionClient|nil
-local clientSession = nil
-
----@class (exact) LootSessionClientStartEvent
----@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun(client:LootSessionClient))
----@field Trigger fun(self:LootSessionClientStartEvent, client:LootSessionClient)
-Env.Session.Client.OnClientStart = Env:NewEventEmitter()
-
-Env.Net:Register(Env.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
+Env.Net:Register(Comm.PREFIX, function(prefix, sender, opcode, data)
     if opcode == Comm.OpCodes.HMSG_SESSION then
-        if clientSession then
+        if LootSessionClient.isRunning then
             LogDebug("Received HMSG_SESSION from", sender, "but already have a session.")
             return
         end
@@ -287,13 +275,11 @@ Env.Net:Register(Env.Session.Comm.PREFIX, function(prefix, sender, opcode, data)
             end
             return
         end
-        clientSession = NewLootSessionClient(sender, data.guid, Env.Session:CreateLootClientResponsesFromComm(data.responses))
-        Env.Session.Client.OnClientStart:Trigger(clientSession)
+        InitClient(sender, data.guid, Env.Session:CreateLootClientResponsesFromComm(data.responses))
     elseif opcode == Comm.OpCodes.HMSG_SESSION_END then
         LogDebug("Recieved msg", sender, "HMSG_SESSION_END")
-        if clientSession and clientSession.hostName == sender then
-            clientSession:End()
-            clientSession = nil
+        if LootSessionClient.hostName == sender then
+            EndSession()
         end
     end
 end)
@@ -305,5 +291,5 @@ Env:RegisterSlashCommand("rtest", "respiond to item test", function(args)
         itemGuid = args[1],
         responseId = tonumber(args[2]),
     }
-    Net:SendWhisper(Comm.PREFIX, clientSession.hostName, Comm.OpCodes.CMSG_ITEM_RESPONSE, p)
+    Net:SendWhisper(Comm.PREFIX, LootSessionClient.hostName, Comm.OpCodes.CMSG_ITEM_RESPONSE, p)
 end)

@@ -40,10 +40,12 @@ function UniqueTimers:StartUnique(key, duration, callback, object, noError, ...)
     end)
 end
 
+---Cancel all timers and clear timer list.
 function UniqueTimers:CancelAll()
     for _, fc in pairs(self._timers) do
         fc:Cancel()
     end
+    self._timers = {}
 end
 
 ---@param key string

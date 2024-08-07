@@ -2,8 +2,6 @@
 local Env = select(2, ...)
 local L = Env:GetLocalization()
 
-Env.Session.Host = {}
-
 local Net = Env.Net
 local Comm = Env.Session.Comm
 local LootStatus = Env.Session.LootStatus
@@ -14,7 +12,7 @@ end
 
 ---Create a simple unique identifier.
 local function MakeGUID()
-    return time() .. "-" .. string.format("%08x", math.floor(math.random(0,0x7FFFFFFF)))
+    return time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
 end
 
 ---@alias CommTarget "group"|"self"
@@ -53,30 +51,27 @@ end
 ---@field target CommTarget
 ---@field responses LootResponses
 ---@field candidates table<string, LootCandidate>
----@field isFinished boolean
+---@field isRunning boolean
 ---@field itemCount integer
 ---@field items table<string, LootSessionHostItem>
 ---@field timers UniqueTimers
-local LootSessionHost = {}
----@diagnostic disable-next-line: inject-field
-LootSessionHost.__index = LootSessionHost
+local LootSessionHost = {
+    timers = Env:NewUniqueTimers(),
+}
+
+Env.Session.Host = LootSessionHost
 
 ---@param target CommTarget
-local function NewLootSessionHost(target)
-    ---@type LootSessionHost
-    local session = {
-        sessionGUID = MakeGUID(),
-        target = target,
-        responses = Env.Session:CreateLootResponses(),
-        candidates = {},
-        isFinished = false,
-        itemCount = 0,
-        items = {},
-        timers = Env:NewUniqueTimers(),
-    }
-    setmetatable(session, LootSessionHost)
-    session:Setup()
-    return session
+local function InitHost(target)
+    LootSessionHost.sessionGUID = MakeGUID()
+    LootSessionHost.target = target
+    LootSessionHost.responses = Env.Session:CreateLootResponses()
+    LootSessionHost.candidates = {}
+    LootSessionHost.isRunning = true
+    LootSessionHost.itemCount = 0
+    LootSessionHost.items = {}
+
+    LootSessionHost:Setup()
 end
 
 local updateTimerKey = "mainUpdate"
@@ -105,8 +100,10 @@ function LootSessionHost:Setup()
 end
 
 function LootSessionHost:Destroy()
-    if self.isFinished then return end
-    self.isFinished = true
+    if not self.isRunning then return end
+    self.isRunning = false
+    LootSessionHost.sessionGUID = ""
+    LootSessionHost.timers:CancelAll()
     Env:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:UnregisterEvent("GROUP_LEFT", self)
     Net:UnregisterObj(Comm.PREFIX, self)
@@ -115,7 +112,7 @@ function LootSessionHost:Destroy()
 end
 
 function LootSessionHost:TimerUpdate()
-    if self.isFinished then return end
+    if not self.isRunning then return end
     local nowgt = GetTime()
 
     -- Update candidates
@@ -244,7 +241,7 @@ function LootSessionHost:Broadcast(opcode, data)
 end
 
 function LootSessionHost:GROUP_LEFT()
-    if self.isFinished then return end
+    if not self.isRunning then return end
     if self.target == "group" then
         Env:PrintError("Session host destroyed because you left the group!")
         self:Destroy()
@@ -406,7 +403,7 @@ end
 ---@return boolean itemAdded
 ---@return string|nil errorMessage
 function LootSessionHost:ItemAdd(itemId)
-    if self.isFinished then
+    if not self.isRunning then
         return false, "session was already finished"
     end
 
@@ -495,15 +492,12 @@ end
 --- API
 ------------------------------------------------------------------
 
----@type LootSessionHost|nil
-local hostSession = nil
-
 ---Start a new host session.
 ---@param target CommTarget
 ---@return LootSessionHost|nil
 ---@return string|nil errorMessage
-function Env.Session.Host:Start(target)
-    if hostSession and not hostSession.isFinished then
+function LootSessionHost:Start(target)
+    if LootSessionHost.isRunning then
         return nil, L["A host session is already running."]
     end
     if target == "group" then
@@ -511,35 +505,27 @@ function Env.Session.Host:Start(target)
             return nil, L["Host target group does not work outside of a group!"]
         end
     elseif target ~= "self" then
-        return nil,  L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
+        return nil, L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
     end
     LogDebug("Starting host session with target: ", target)
-    hostSession = NewLootSessionHost(target)
+    InitHost(target)
 
-    hostSession.OnSessionEnd:RegisterCallback(function()
-        hostSession = nil
-    end)
-
-    return hostSession
-end
-
-function Env.Session.Host:GetSession()
-    return hostSession
+    return LootSessionHost
 end
 
 Env:RegisterSlashCommand("host", L["Start a new loot session."], function(args)
     local target = args[1] or "group"
-    local sess, err = Env.Session.Host:Start(target)
+    local sess, err = LootSessionHost:Start(target)
     if err then
         Env:PrintError(err)
     end
 end)
 
 Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
-    if not hostSession then
+    if not LootSessionHost.isRunning then
         Env:PrintWarn(L["No session is running."])
         return
     end
     Env:PrintSuccess("Destroy host session...")
-    hostSession:Destroy()
+    LootSessionHost:Destroy()
 end)

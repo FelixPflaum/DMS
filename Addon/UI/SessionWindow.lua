@@ -11,23 +11,26 @@ local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
 
 ---@class (exact) SessionWindowController
----@field frame SessionWindow
----@field itemIcons IconButon[]
----@field client LootSessionClient|nil
----@field host LootSessionHost|nil
-local Controller = {
-    itemIcons = {},
-}
+local Controller = {}
+
+local frame ---@type SessionWindow
+local itemIcons = {} ---@type IconButon[]
+local Host = Env.Session.Host
+local Client = Env.Session.Client
+
+local function IsHosting()
+    return Client.sessionGUID == Host.sessionGUID and Host.isRunning
+end
 
 ---------------------------------------------------------------------------
 --- Status Headers
 ---------------------------------------------------------------------------
 
-local function ShowCandidateTooltip(f)
-    if Controller.client == nil then return end
+---@param anchorFrame WoWFrame
+local function ShowCandidateTooltip(anchorFrame)
     local tooltipText = ""
     local grey = "FF555555"
-    for _, v in pairs(Controller.client.candidates) do
+    for _, v in pairs(Client.candidates) do
         local nameStr = v.name
         if v.leftGroup then
             nameStr = "|c" .. grey .. nameStr .. " (" .. L["Left group"] .. ")"
@@ -40,55 +43,51 @@ local function ShowCandidateTooltip(f)
         end
         tooltipText = tooltipText .. nameStr .. "\n"
     end
-    GameTooltip:SetOwner(f, "ANCHOR_BOTTOMRIGHT")
+    GameTooltip:SetOwner(anchorFrame, "ANCHOR_BOTTOMRIGHT")
     GameTooltip:SetText(tooltipText)
 end
 
----@param parent SessionWindow
-local function CreateStatusHeaders(parent)
-    ---@class SessionWindow
-    parent = parent
-
+local function CreateStatusHeaders()
     local fontLabel = "GameTooltipTextSmall"
     local fontValue = fontLabel
 
-    parent.HostNameLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
-    parent.HostNameLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 65, -6)
-    parent.HostNameLabel:SetText(L["Host:"])
+    frame.HostNameLabel = frame:CreateFontString(nil, "OVERLAY", fontLabel)
+    frame.HostNameLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 65, -6)
+    frame.HostNameLabel:SetText(L["Host:"])
 
-    parent.HostName = parent:CreateFontString(nil, "OVERLAY", fontValue)
-    parent.HostName:SetPoint("TOPLEFT", parent.HostNameLabel, "TOPRIGHT", 10, 0)
-    parent.HostName:SetText("---")
+    frame.HostName = frame:CreateFontString(nil, "OVERLAY", fontValue)
+    frame.HostName:SetPoint("TOPLEFT", frame.HostNameLabel, "TOPRIGHT", 10, 0)
+    frame.HostName:SetText("---")
 
-    parent.SessionStatus = parent:CreateFontString(nil, "OVERLAY", fontValue)
-    parent.SessionStatus:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -35, -6)
-    parent.SessionStatus:SetText("---")
+    frame.SessionStatus = frame:CreateFontString(nil, "OVERLAY", fontValue)
+    frame.SessionStatus:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -35, -6)
+    frame.SessionStatus:SetText("---")
 
-    parent.SessionStatusLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
-    parent.SessionStatusLabel:SetPoint("TOPRIGHT", parent.SessionStatus, "TOPLEFT", -10, 0)
-    parent.SessionStatusLabel:SetText(L["Status:"])
+    frame.SessionStatusLabel = frame:CreateFontString(nil, "OVERLAY", fontLabel)
+    frame.SessionStatusLabel:SetPoint("TOPRIGHT", frame.SessionStatus, "TOPLEFT", -10, 0)
+    frame.SessionStatusLabel:SetText(L["Status:"])
 
-    parent.ClientsStatus = parent:CreateFontString(nil, "OVERLAY", fontValue)
-    parent.ClientsStatus:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, -37)
-    parent.ClientsStatus:SetText("---")
-    parent.ClientsStatus:SetScript("OnEnter", function(f) ShowCandidateTooltip(f) end)
-    parent.ClientsStatus:SetScript("OnLeave", function() GameTooltip_Hide() end)
+    frame.ClientsStatus = frame:CreateFontString(nil, "OVERLAY", fontValue)
+    frame.ClientsStatus:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -37)
+    frame.ClientsStatus:SetText("---")
+    frame.ClientsStatus:SetScript("OnEnter", ShowCandidateTooltip)
+    frame.ClientsStatus:SetScript("OnLeave", GameTooltip_Hide)
 
-    parent.ClientsStatusLabel = parent:CreateFontString(nil, "OVERLAY", fontLabel)
-    parent.ClientsStatusLabel:SetPoint("TOPRIGHT", parent.ClientsStatus, "TOPLEFT", -10, 0)
-    parent.ClientsStatusLabel:SetText(L["Players ready:"])
-    parent.ClientsStatusLabel:SetScript("OnEnter", function(f) ShowCandidateTooltip(f) end)
-    parent.ClientsStatusLabel:SetScript("OnLeave", function() GameTooltip_Hide() end)
+    frame.ClientsStatusLabel = frame:CreateFontString(nil, "OVERLAY", fontLabel)
+    frame.ClientsStatusLabel:SetPoint("TOPRIGHT", frame.ClientsStatus, "TOPLEFT", -10, 0)
+    frame.ClientsStatusLabel:SetText(L["Players ready:"])
+    frame.ClientsStatusLabel:SetScript("OnEnter", function() ShowCandidateTooltip(frame.ClientsStatus) end)
+    frame.ClientsStatusLabel:SetScript("OnLeave", GameTooltip_Hide)
 end
 
 ---@param text string
-function Controller:SetHostName(text)
-    self.frame.HostName:SetText(text)
+local function HeaderSetHostName(text)
+    frame.HostName:SetText(text)
 end
 
 ---@param text string
 ---@param color "green"|"yellow"|"red"|nil
-function Controller:SetSessionStatus(text, color)
+local function HeaderSetSessionStatus(text, color)
     if color then
         if color == "red" then
             text = "|cFFRR4444" .. text
@@ -98,11 +97,11 @@ function Controller:SetSessionStatus(text, color)
             text = "|cFF44FF44" .. text
         end
     end
-    self.frame.SessionStatus:SetText(text)
+    frame.SessionStatus:SetText(text)
 end
 
 ---@param candidates table<string, LootCandidate>
-function Controller:SetCandidateList(candidates)
+local function HeaderSetCandidateList(candidates)
     local count = 0
     local ready = 0
     for _, v in pairs(candidates) do
@@ -117,28 +116,17 @@ function Controller:SetCandidateList(candidates)
     if ready < count then
         text = "|cFFFFFF44" .. text
     end
-    self.frame.ClientsStatus:SetText(text)
+    frame.ClientsStatus:SetText(text)
 end
 
 ---------------------------------------------------------------------------
 --- Item List
----
---- TODO
---- Columns, start top left outside of main frame.
----
---- ItemFrame
----     CheckMark
----     SelectedBorder
----     IconTexture
----
----
----
 ---------------------------------------------------------------------------
 
-function Controller:UpdateItemSelect()
+local function UpdateItemSelect()
     ---@type LootSessionClientItem[]
     local ordered = {}
-    for _, item in pairs(Controller.client.items) do
+    for _, item in pairs(Client.items) do
         table.insert(ordered, item)
     end
     table.sort(ordered, function(a, b)
@@ -146,27 +134,27 @@ function Controller:UpdateItemSelect()
     end)
 
     for k, item in ipairs(ordered) do
-        if not self.itemIcons[k] then
-            local newBtn = Env.UI.CreateIconButton(Controller.frame)
+        if not itemIcons[k] then
+            local newBtn = Env.UI.CreateIconButton(frame)
             if k == 1 then
-                newBtn:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -10, 0)
+                newBtn:SetPoint("TOPRIGHT", frame, "TOPLEFT", -10, 0)
             else
-                newBtn:SetPoint("TOP", self.itemIcons[k - 1], "BOTTOM", 0, -2)
+                newBtn:SetPoint("TOP", itemIcons[k - 1], "BOTTOM", 0, -2)
             end
-            self.itemIcons[k] = newBtn
+            itemIcons[k] = newBtn
         end
-        local btn = self.itemIcons[k]
+        local btn = itemIcons[k]
         btn:SetBorderColor("grey")
         btn:SetItemData(item.itemId, item.guid)
-        btn:SetOnClick(function(guid) 
+        btn:SetOnClick(function(guid)
             --TODO: item selection
-            print("Clicked item", guid) 
+            print("Clicked item", guid)
         end)
         btn:Show()
     end
 
-    for i = #ordered + 1, #self.itemIcons do
-        self.itemIcons[i]:Hide()
+    for i = #ordered + 1, #itemIcons do
+        itemIcons[i]:Hide()
     end
 end
 
@@ -179,7 +167,7 @@ local HEIGHT = 400
 
 local function CreateWindow()
     ---@class SessionWindow : ButtonFrameTemplate
-    local frame = CreateFrame("Frame", "DMSSessionWindow", UIParent, "ButtonFrameTemplate")
+    frame = CreateFrame("Frame", "DMSSessionWindow", UIParent, "ButtonFrameTemplate")
     frame:Hide()
     frame:SetFrameStrata("DIALOG")
     frame:SetPoint("CENTER", 0, 0)
@@ -198,30 +186,15 @@ local function CreateWindow()
     frame.portrait:SetTexture(GetImagePath("logo.png"))
     frame.CloseButton:SetScript("OnClick", function() Controller:CloseClicked() end)
 
-    CreateStatusHeaders(frame)
-
-    return frame
+    CreateStatusHeaders()
 end
 
-function Controller:Show()
-    if not self.frame then
-        self.frame = CreateWindow()
-    end
-    self.frame:Show()
-end
-
-function Controller:Hide()
-    if self.client and self.client.isFinished then
-        self.client = nil
-    end
-    if self.host and self.host.isFinished then
-        self.host = nil
-    end
-    self.frame:Hide()
-end
+Env:OnAddonLoaded(function()
+    CreateWindow()
+end)
 
 function Controller:CloseClicked()
-    if self.host and not self.host.isFinished then
+    if IsHosting() then
         LibDialog:Spawn({
             text = "Do you want to abort the loot session?",
             on_cancel = function(self, data, reason) end,
@@ -229,73 +202,53 @@ function Controller:CloseClicked()
                 {
                     text = "Abort",
                     on_click = function()
-                        Controller.host:Destroy()
-                        Controller.host = nil
-                        Controller:Hide()
+                        Host:Destroy()
+                        frame:Hide()
                     end,
                 },
                 {
                     text = "Minimize",
                     on_click = function()
-                        Controller:Hide()
+                        frame:Hide()
                     end,
                 },
             },
         })
         return
     end
-    self:Hide()
-    if self.client and not self.client.isFinished then
+    frame:Hide()
+    if Client.isRunning then
         Env:PrintWarn(L["Session is still running. You can reopen the window with /dms open"])
     end
 end
 
----@param clientSession LootSessionClient
-function Controller:SetClient(clientSession)
-    self.client = clientSession
+Client.OnSessionEnd:RegisterCallback(function()
+    HeaderSetSessionStatus(L["Ended"], "yellow")
+end)
 
-    self:SetHostName(self.client.hostName)
-    self:SetSessionStatus(L["Running"], "green")
-    self:UpdateItemSelect()
+Client.OnCandidateUpdate:RegisterCallback(function()
+    HeaderSetCandidateList(Client.candidates)
+end)
 
-    self.client.OnSessionEnd:RegisterCallback(function()
-        self:SetSessionStatus(L["Ended"], "yellow")
-        if not self.frame:IsShown() then
-            self:Hide()
-        end
-    end)
+Client.OnItemUpdate:RegisterCallback(function(item)
+    UpdateItemSelect()
+end)
 
-    self.client.OnCandidateUpdate:RegisterCallback(function()
-        self:SetCandidateList(clientSession.candidates)
-    end)
-
-    self.client.OnItemUpdate:RegisterCallback(function(item)
-        self:UpdateItemSelect()
-    end)
-end
+Client.OnClientStart:RegisterCallback(function(client)
+    frame:Show()
+    HeaderSetHostName(Client.hostName)
+    HeaderSetSessionStatus(L["Running"], "green")
+    UpdateItemSelect()
+end)
 
 ---------------------------------------------------------------------------
 --- API
 ---------------------------------------------------------------------------
 
-Env.Session.Client.OnClientStart:RegisterCallback(function(session)
-    if Controller.client then
-        Env:PrintDebug("Got new session start but client for UI already set!")
-        return
-    end
-
-    Controller:Show()
-    local hostSession = Env.Session.Host:GetSession()
-    if hostSession and hostSession.sessionGUID == session.sessionGUID then
-        Controller.host = hostSession
-    end
-    Controller:SetClient(session)
-end)
-
 Env:RegisterSlashCommand("open", L["Opens session window if a session is running."], function(args)
-    if not Controller.client or Controller.client.isFinished then
+    if not Client.isRunning then
         Env:PrintError(L["No session is running!"])
         return
     end
-    Controller:Show()
+    frame:Show()
 end)

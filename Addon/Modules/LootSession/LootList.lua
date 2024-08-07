@@ -112,17 +112,16 @@ function LootList:AddListToSession()
         return
     end
 
-    local hostSession = Env.Session.Host:GetSession()
-    if not hostSession then
-        local session, err = Env.Session.Host:Start("self")
+    local Host = Env.Session.Host
+    if not Host.isRunning then
+        local session, err = Host:Start("self")
         if not session or err then
             if err then Env:PrintError(err) end
             return
         end
-        hostSession = session
     end
     for _, v in ipairs(itemList) do
-        hostSession:ItemAdd(v)
+        Host:ItemAdd(v)
     end
 
     itemList = {}
