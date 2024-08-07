@@ -57,6 +57,7 @@ local function AddRightButton(self, text, onClick)
 end
 
 ---It works, ok?
+---@param name string
 ---@param title string
 ---@param width integer
 ---@param height integer
@@ -64,13 +65,13 @@ end
 ---@param hasButtonBar boolean
 ---@param libWinConfig table
 ---@return ButtonWindow
-local function CreateButtonWindow(title, width, height, topInsetOffset, hasButtonBar, libWinConfig)
+local function CreateButtonWindow(name, title, width, height, topInsetOffset, hasButtonBar, libWinConfig)
     ---@class ButtonWindow : DefaultPanelTemplate
     ---@field SetTitle fun(self:ButtonWindow, title:string)
     ---@field onTopCloseClicked fun()|nil
     ---@field LeftButton ButtonWindowLeftButton|nil
     ---@field RightButton ButtonWindowRightButton|nil
-    local frame = CreateFrame("Frame", "DMSLootAddWindow", UIParent, "DefaultPanelTemplate")
+    local frame = CreateFrame("Frame", name, UIParent, "DefaultPanelTemplate")
     frame:Hide()
 
     -- Fix those stupid borders.

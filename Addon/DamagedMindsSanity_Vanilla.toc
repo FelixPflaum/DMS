@@ -31,17 +31,18 @@ System/Events.lua
 System/Net.lua
 System/SlashCommands.lua
 System/Settings.lua
+System/Item.lua
 
 Database/Database.lua
 
-Modules/LootSession/ItemFunctions.lua
 Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/LootSessionClient.lua
+Modules/LootSession/AddLoot.lua
 
 UI/UIFunctions.lua
 UI/Components/IconButton.lua
 UI/Components/ButtonWindow.lua
 UI/SettingsTab.lua
 UI/SessionWindow.lua
-UI/LootAddWindow.lua
+UI/LootWindow.lua

@@ -11,7 +11,11 @@ GameTooltip = {
     SetText = function(self, text, a, r, g, b, wrap) end,
     AddLine = function(self, text, red, green, blue) end,
     AddDoubleLine = function(self, textL, textR, rL, gL, bL, rR, gR, bR) end,
+    SetHyperlink = function(self, link) end,
     SetScript = SetScript,
+    ClearLines = function() end,
+    SetBagItem = function(self, bagID, slot) end,
+    NumLines = function() return 1 end
 }
 
 AceGUIWidgetLSMlists = { font = {} };
@@ -340,9 +344,9 @@ local ScriptRegionResizing = {
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
 ---Creates a Frame object.
----@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): WoWFrame
----@overload fun(frameType:"Button", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): WoWFrameButton
----@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: WoWFrame|nil, inheritsFrame: string|nil): GameTooltip
+---@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrame
+---@overload fun(frameType:"Button", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrameButton
+---@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): GameTooltip
 function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
 
 --- name, rank, icon, castTime, minRange, maxRange
@@ -368,9 +372,10 @@ C_Item = {}
 
 ---@param id number|string Item ID, Link or name
 function C_Item.GetItemInfoInstant(id) end
+
 GetItemInfoInstant = C_Item.GetItemInfoInstant
 
----Return the icon texture for the item. 
+---Return the icon texture for the item.
 ---@param itemID integer
 ---@return string
 function GetItemIcon(itemID) end
@@ -816,3 +821,44 @@ function GetTime() end
 ---@return string classFile
 ---@return integer classId
 function GetClassInfo(classID) end
+
+INT_SPELL_DURATION_HOURS = "%d hrs"
+INT_SPELL_DURATION_MIN = "%d min"
+INT_SPELL_DURATION_SEC = "%d sec"
+BIND_TRADE_TIME_REMAINING = "blablabla %s"
+
+C_Container = {}
+
+Enum = {}
+
+---@enum ItemQuality
+Enum.ItemQuality = {
+    Poor = 0,
+    Common = 1,
+    Uncommon = 2,
+    Rare = 3,
+    Epic = 4,
+    Legendary = 5,
+    Artifact = 6,
+    Heirloom = 7,
+    WoWToken = 8,
+}
+
+---@class ContainerItemInfo
+---@field iconFileID number 	
+---@field stackCount number 	
+---@field isLocked boolean 	
+---@field quality ItemQuality|nil
+---@field isReadable boolean 	
+---@field hasLoot boolean 	
+---@field hyperlink string 	
+---@field isFiltered boolean 	
+---@field hasNoValue boolean 	
+---@field itemID number 	
+---@field isBound boolean
+
+---comment
+---@param containerIndex integer
+---@param slotIndex integer
+---@return ContainerItemInfo|nil info Returns nil if the container slot is empty.
+function C_Container.GetContainerItemInfo(containerIndex, slotIndex) end

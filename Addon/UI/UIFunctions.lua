@@ -37,3 +37,10 @@ function Env.UI.GetClassColor(classId)
     end
     return classColors[classId]
 end
+
+---@param parent WoWFrame
+---@param link string
+function Env.UI.ShowItemTooltip(parent, link)
+    GameTooltip:SetOwner(parent, "ANCHOR_MOUSE")
+    GameTooltip:SetHyperlink(link)
+end

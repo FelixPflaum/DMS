@@ -15,7 +15,7 @@ local defaultSettings = {
     logLevel = 1, ---@type LogLevel
     UI = {
         SessionWindow = {},
-        LootAddWindow = {},
+        LootWindow = {},
     },
     lootSession = {
         timeout = 90,
