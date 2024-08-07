@@ -6,9 +6,11 @@ local Env = select(2, ...)
 local LibWindow = LibStub("LibWindow-1.1")
 local LibDialog = LibStub("LibDialog-1.1")
 local L = Env:GetLocalization()
+local ScrollingTable = LibStub("ScrollingTable") ---@type LibScrollingTable
 
 local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
+local ShowItemTooltip = Env.UI.ShowItemTooltip
 
 ---@class (exact) SessionWindowController
 local Controller = {}
@@ -18,6 +20,7 @@ local itemIcons = {} ---@type IconButon[]
 local Host = Env.Session.Host
 local Client = Env.Session.Client
 
+---Is host with the same guid as client running.
 local function IsHosting()
     return Client.sessionGUID == Host.sessionGUID and Host.isRunning
 end
@@ -112,6 +115,125 @@ Client.OnCandidateUpdate:RegisterCallback(function()
 end)
 
 ---------------------------------------------------------------------------
+--- Item Details
+---------------------------------------------------------------------------
+
+local ROW_HEIGHT = 20
+
+local selectedItemGuid ---@type string|nil
+
+-- Frame Script Handlers
+
+
+-- Create Frames
+
+---@type ST_CellUpdateFunc
+local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+	local classId = data[realrow][column]
+	if classId then
+		cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
+		local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
+		cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
+	end
+end
+
+local function CreateItemDetails()
+    frame.ItemInfoIcon = Env.UI.CreateIconButton(frame, 35)
+    frame.ItemInfoIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, -25)
+    frame.ItemInfoIcon:EnableMouse(false)
+
+    local fontLabel = "GameTooltipTextSmall"
+    local fontValue = fontLabel
+
+    frame.ItenInfoItemName = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
+    frame.ItenInfoItemName:SetPoint("TOPLEFT", frame.ItemInfoIcon, "TOPRIGHT", 5, -3)
+
+    frame.ItemInfoItemInfo = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
+    frame.ItemInfoItemInfo:SetPoint("TOPLEFT", frame.ItenInfoItemName, "BOTTOMLEFT", 0, -3)
+
+    frame.ItemInfoAwarded = frame:CreateFontString(nil, "OVERLAY", fontLabel)
+    frame.ItemInfoAwarded:SetPoint("TOP", frame, "TOP", 0, -37)
+    frame.ItemInfoAwarded:SetText("")
+
+    frame.st = ScrollingTable:CreateST({
+        { name = "",            width = ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon }, -- Class icon
+        { name = L["Name"],     width = 100 },
+        { name = L["Status"],   width = 175 },
+        { name = L["Response"], width = 80 },
+        { name = L["Roll"],     width = 40 },
+        { name = L["Sanity"],   width = 40 },
+        { name = L["Total"],    width = 40 },
+    }, 15, ROW_HEIGHT, nil, frame)
+
+    frame.st.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -frame.st.head:GetHeight() - 4)
+    --st:RegisterEvents({ OnClick = Script_TableRemoveClicked })
+
+    frame:SetWidth(frame.st.frame:GetWidth() + 7)
+    frame:SetHeight(frame.st.frame:GetHeight() + 86)
+end
+
+local function SetSelectedItem(guid)
+    local item = Client.items[guid]
+    if not item then return end
+
+    selectedItemGuid = guid
+
+    frame.ItemInfoIcon:SetItemData(item.itemId)
+    local _, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc = GetItemInfo(item.itemId)
+    frame.ItenInfoItemName:SetText(itemLink)
+    local equipString = _G[itemEquipLoc] or ""
+    frame.ItemInfoItemInfo:SetText(itemSubType .. " " .. equipString)
+
+    if item.awardedTo then
+        frame.ItemInfoAwarded:SetText(L["Awarded to: %s"]:format(item.awardedTo))
+    else
+        frame.ItemInfoAwarded:SetText("")
+    end
+
+    --TODO: tooltip
+
+    local tableData = {}
+    for _, v in pairs(item.responses) do
+        table.insert(tableData, {
+            v.candidate.classId,
+            "|c" .. GetClassColor(v.candidate.classId).argbstr .. v.candidate.name,
+            v.status.displayString,
+            v.response and v.response.displayString or "",
+            v.roll or "",
+            v.sanity or "",
+            v.roll and v.sanity and v.roll + v.sanity or "" })
+    end
+    frame.st:SetData(tableData, true)
+end
+
+-- Event Hooks
+
+Client.OnStart:RegisterCallback(function()
+    frame.HostName:SetText(Client.hostName)
+    frame.SessionStatus:SetText("|cFF44FF44" .. L["Running"])
+end)
+
+Client.OnEnd:RegisterCallback(function()
+    frame.SessionStatus:SetText("|cFFFFFF44" .. L["Ended"])
+end)
+
+Client.OnCandidateUpdate:RegisterCallback(function()
+    local count = 0
+    local ready = 0
+    for _, candidate in pairs(Client.candidates) do
+        count = count + 1
+        if candidate.isResponding and not candidate.isOffline and not candidate.leftGroup then
+            ready = ready + 1
+        end
+    end
+    local text = ready .. "/" .. count
+    if ready < count then
+        text = "|cFFFFFF44" .. text
+    end
+    frame.ClientsStatus:SetText(text)
+end)
+
+---------------------------------------------------------------------------
 --- Item List
 ---------------------------------------------------------------------------
 
@@ -119,8 +241,11 @@ end)
 
 ---@param guid string
 local function Script_SelectItem(guid)
+    selectedItemGuid = guid
     --TODO: item selection
     print("Clicked item", guid)
+
+    SetSelectedItem(guid)
 end
 
 -- Create Frames
@@ -178,6 +303,9 @@ end
 
 Client.OnItemUpdate:RegisterCallback(function(item)
     UpdateItemSelect()
+    if item.guid == selectedItemGuid then
+        SetSelectedItem(selectedItemGuid)
+    end
 end)
 
 Client.OnStart:RegisterCallback(function()
@@ -213,6 +341,7 @@ local function CreateWindow()
     frame.CloseButton:SetScript("OnClick", function() Controller:CloseClicked() end)
 
     CreateStatusHeaders()
+    CreateItemDetails()
 end
 
 Env:OnAddonLoaded(function()
