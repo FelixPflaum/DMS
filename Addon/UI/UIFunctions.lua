@@ -3,6 +3,8 @@ local addonName = select(1, ...)
 ---@class AddonEnv
 local Env = select(2, ...)
 
+local L = Env:GetLocalization()
+
 Env.UI = {}
 
 ---Get path to an image file of the addon.
@@ -44,3 +46,15 @@ function Env.UI.ShowItemTooltip(parent, link)
     GameTooltip:SetOwner(parent, "ANCHOR_MOUSE")
     GameTooltip:SetHyperlink(link)
 end
+
+---@type fun()[]
+local resetCallbacks = {}
+---@param cb fun()
+function Env.UI:RegisterOnReset(cb)
+    table.insert(resetCallbacks, cb)
+end
+Env:RegisterSlashCommand("resetui", L["Resets the scale and position of all UI windows."], function(args)
+    for _, cb in ipairs(resetCallbacks) do
+        cb()
+    end
+end)

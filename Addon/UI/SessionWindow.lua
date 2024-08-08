@@ -129,12 +129,12 @@ local selectedItemGuid ---@type string|nil
 
 ---@type ST_CellUpdateFunc
 local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
-	local classId = data[realrow][column]
-	if classId then
-		cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
-		local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
-		cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
-	end
+    local classId = data[realrow][column]
+    if classId then
+        cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
+        local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
+        cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
+    end
 end
 
 local function CreateItemDetails()
@@ -391,4 +391,14 @@ Env:RegisterSlashCommand("open", L["Opens session window if a session is running
         return
     end
     frame:Show()
+end)
+
+Env.UI:RegisterOnReset(function()
+    local libWinConfig = Env.settings.UI.SessionWindow
+    libWinConfig.x = 0
+    libWinConfig.y = 0
+    libWinConfig.point = "CENTER"
+    frame:RestorePosition() ---@diagnostic disable-line: undefined-field
+    libWinConfig.scale = 1.0
+    frame:SetScale(1.0)
 end)

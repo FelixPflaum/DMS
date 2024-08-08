@@ -513,14 +513,6 @@ function LootSessionHost:Start(target)
     return LootSessionHost
 end
 
-Env:RegisterSlashCommand("host", L["Start a new loot session."], function(args)
-    local target = args[1] or "group"
-    local sess, err = LootSessionHost:Start(target)
-    if err then
-        Env:PrintError(err)
-    end
-end)
-
 Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
     if not LootSessionHost.isRunning then
         Env:PrintWarn(L["No session is running."])

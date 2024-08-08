@@ -19,8 +19,8 @@ SlashCmdList["DAMAGEDMINDSSANITY"] = function(arg)
         return
     end
 
-    local cmdColor = "|cFFDDFFFF"
-    local descColor = "|cFFDDDDDD"
+    local cmdColor = "|cFFAAFFFF"
+    local descColor = "|cFFCCCCCC"
     print(addonName .. " " .. L["commands"] .. ":")
     for command, v in pairs(registeredCommands) do
         print(cmdColor .. "  /" .. command .. "|r - " .. descColor .. v.description)

@@ -44,16 +44,19 @@ end
 
 ---@param parent WoWFrame
 ---@param size number
+---@param noHighlight boolean|nil
 ---@return IconButon
-local function CreateIconButton(parent, size)
+local function CreateIconButton(parent, size, noHighlight)
     ---@class (exact) IconButon : WoWFrameButton
     ---@field onClickCallback fun(arg:any)|nil
     ---@field itemId integer|nil
     ---@field clickCallbackArg any
     local iicon = CreateFrame("Button", nil, parent, "BackdropTemplate")
     iicon:SetSize(size, size)
-    iicon:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
-    iicon:GetHighlightTexture():SetBlendMode("ADD")
+    if not noHighlight then
+        iicon:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
+        iicon:GetHighlightTexture():SetBlendMode("ADD")
+    end
     iicon:SetNormalTexture([[Interface\InventoryItems\WoWUnknownItem01]])
     iicon:GetNormalTexture():SetDrawLayer("BACKGROUND")
     iicon:GetNormalTexture():SetVertexColor(1, 1, 1)

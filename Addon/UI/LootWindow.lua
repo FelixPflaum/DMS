@@ -58,7 +58,7 @@ local function CellUpdateRemoveButton(rowFrame, cellFrame, data, cols, row, real
 end
 
 local function CreateFrame()
-    frame = Env.UI.CreateButtonWindow("DMSLootWindow", L["Add Loot to Session"], 111, 111, 0, true, Env.settings.UI.LootWindow)
+    frame = Env.UI.CreateButtonWindow("DMSLootWindow", L["Add Loot to Session"], 111, 111, 0, true, Env.settings.UI.LootWindow, "RIGHT", -150, 0)
     frame:AddLeftButton("Add", Script_AddToSession)
     frame:AddRightButton("Cancel", ButtonScript_Close)
     frame.onTopCloseClicked = ButtonScript_Close
@@ -86,7 +86,7 @@ end)
 ---------------------------------------------------------------------------
 
 ---Update shown table content.
-LootList.OnListUpdate:RegisterCallback(function (items)
+LootList.OnListUpdate:RegisterCallback(function(items)
     if #items == 0 then return end
 
     frame:Show()
@@ -99,4 +99,8 @@ LootList.OnListUpdate:RegisterCallback(function (items)
         table.insert(dataTable, { itemIcon, itemLink, k })
     end
     st:SetData(dataTable, true)
+end)
+
+Env.UI:RegisterOnReset(function()
+    frame:Reset()
 end)

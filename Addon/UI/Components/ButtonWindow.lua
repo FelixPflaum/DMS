@@ -64,8 +64,11 @@ end
 ---@param topInsetOffset integer
 ---@param hasButtonBar boolean
 ---@param libWinConfig table
+---@param defaultPoint string|nil
+---@param defaultX number|nil
+---@param defaultY number|nil
 ---@return ButtonWindow
-local function CreateButtonWindow(name, title, width, height, topInsetOffset, hasButtonBar, libWinConfig)
+local function CreateButtonWindow(name, title, width, height, topInsetOffset, hasButtonBar, libWinConfig, defaultPoint, defaultX, defaultY)
     ---@class ButtonWindow : DefaultPanelTemplate
     ---@field SetTitle fun(self:ButtonWindow, title:string)
     ---@field onTopCloseClicked fun()|nil
@@ -99,7 +102,7 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
     frame:SetTitle(title)
     frame:SetFrameLevel(2)
     frame:SetFrameStrata("DIALOG")
-    frame:SetPoint("CENTER", 0, 0)
+    frame:SetPoint(defaultPoint or "CENTER", defaultX or 0, defaultY or 0)
     frame:SetWidth(width)
     frame:SetHeight(height)
     frame:SetClampedToScreen(true)
@@ -117,6 +120,15 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
     frame.SetContent = SetContent
     frame.AddLeftButton = AddLeftButton
     frame.AddRightButton = AddRightButton
+
+    frame.Reset = function ()
+        libWinConfig.x = defaultX or 0
+        libWinConfig.y = defaultY or 0
+        libWinConfig.point = defaultPoint or "CENTER"
+        frame:RestorePosition() ---@diagnostic disable-line: undefined-field
+        libWinConfig.scale = 1.0
+        frame:SetScale(1.0)
+    end
 
     return frame
 end
