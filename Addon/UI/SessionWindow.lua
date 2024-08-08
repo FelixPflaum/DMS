@@ -141,16 +141,13 @@ local function CreateItemDetails()
     frame.ItemInfoIcon = Env.UI.CreateIconButton(frame, 35, true)
     frame.ItemInfoIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, -25)
 
-    local fontLabel = "GameTooltipTextSmall"
-    local fontValue = fontLabel
-
     frame.ItenInfoItemName = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
     frame.ItenInfoItemName:SetPoint("TOPLEFT", frame.ItemInfoIcon, "TOPRIGHT", 5, -3)
 
     frame.ItemInfoItemInfo = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
     frame.ItemInfoItemInfo:SetPoint("TOPLEFT", frame.ItenInfoItemName, "BOTTOMLEFT", 0, -3)
 
-    frame.ItemInfoAwarded = frame:CreateFontString(nil, "OVERLAY", fontLabel)
+    frame.ItemInfoAwarded = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
     frame.ItemInfoAwarded:SetPoint("TOP", frame, "TOP", 0, -37)
     frame.ItemInfoAwarded:SetText("")
 
@@ -188,8 +185,6 @@ local function SetSelectedItem(guid)
     else
         frame.ItemInfoAwarded:SetText("")
     end
-
-    --TODO: tooltip
 
     local tableData = {}
     for _, v in pairs(item.responses) do
@@ -298,6 +293,8 @@ end
 -- Event Hooks
 
 Client.OnItemUpdate:RegisterCallback(function(item)
+    -- TODO: child item update
+
     UpdateItemSelect()
     if item.guid == selectedItemGuid then
         SetSelectedItem(selectedItemGuid)

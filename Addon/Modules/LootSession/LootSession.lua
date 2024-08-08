@@ -232,7 +232,7 @@ Env.Session.Comm = Comm
 ---@field endTime integer
 ---@field responses nil|Packet_HtC_LootSessionItemClient[]
 ---@field awardedTo string|nil
----@field isChild boolean|nil
+---@field parentGUID string|nil
 
 ---@class (exact) Packet_HtC_LootResponseUpdate
 ---@field itemGuid string
@@ -345,12 +345,13 @@ function Comm:Packet_HtC_LootSessionItem(item)
         veiled = item.veiled,
         startTime = item.startTime,
         endTime = item.endTime,
-        isChild = item.parentGUID ~= nil,
+        parentGUID = item.parentGUID,
     }
     if not item.veiled then
         pitem.awardedTo = item.awardedTo
-        -- TODO: only send if not a child item, client should set to parent responses
-        pitem.responses = self:Packet_HtC_LootSessionItemClient_List(item.responses)
+        if not item.parentGUID then
+            pitem.responses = self:Packet_HtC_LootSessionItemClient_List(item.responses)
+        end
     end
     return pitem
 end

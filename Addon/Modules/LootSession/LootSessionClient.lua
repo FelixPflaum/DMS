@@ -29,7 +29,7 @@ end
 ---@field startTime integer
 ---@field endTime integer
 ---@field responseSent boolean
----@field isChild boolean|nil
+---@field parentGUID string|nil
 ---@field responses table<string, LootSessionItemClient>
 ---@field awardedTo string|nil
 
@@ -152,10 +152,6 @@ function LootSessionClient:HandleEvent_OnHostMessageReceived(prefix, sender, opc
         LogDebug("Recieved unknown msg", opcode)
         Env:PrintVerbose(data)
     end
-
-    --TODO: CMSG_ITEM_RESPONSE = 102,
-    --Spawn roll window/list if items are announced initially and endtime < now
-    --Send response from there via this client session
 end
 
 ------------------------------------------------------------------------------------
@@ -222,7 +218,7 @@ end
 ---@param data Packet_HtC_LootSessionItem
 function LootSessionClient:HandleMessage_LootSessionItem(data)
     ---@type LootSessionClientItem
-    local pitem = {
+    local newItem = {
         guid = data.guid,
         order = data.order,
         itemId = data.itemId,
@@ -231,17 +227,25 @@ function LootSessionClient:HandleMessage_LootSessionItem(data)
         endTime = data.endTime,
         responses = {},
         responseSent = false,
-        isChild = data.isChild,
+        parentGUID = data.parentGUID,
     }
 
-    if not self.items[pitem.guid] then
-        LogDebug("item ack", pitem.guid)
-        self:SendToHost(Comm.OpCodes.CMSG_ITEM_ACK, pitem.guid)
+    if not self.items[newItem.guid] then
+        LogDebug("item ack", newItem.guid)
+        self:SendToHost(Comm.OpCodes.CMSG_ITEM_ACK, newItem.guid)
     end
 
-    self.items[pitem.guid] = pitem
+    self.items[newItem.guid] = newItem
 
-    if data.responses then
+    local parentGUID = newItem.parentGUID
+    if parentGUID then
+        local parentIitem = self.items[parentGUID]
+        if not parentIitem then
+            Env:PrintError(L["Got child item %s but data for parent %s doesn't exit!"]:format(newItem.guid, parentGUID))
+        else
+            newItem.responses = parentIitem.responses
+        end
+    elseif data.responses then
         ---@type table<string, LootSessionItemClient>
         local respList = {}
         for _, lootItemClientPacket in ipairs(data.responses) do
@@ -250,11 +254,11 @@ function LootSessionClient:HandleMessage_LootSessionItem(data)
                 respList[lootItemClientPacket.candidate] = lsic
             end
         end
-        pitem.responses = respList
+        newItem.responses = respList
     end
 
-    LogDebug("item updated HandleMessage_LootSessionItem", pitem.guid)
-    self.OnItemUpdate:Trigger(pitem)
+    LogDebug("item updated HandleMessage_LootSessionItem", newItem.guid)
+    self.OnItemUpdate:Trigger(newItem)
 end
 
 ---Send reponse for an item roll.
@@ -268,7 +272,7 @@ function LootSessionClient:RespondToItem(itemGuid, responseId)
     elseif not self.responses:GetResponse(responseId) then
         Env:PrintError(L["Tried to respond with response Id %d but response doesn't exist!"]:format(responseId))
         return
-    elseif item.isChild then
+    elseif item.parentGUID then
         Env:PrintError(L["Tried to respond to child item distribution %s!"]:format(itemGuid))
         return
     elseif item.endTime < time() then

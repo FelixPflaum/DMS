@@ -385,6 +385,13 @@ end
 C_Item = {}
 
 ---@param id number|string Item ID, Link or name
+---@return integer itemID
+---@return string itemType
+---@return string itemSubType
+---@return string itemEquipLoc
+---@return number icon
+---@return number classID
+---@return number subClassID
 function C_Item.GetItemInfoInstant(id) end
 
 GetItemInfoInstant = C_Item.GetItemInfoInstant

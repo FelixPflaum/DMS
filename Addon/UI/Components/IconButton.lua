@@ -32,10 +32,10 @@ end
 ---@param itemId integer|nil
 ---@param arg any Data given to the click callback.
 local function SetItemData(self, itemId, arg)
-    if not itemId then
+    local icon = itemId and select(5, C_Item.GetItemInfoInstant(itemId)) or nil
+    if not icon then
         self:SetNormalTexture([[Interface\InventoryItems\WoWUnknownItem01]])
     else
-        local _, _, _, _, icon, _, _ = C_Item.GetItemInfoInstant(itemId) -- TODO
         self:SetNormalTexture(icon)
     end
     self.itemId = itemId

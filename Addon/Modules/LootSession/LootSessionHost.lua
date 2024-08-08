@@ -38,12 +38,12 @@ end
 ---@field distributionGUID string Unique id for that specific loot distribution.
 ---@field order integer For ordering items in the UI.
 ---@field parentGUID string|nil If this item is a duplicate this will be the guid of the main item, i.e. the one people respond to.
----@field duplicateGUIDs string[]|nil If duplicates of the item exist their guids will be in here.
+---@field childGUIDs string[]|nil If duplicates of the item exist their guids will be in here.
 ---@field itemId integer
 ---@field veiled boolean Details are not sent to clients until item is unveiled.
 ---@field startTime integer
 ---@field endTime integer
----@field status "waiting"|"timeout"|"copy"
+---@field status "waiting"|"timeout"|"child"
 ---@field roller UniqueRoller
 ---@field responses table<string, LootSessionHostItemClient>
 ---@field awardedTo string|nil
@@ -384,17 +384,31 @@ function LootSessionHost:UnveilNextItem()
     end)
 
     for _, sessionItem in ipairs(orderedItem) do
-        if not sessionItem.awardedTo then
-            if sessionItem.veiled then
-                LogDebug("Unveil item because it's the next to be awarded: ", sessionItem.distributionGUID, sessionItem.itemId)
-                sessionItem.veiled = false
-                self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(sessionItem))
+        if not sessionItem.veiled then
+            if not sessionItem.awardedTo then
+                LogDebug("Last unveiled item not yet awarded, not unveiling another.")
             end
-            return
-        elseif sessionItem.veiled then
-            LogDebug("Unveil item because already awarded: ", sessionItem.distributionGUID, sessionItem.itemId)
+        else
+            LogDebug("Unveil item: ", sessionItem.distributionGUID, sessionItem.itemId)
             sessionItem.veiled = false
             self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(sessionItem))
+
+            if sessionItem.childGUIDs then
+                for _, childGUID in ipairs(sessionItem.childGUIDs) do
+                    local childItem = self.items[childGUID]
+                    if childItem.veiled then
+                        LogDebug("Unveil child item because parent was unveiled", childGUID)
+                        childItem.veiled = false
+                        -- TODO: don't send this, client should be able to unveil child items it self, it doesn't need this data
+                        self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(childItem))
+                    end
+                end
+            end
+
+            if not sessionItem.awardedTo then
+                LogDebug("Unveiled item is the next to be awarded, not unveiling more.")
+                return
+            end
         end
     end
 end
@@ -441,22 +455,22 @@ function LootSessionHost:ItemAdd(itemId)
     local lootItem
 
     if parentItem then
-        parentItem.duplicateGUIDs = parentItem.duplicateGUIDs or {}
+        parentItem.childGUIDs = parentItem.childGUIDs or {}
 
         lootItem = {
             distributionGUID = MakeGUID(),
-            order = parentItem.order + #parentItem.duplicateGUIDs + 1,
+            order = parentItem.order + #parentItem.childGUIDs + 1,
             itemId = itemId,
             veiled = parentItem.veiled,
             startTime = parentItem.startTime,
             endTime = parentItem.endTime,
-            status = "copy",
+            status = "child",
             responses = parentItem.responses,
             roller = parentItem.roller,
             parentGUID = parentItem.distributionGUID,
         }
 
-        table.insert(parentItem.duplicateGUIDs, lootItem.distributionGUID)
+        table.insert(parentItem.childGUIDs, lootItem.distributionGUID)
     else
         ---@type table<string, LootSessionHostItemClient>
         local candidateResponseList = {}

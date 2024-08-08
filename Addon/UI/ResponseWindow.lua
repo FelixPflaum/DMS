@@ -4,7 +4,7 @@ local Env = select(2, ...)
 local L = Env:GetLocalization()
 
 local Client = Env.Session.Client
-local frame ---@type ButtonWindow
+local frame ---@type ResponseFrame
 local rollItemFrames = {} ---@type RollItemFrame[]
 local responsesOrdered = {} ---@type LootResponse[]
 
@@ -150,11 +150,20 @@ local function GetOrCreateRollItemFrame(posIndex)
     return rollItemFrame
 end
 
--- Create frame when settings are ready.
-Env:OnAddonLoaded(function()
+local function CreateWindow()
+    ---@class ResponseFrame : ButtonWindow
     frame = Env.UI.CreateButtonWindow("DMSResponseWindow", L["Roll on Loot"], 300, 75, 25, false, DMS_Settings.UI.ResponseWindow,
         "TOPLEFT", 125, -200)
     frame:SetToplevel(true)
+
+    frame.TopText = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
+    frame.TopText:SetPoint("TOP", frame, "TOP", 0, -31)
+    frame.TopText:SetText("Items to roll: 23")
+end
+
+-- Create frame when settings are ready.
+Env:OnAddonLoaded(function()
+    CreateWindow()
 end)
 
 ---------------------------------------------------------------------------
@@ -213,7 +222,7 @@ Env.Session.Client.OnItemUpdate:RegisterCallback(function()
     local shown = 0
 
     for _, v in pairs(Client.items) do
-        if not v.isChild and not v.responseSent and v.endTime - now > 0 then
+        if not v.parentGUID and not v.responseSent and v.endTime - now > 0 then
             table.insert(itemsOrdered, v)
         end
     end
@@ -221,6 +230,8 @@ Env.Session.Client.OnItemUpdate:RegisterCallback(function()
     table.sort(itemsOrdered, function(a, b)
         return a.endTime < b.endTime
     end)
+
+    frame.TopText:SetText(L["Items to roll: %d"]:format(#itemsOrdered))
 
     for i = 1, MAX_ITEMS_SHOWN do
         local itemToShow = itemsOrdered[i]
