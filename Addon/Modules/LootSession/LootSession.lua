@@ -17,11 +17,11 @@ Env.Session = {}
 ---@field color [number, number, number]
 
 ---@class (exact) LootClientStatusList
----@field sent LootClientStatus
----@field waitingForResponse LootClientStatus
----@field unknown LootClientStatus
----@field responseTimeout LootClientStatus
----@field responded LootClientStatus
+---@field sent LootClientStatus Initial status. Data was sent.
+---@field waitingForResponse LootClientStatus Client sent ack, no roll response given yet.
+---@field unknown LootClientStatus CLient did not sent ack, may be offline, may not have the addon.
+---@field responseTimeout LootClientStatus Client did not give a roll response in time.
+---@field responded LootClientStatus Client responded with a roll choice.
 Env.Session.LootStatus = {
     ---@type LootClientStatus
     sent = { -- Loot data sent, waiting for answer...
@@ -228,9 +228,11 @@ Env.Session.Comm = Comm
 ---@field order integer
 ---@field itemId integer
 ---@field veiled boolean
+---@field startTime integer
 ---@field endTime integer
 ---@field responses nil|Packet_HtC_LootSessionItemClient[]
 ---@field awardedTo string|nil
+---@field isChild boolean|nil
 
 ---@class (exact) Packet_HtC_LootResponseUpdate
 ---@field itemGuid string
@@ -341,7 +343,9 @@ function Comm:Packet_HtC_LootSessionItem(item)
         order = item.order,
         itemId = item.itemId,
         veiled = item.veiled,
+        startTime = item.startTime,
         endTime = item.endTime,
+        isChild = item.parentGUID ~= nil,
     }
     if not item.veiled then
         pitem.awardedTo = item.awardedTo

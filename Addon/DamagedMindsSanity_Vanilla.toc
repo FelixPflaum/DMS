@@ -46,3 +46,4 @@ UI/Components/ButtonWindow.lua
 UI/SettingsTab.lua
 UI/SessionWindow.lua
 UI/LootWindow.lua
+UI/ResponseWindow.lua

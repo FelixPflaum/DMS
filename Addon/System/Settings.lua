@@ -16,6 +16,7 @@ local defaultSettings = {
     UI = {
         SessionWindow = {},
         LootWindow = {},
+        ResponseWindow = {},
     },
     lootSession = {
         timeout = 90,

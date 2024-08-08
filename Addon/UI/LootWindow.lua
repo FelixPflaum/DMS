@@ -90,6 +90,7 @@ LootList.OnListUpdate:RegisterCallback(function(items)
     if #items == 0 then return end
 
     frame:Show()
+    frame:SetFrameLevel(500)
 
     ---@type ST_DataMinimal[]
     local dataTable = {}

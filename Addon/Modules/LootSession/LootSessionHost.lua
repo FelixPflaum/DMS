@@ -6,6 +6,8 @@ local Net = Env.Net
 local Comm = Env.Session.Comm
 local LootStatus = Env.Session.LootStatus
 
+local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
+
 local function LogDebug(...)
     Env:PrintDebug("Host:", ...)
 end
@@ -113,22 +115,29 @@ end
 
 function LootSessionHost:TimerUpdate()
     if not self.isRunning then return end
+    LogDebug("TimerUpdate")
     local nowgt = GetTime()
 
     -- Update candidates
     -- TODO: offline and leftgroup, only send if changed
+    -- TODO: this is completely stupid, need a group update and a candidate update function, here candidates should update themself
+    -- split UpdateCandidateList
     ---@type table<string, LootCandidate>
     local changedLootCandidates = {}
+    local haveCandidateChange = false
     for _, candidate in pairs(self.candidates) do
         local oldIsResponding = candidate.isResponding
-        candidate.isResponding = candidate.lastMessage < nowgt - 25
+        candidate.isResponding = candidate.lastMessage - 25 < nowgt
         if oldIsResponding ~= candidate.isResponding then
             changedLootCandidates[candidate.name] = candidate
+            haveCandidateChange = true
         end
     end
 
-    local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
-    self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
+    if haveCandidateChange then
+        local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
+        self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
+    end
 
     -- Restart timer
     self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
@@ -173,6 +182,14 @@ function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
         local item = self.items[data.itemGuid]
         if not item then
             Env:PrintError(sender .. " tried to respond to unknown item " .. data.itemGuid)
+            return
+        end
+        if item.endTime < time() - RESPONSE_GRACE_PERIOD then
+            Env:PrintError(sender .. " tried to respond to expired item " .. data.itemGuid)
+            return
+        end
+        if item.parentGUID ~= nil then
+            Env:PrintError(sender .. " tried to respond to child item " .. data.itemGuid)
             return
         end
         local itemClient = item.responses[sender]
@@ -389,7 +406,7 @@ function LootSessionHost:ItemStopRoll(guid)
     if lootItem.status == "waiting" then
         lootItem.status = "timeout"
         for _, itemClient in pairs(lootItem.responses) do
-            if not itemClient.response and not itemClient.status == LootStatus.unknown then
+            if not itemClient.response and itemClient.status ~= LootStatus.unknown then
                 itemClient.status = LootStatus.responseTimeout
             end
         end
@@ -473,10 +490,10 @@ function LootSessionHost:ItemAdd(itemId)
 
     self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
 
-    self.timers:StartUnique(lootItem.distributionGUID .. "ackcheck", 10, function(key)
+    self.timers:StartUnique(lootItem.distributionGUID .. "ackcheck", 6, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", lootItem.distributionGUID)
         for _, itemClient in pairs(lootItem.responses) do
-            if not itemClient.response then
+            if itemClient.status == LootStatus.sent then
                 itemClient.status = LootStatus.unknown
             end
         end

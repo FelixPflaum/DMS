@@ -100,7 +100,6 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
 
     -- Set default values.
     frame:SetTitle(title)
-    frame:SetFrameLevel(2)
     frame:SetFrameStrata("DIALOG")
     frame:SetPoint(defaultPoint or "CENTER", defaultX or 0, defaultY or 0)
     frame:SetWidth(width)

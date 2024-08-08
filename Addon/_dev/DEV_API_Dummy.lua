@@ -135,6 +135,7 @@ end
 ---@field SetFrameStrata fun(self:WoWFrame, strata:string) [Wiki](https://warcraft.wiki.gg/wiki/Frame_Strata)
 ---@field SetScale fun(self:WoWFrame, scale:number)
 ---@field IsShown fun(self:WoWFrame):boolean
+---@field SetToplevel fun(self:WoWFrame, isTopLevel:boolean)
 
 ---@class ButtonFrameTemplate : WoWFrame
 ---@field TitleText FontString
@@ -343,11 +344,23 @@ local ScriptRegionResizing = {
 ---@param frame WoWFrame
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
+---@class StatusBar : WoWFrame
+---@field SetMinMaxValues fun(self:StatusBar, minValue, maxValue) - Set the bounds of the statusbar.
+---@field SetOrientation fun(self:StatusBar, orientation) - Sets the orientation of the statusbar.
+---@field SetReverseFill fun(self:StatusBar, isReverseFill) - Sets the fill direction of the statusbar.
+---@field SetRotatesTexture fun(self:StatusBar, rotatesTexture) - Set the color of the statusbar.
+---@field SetStatusBarColor fun(self:StatusBar, colorR, colorG, colorB, a:number|nil)
+---@field SetStatusBarDesaturated fun([desaturated])
+---@field SetStatusBarDesaturation fun(self:StatusBar, desaturation)
+---@field SetStatusBarTexture fun(self:StatusBar, asset) - Sets the texture of the statusbar.
+---@field SetValue fun(self:StatusBar, value) - Set the value of the statusbar.
+
 ---Creates a Frame object.
 ---@return WoWFrame
 ---@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrame
 ---@overload fun(frameType:"Button", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrameButton
 ---@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): GameTooltip
+---@overload fun(frameType:"StatusBar", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): StatusBar
 function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
 
 --- name, rank, icon, castTime, minRange, maxRange
@@ -817,6 +830,11 @@ function GuildRoster() end
 ---@return TimerHandle
 function C_Timer.NewTicker(interval, callback, interations) end
 
+---@param duration number duration in seconds.
+---@param callback fun(t:TimerHandle)
+---@return TimerHandle
+function C_Timer.NewTImer(duration, callback) end
+
 ---Returns the system uptime of your computer in seconds, with millisecond precision.
 ---@return number
 function GetTime() end
@@ -867,3 +885,6 @@ Enum.ItemQuality = {
 ---@param slotIndex integer
 ---@return ContainerItemInfo|nil info Returns nil if the container slot is empty.
 function C_Container.GetContainerItemInfo(containerIndex, slotIndex) end
+
+---@type number[][]
+CLASS_ICON_TCOORDS = {}

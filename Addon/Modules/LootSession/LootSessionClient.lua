@@ -26,14 +26,17 @@ end
 ---@field order integer
 ---@field itemId integer
 ---@field veiled boolean
+---@field startTime integer
 ---@field endTime integer
+---@field responseSent boolean
+---@field isChild boolean|nil
 ---@field responses table<string, LootSessionItemClient>
 ---@field awardedTo string|nil
 
 ---@class (exact) LootSessionClient
 ---@field sessionGUID string
 ---@field hostName string
----@field responses LootResponses
+---@field responses LootResponses|nil
 ---@field candidates table<string, LootCandidate>
 ---@field isRunning boolean
 ---@field keepaliveTimer TimerHandle|nil
@@ -224,8 +227,11 @@ function LootSessionClient:HandleMessage_LootSessionItem(data)
         order = data.order,
         itemId = data.itemId,
         veiled = data.veiled,
+        startTime = data.startTime,
         endTime = data.endTime,
         responses = {},
+        responseSent = false,
+        isChild = data.isChild,
     }
 
     if not self.items[pitem.guid] then
@@ -249,6 +255,35 @@ function LootSessionClient:HandleMessage_LootSessionItem(data)
 
     LogDebug("item updated HandleMessage_LootSessionItem", pitem.guid)
     self.OnItemUpdate:Trigger(pitem)
+end
+
+---Send reponse for an item roll.
+---@param itemGuid string
+---@param responseId integer
+function LootSessionClient:RespondToItem(itemGuid, responseId)
+    local item = self.items[itemGuid]
+    if not item then
+        Env:PrintError(L["Tried to respond to item %s but distribution with that GUID doesn't exist!"]:format(itemGuid))
+        return
+    elseif not self.responses:GetResponse(responseId) then
+        Env:PrintError(L["Tried to respond with response Id %d but response doesn't exist!"]:format(responseId))
+        return
+    elseif item.isChild then
+        Env:PrintError(L["Tried to respond to child item distribution %s!"]:format(itemGuid))
+        return
+    elseif item.endTime < time() then
+        Env:PrintError(L["Item %s already expired, did not send response!"]:format(itemGuid))
+        return
+    end
+
+    ---@type Packet_CtH_LootClientResponse
+    local p = {
+        itemGuid = itemGuid,
+        responseId = responseId,
+    }
+    self:SendToHost(Comm.OpCodes.CMSG_ITEM_RESPONSE, p)
+    item.responseSent = true
+    self.OnItemUpdate:Trigger(item)
 end
 
 ------------------------------------------------------------------
@@ -282,14 +317,4 @@ Env.Net:Register(Comm.PREFIX, function(prefix, sender, opcode, data)
             EndSession()
         end
     end
-end)
-
-Env:RegisterSlashCommand("rtest", "respiond to item test", function(args)
-    print("respond to", args[1], "with", args[2])
-    ---@type Packet_CtH_LootClientResponse
-    local p = {
-        itemGuid = args[1],
-        responseId = tonumber(args[2]),
-    }
-    Net:SendWhisper(Comm.PREFIX, LootSessionClient.hostName, Comm.OpCodes.CMSG_ITEM_RESPONSE, p)
 end)

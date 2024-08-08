@@ -100,7 +100,6 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button
         local itemInfo = C_Container.GetContainerItemInfo(self:GetParent():GetID(), self:GetID())
         if itemInfo then
             table.insert(itemList, itemInfo.itemID)
-            print(#itemList)
             LootList.OnListUpdate:Trigger(itemList)
         end
     end

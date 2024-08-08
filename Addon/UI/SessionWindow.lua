@@ -138,9 +138,8 @@ local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow
 end
 
 local function CreateItemDetails()
-    frame.ItemInfoIcon = Env.UI.CreateIconButton(frame, 35)
+    frame.ItemInfoIcon = Env.UI.CreateIconButton(frame, 35, true)
     frame.ItemInfoIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, -25)
-    frame.ItemInfoIcon:EnableMouse(false)
 
     local fontLabel = "GameTooltipTextSmall"
     local fontValue = fontLabel
@@ -242,9 +241,6 @@ end)
 ---@param guid string
 local function Script_SelectItem(guid)
     selectedItemGuid = guid
-    --TODO: item selection
-    print("Clicked item", guid)
-
     SetSelectedItem(guid)
 end
 
@@ -323,7 +319,7 @@ local function CreateWindow()
     ---@class SessionWindow : ButtonFrameTemplate
     frame = CreateFrame("Frame", "DMSSessionWindow", UIParent, "ButtonFrameTemplate")
     frame:Hide()
-    frame:SetFrameStrata("DIALOG")
+    frame:SetFrameStrata("HIGH")
     frame:SetPoint("CENTER", 0, 0)
     frame:SetWidth(WIDTH)
     frame:SetHeight(HEIGHT)

@@ -25,7 +25,7 @@ function UniqueTimers:StartUnique(key, duration, callback, object, noError, ...)
     local args = {...}
 
     if type(callback) == "function" then
-        _self._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
+        _self._timers[key] = C_Timer.NewTimer(duration, function(t)
             _self._timers[key] = nil
             callback(key, unpack(args))
         end)
@@ -34,9 +34,9 @@ function UniqueTimers:StartUnique(key, duration, callback, object, noError, ...)
 
     assert(object, "obj can't be nil if callback is a string!")
 
-    _self._timers[key] = C_Timer.NewTicker(GetTime() + duration, function(t)
+    _self._timers[key] = C_Timer.NewTimer(duration, function(t)
         _self._timers[key] = nil
-        object["callback"](object, key, unpack(args))
+        object[callback](object, key, unpack(args))
     end)
 end
 
