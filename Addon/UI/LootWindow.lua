@@ -44,7 +44,7 @@ local ROW_HEIGHT = 30
 local function CellUpdateIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
     local texture = data[realrow][column]
-    cellFrame:SetNormalTexture(texture)
+    cellFrame:SetNormalTexture(texture or [[Interface/Icons/inv_misc_questionmark]])
     local link = data[realrow][2]
     cellFrame:SetScript("OnEnter", function(f) ShowItemTooltip(f, link) end)
     cellFrame:SetScript("OnLeave", GameTooltip_Hide)
@@ -58,7 +58,8 @@ local function CellUpdateRemoveButton(rowFrame, cellFrame, data, cols, row, real
 end
 
 local function CreateFrame()
-    frame = Env.UI.CreateButtonWindow("DMSLootWindow", L["Add Loot to Session"], 111, 111, 0, true, Env.settings.UI.LootWindow, "RIGHT", -150, 0)
+    frame = Env.UI.CreateButtonWindow("DMSLootWindow", L["Add Loot to Session"], 111, 111, 0, true, Env.settings.UI.LootWindow,
+        "RIGHT", -150, 0)
     frame:AddLeftButton("Add", Script_AddToSession)
     frame:AddRightButton("Cancel", ButtonScript_Close)
     frame.onTopCloseClicked = ButtonScript_Close
@@ -85,6 +86,8 @@ end)
 --- Event Hooks
 ---------------------------------------------------------------------------
 
+local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
+
 ---Update shown table content.
 LootList.OnListUpdate:RegisterCallback(function(items)
     if #items == 0 then return end
@@ -95,9 +98,13 @@ LootList.OnListUpdate:RegisterCallback(function(items)
     ---@type ST_DataMinimal[]
     local dataTable = {}
     for k, itemId in ipairs(items) do
-        local _, itemLink = GetItemInfo(itemId)
-        local itemIcon = GetItemIcon(itemId)
-        table.insert(dataTable, { itemIcon, itemLink, k })
+        local rowData = { nil, itemId, k } ---@type any[]
+        DoWhenItemInfoReady(itemId, function(_, itemLink, _, _, _, _, _, _, _, itemTexture)
+            rowData[1] = itemTexture
+            rowData[2] = itemLink
+            st:Refresh()
+        end)
+        table.insert(dataTable, rowData)
     end
     st:SetData(dataTable, true)
 end)

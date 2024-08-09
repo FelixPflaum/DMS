@@ -10,6 +10,7 @@ local ScrollingTable = LibStub("ScrollingTable") ---@type LibScrollingTable
 
 local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
+local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 
 local Host = Env.Session.Host
 local Client = Env.Session.Client
@@ -41,10 +42,11 @@ local function UpdateShownItem()
     end
 
     frame.ItemInfoIcon:SetItemData(item.itemId)
-    local _, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc = GetItemInfo(item.itemId)
-    frame.ItenInfoItemName:SetText(itemLink)
-    local equipString = _G[itemEquipLoc] or ""
-    frame.ItemInfoItemInfo:SetText(itemSubType .. " " .. equipString)
+    DoWhenItemInfoReady(item.itemId, function(_, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc)
+        frame.ItenInfoItemName:SetText(itemLink)
+        local equipString = _G[itemEquipLoc] or ""
+        frame.ItemInfoItemInfo:SetText(itemSubType .. " " .. equipString)
+    end)
 
     if item.awardedTo then
         frame.ItemInfoAwarded:SetText(L["Awarded to: %s"]:format(item.awardedTo))

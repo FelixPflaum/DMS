@@ -3,6 +3,7 @@ local Env = select(2, ...)
 
 Env.Item = {}
 
+local L = Env:GetLocalization()
 local TOOLTIP_NAME = "DMSItemScanTooltip"
 local scanTip = CreateFrame("GameTooltip", TOOLTIP_NAME, nil, "GameTooltipTemplate")
 scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -78,5 +79,57 @@ function Env.Item:GetIdFromLink(itemLink)
         if num then
             return math.floor(num)
         end
+    end
+end
+
+do
+    ---@alias ItemInfoRdyFunc fun(itemName:string|nil,itemLink:string,itemQuality:integer,itemLevel:number,itemMinLevel:number,itemType:string,itemSubType:string,itemStackCount:number,itemEquipLoc:string,itemTexture:number,sellPrice:number,classID:integer,subclassID:integer,bindType:integer,expacID:integer,setID:integer,isCraftingReagent:boolean)
+
+    local itemsToWaitFor = {} ---@type table<number, ItemInfoRdyFunc[]>
+    local itemsWaitedOn = 0
+
+    ---@param itemId integer
+    ---@param success boolean
+    local function OnItemInfoReceived(itemId, success)
+        Env:PrintDebug("Item data for item " .. itemId .. " received. Success:", success)
+        itemsWaitedOn = itemsWaitedOn - 1
+        local cbs = itemsToWaitFor[itemId]
+        if cbs then
+            local itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType, expansionID, setID, isCraftingReagent =
+                C_Item.GetItemInfo(itemId)
+            for _, cb in ipairs(cbs) do
+                cb(itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc,
+                    itemTexture, sellPrice, classID, subclassID, bindType, expansionID, setID, isCraftingReagent)
+            end
+        end
+        if itemsToWaitFor == 0 then
+            Env:UnregisterEvent("ITEM_DATA_LOAD_RESULT", OnItemInfoReceived)
+        end
+    end
+
+    ---Trigger callback with GetItemInfo() data when it is available on the client.
+    ---@param itemId integer
+    ---@param onReady ItemInfoRdyFunc
+    Env.Item.DoWhenItemInfoReady = function(itemId, onReady)
+        if not C_Item.DoesItemExistByID(itemId) then
+            Env:PrintError(L["Invalid item Id given to DoWhenItemInfoReady!"])
+            ---@diagnostic disable-next-line: missing-parameter
+            onReady()
+            return
+        end
+
+        if C_Item.IsItemDataCachedByID(itemId) then
+            onReady(C_Item.GetItemInfo(itemId))
+            return
+        end
+
+        Env:PrintDebug("Item info for item " .. itemId .. " was not ready, waiting for data from server.")
+        itemsToWaitFor[itemId] = itemsToWaitFor[itemId] or {}
+        table.insert(itemsToWaitFor[itemId], onReady)
+        if itemsWaitedOn == 0 then
+            Env:RegisterEvent("ITEM_DATA_LOAD_RESULT", OnItemInfoReceived)
+        end
+        C_Item.RequestLoadItemDataByID(itemId)
+        itemsWaitedOn = itemsWaitedOn + 1
     end
 end

@@ -74,10 +74,19 @@ Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
         for _, v in ipairs(items) do
             table.insert(itemList, v.itemId)
         end
-    elseif tonumber(args[1]) and tonumber(args[1]) < 50 then
-        local items = GetTradeableItemsFromBags(tonumber(args[1]))
-        for _, v in ipairs(items) do
-            table.insert(itemList, v.itemId)
+    elseif tonumber(args[1]) then
+        local num = tonumber(args[1]) ---@cast num integer
+        if num < 50 then
+            local items = GetTradeableItemsFromBags(tonumber(args[1]))
+            for _, v in ipairs(items) do
+                table.insert(itemList, v.itemId)
+            end
+        else
+            if not C_Item.DoesItemExistByID(num) then
+                Env:PrintError(L["Item with Id %d does not exist!"])
+                return
+            end
+            table.insert(itemList, num)
         end
     else
         for _, arg in ipairs(args) do

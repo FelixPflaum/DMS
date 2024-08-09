@@ -398,6 +398,37 @@ function C_Item.GetItemInfoInstant(id) end
 
 GetItemInfoInstant = C_Item.GetItemInfoInstant
 
+---@param ident string|number ItemLink, Name or ID
+---@return string itemName
+---@return string itemLink
+---@return integer itemQuality
+---@return number itemLevel
+---@return number itemMinLevel
+---@return string itemType
+---@return string itemSubType
+---@return number itemStackCount
+---@return string itemEquipLoc
+---@return number itemTexture
+---@return number sellPrice
+---@return integer classID
+---@return integer subclassID
+---@return integer bindType
+---@return integer expacID
+---@return integer setID
+---@return boolean isCraftingReagent
+function  C_Item.GetItemInfo(ident) end
+
+GetItemInfo = C_Item.GetItemInfo
+
+---@param itemId integer
+---@return boolean
+function C_Item.DoesItemExistByID(itemId) end
+
+---@param itemId integer
+---@return boolean
+function C_Item.IsItemDataCachedByID(itemId) end
+
+
 ---Return the icon texture for the item.
 ---@param itemID integer
 ---@return string
@@ -490,27 +521,6 @@ end
 function UnitAttackSpeed(unit)
     return 1.5, 1.2;
 end
-
---- Returns information about an item.
----@param itemID_itemString_itemName_itemLink string|number @ItemLink, Name or ID
----@return string itemName
----@return string itemLink
----@return integer itemQuality
----@return number itemLevel
----@return number itemMinLevel
----@return string itemType
----@return string itemSubType
----@return number itemStackCount
----@return string itemEquipLoc
----@return number itemTexture
----@return number sellPrice
----@return integer classID
----@return integer subclassID
----@return integer bindType
----@return integer expacID
----@return integer setID
----@return boolean isCraftingReagent
-function GetItemInfo(itemID_itemString_itemName_itemLink) end
 
 function GetInventoryItemID(unit, slot)
     return 123;

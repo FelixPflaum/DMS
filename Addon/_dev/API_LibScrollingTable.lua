@@ -48,6 +48,8 @@ function LibST:CreateST(cols, numRows, rowHeight, highlight, parent, multiselect
 ---@overload fun(self:ST_ScrollingTable, rowData:ST_DataMinimal[], isMinimal:true)
 function ST_ScrollingTable:SetData(rowData, isMinimal) end
 
+function ST_ScrollingTable:Refresh() end
+
 ---@param events table<string, ST_CellUpdateFunc>
 ---@param removeOld boolean|nil
 function ST_ScrollingTable:RegisterEvents(events, removeOld) end
