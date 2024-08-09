@@ -1,18 +1,7 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
----Set color of border texture.
----@param self IconButon
----@param color [number, number, number]|"grey"|"white" RGB or predifined color.
-local function SetBorderColor(self, color)
-    if type(color) == "table" then
-        self:SetBackdropBorderColor(color[1], color[2], color[3], 1)
-    elseif color == "grey" then
-        self:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-    elseif color == "white" then
-        self:SetBackdropBorderColor(1, 1, 1, 1)
-    end
-end
+local GetImagePath = Env.UI.GetImagePath
 
 ---Set normal texture desatured state.
 ---@param self IconButon
@@ -42,6 +31,37 @@ local function SetItemData(self, itemId, arg)
     self.clickCallbackArg = arg
 end
 
+---Show or hide checkmark.
+---@param self IconButon
+---@param show boolean
+local function ShowCheckmark(self, show)
+    if show then
+        self.OverlayCheckmark:Show()
+    else
+        self.OverlayCheckmark:Hide()
+    end
+end
+
+---Show or hide border.
+---@param self IconButon
+---@param show boolean
+---@param color number[]|"grey"|"white"|nil RGB or predifined color, defaults to white.
+local function ShowBorder(self, show, color)
+    if show then
+        color = color or "white"
+        if type(color) == "table" then
+            self.OverLayTexture:SetVertexColor(color[1], color[2], color[3])
+        elseif color == "grey" then
+            self.OverLayTexture:SetVertexColor(0.6, 0.6, 0.6)
+        elseif color == "white" then
+            self.OverLayTexture:SetVertexColor(1, 1, 1)
+        end
+        self.OverLayTexture:Show()
+    else
+        self.OverLayTexture:Hide()
+    end
+end
+
 ---@param parent WoWFrame
 ---@param size number
 ---@param noHighlight boolean|nil
@@ -60,10 +80,9 @@ local function CreateIconButton(parent, size, noHighlight)
     iicon:SetNormalTexture([[Interface\InventoryItems\WoWUnknownItem01]])
     iicon:GetNormalTexture():SetDrawLayer("BACKGROUND")
     iicon:GetNormalTexture():SetVertexColor(1, 1, 1)
-    iicon:SetBackdrop({ bgFile = "", edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], edgeSize = 18 })
+    iicon:SetBackdrop({ bgFile = "", edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], edgeSize = 15 })
     iicon:EnableMouse(true)
     iicon:RegisterForClicks("AnyUp")
-    iicon.SetBorderColor = SetBorderColor ---@diagnostic disable-line: inject-field
     iicon.Desaturate = SetDesaturated ---@diagnostic disable-line: inject-field
     iicon.SetOnClick = SetOnClick ---@diagnostic disable-line: inject-field
     iicon.SetItemData = SetItemData ---@diagnostic disable-line: inject-field
@@ -74,10 +93,28 @@ local function CreateIconButton(parent, size, noHighlight)
     end)
     iicon:SetScript("OnEnter", function(frame)
         if iicon.itemId == nil then return end
-        GameTooltip:SetOwner(frame, "ANCHOR_BOTTOMRIGHT")
+        GameTooltip:SetOwner(frame, "ANCHOR_BOTTOMLEFT")
         GameTooltip:SetHyperlink("item:" .. iicon.itemId)
     end)
-    iicon:SetScript("OnLeave", function() GameTooltip_Hide() end)
+    iicon:SetScript("OnLeave", GameTooltip_Hide)
+
+    local checkMarkOverlayInset = size / 10
+    iicon.OverlayCheckmark = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
+    iicon.OverlayCheckmark:SetTexture(GetImagePath("check_shadow.png"))
+    iicon.OverlayCheckmark:SetPoint("TOPLEFT", checkMarkOverlayInset, -checkMarkOverlayInset)
+    iicon.OverlayCheckmark:SetPoint("BOTTOMRIGHT", -checkMarkOverlayInset, checkMarkOverlayInset)
+    iicon.OverlayCheckmark:Hide()
+    iicon.ShowCheckmark = ShowCheckmark ---@diagnostic disable-line: inject-field
+
+    local borderOverlayInset = 1
+    iicon.OverLayTexture = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
+    iicon.OverLayTexture:SetTexture(GetImagePath("border_r10.png"))
+    iicon.OverLayTexture:SetPoint("TOPLEFT", borderOverlayInset, -borderOverlayInset)
+    iicon.OverLayTexture:SetPoint("BOTTOMRIGHT", -borderOverlayInset, borderOverlayInset)
+    iicon.OverLayTexture:SetAlpha(0.66)
+    iicon.OverLayTexture:Hide()
+    iicon.ShowBorder = ShowBorder ---@diagnostic disable-line: inject-field
+
     return iicon
 end
 

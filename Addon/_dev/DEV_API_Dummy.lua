@@ -179,6 +179,8 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field GetWidth fun(self:ScriptRegionResizing):number
 ---@field GetHeight fun(self:ScriptRegionResizing):number
 ---@field SetSize fun(self:ScriptRegionResizing, w:number, h:number):nil
+---@field Show fun(self:ScriptRegionResizing)
+---@field Hide fun(self:ScriptRegionResizing)
 local ScriptRegionResizing = {
     SetPoint = SetPointDummy
 }

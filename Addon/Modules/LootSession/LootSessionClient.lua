@@ -217,25 +217,33 @@ end
 
 ---@param data Packet_HtC_LootSessionItem
 function LootSessionClient:HandleMessage_LootSessionItem(data)
-    ---@type LootSessionClientItem
-    local newItem = {
-        guid = data.guid,
-        order = data.order,
-        itemId = data.itemId,
-        veiled = data.veiled,
-        startTime = data.startTime,
-        endTime = data.endTime,
-        responses = {},
-        responseSent = false,
-        parentGUID = data.parentGUID,
-    }
+    local newItem = self.items[data.guid]
 
-    if not self.items[newItem.guid] then
+    if not newItem then
+        newItem = {
+            guid = data.guid,
+            order = data.order,
+            itemId = data.itemId,
+            veiled = data.veiled,
+            startTime = data.startTime,
+            endTime = data.endTime,
+            responses = {},
+            responseSent = false,
+            parentGUID = data.parentGUID,
+        }
+        self.items[data.guid] = newItem
         LogDebug("item ack", newItem.guid)
         self:SendToHost(Comm.OpCodes.CMSG_ITEM_ACK, newItem.guid)
+    else
+        LogDebug("Update item", newItem.guid)
+        newItem.guid = data.guid
+        newItem.order = data.order
+        newItem.itemId = data.itemId
+        newItem.veiled = data.veiled
+        newItem.startTime = data.startTime
+        newItem.endTime = data.endTime
+        newItem.parentGUID = data.parentGUID
     end
-
-    self.items[newItem.guid] = newItem
 
     local parentGUID = newItem.parentGUID
     if parentGUID then
