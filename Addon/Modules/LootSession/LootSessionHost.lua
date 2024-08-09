@@ -387,6 +387,7 @@ function LootSessionHost:UnveilNextItem()
         if not sessionItem.veiled then
             if not sessionItem.awardedTo then
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
+                return
             end
         else
             LogDebug("Unveil item: ", sessionItem.distributionGUID, sessionItem.itemId)

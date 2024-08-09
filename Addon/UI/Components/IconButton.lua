@@ -31,6 +31,12 @@ local function SetItemData(self, itemId, arg)
     self.clickCallbackArg = arg
 end
 
+---@param self IconButon
+---@return any
+local function GetArg(self)
+    return self.clickCallbackArg
+end
+
 ---Show or hide checkmark.
 ---@param self IconButon
 ---@param show boolean
@@ -45,15 +51,12 @@ end
 ---Show or hide border.
 ---@param self IconButon
 ---@param show boolean
----@param color number[]|"grey"|"white"|nil RGB or predifined color, defaults to white.
+---@param color number[]|nil RGB or predifined color, defaults to white.
 local function ShowBorder(self, show, color)
     if show then
-        color = color or "white"
-        if type(color) == "table" then
+        if color then
             self.OverLayTexture:SetVertexColor(color[1], color[2], color[3])
-        elseif color == "grey" then
-            self.OverLayTexture:SetVertexColor(0.6, 0.6, 0.6)
-        elseif color == "white" then
+        else
             self.OverLayTexture:SetVertexColor(1, 1, 1)
         end
         self.OverLayTexture:Show()
@@ -83,9 +86,10 @@ local function CreateIconButton(parent, size, noHighlight)
     iicon:SetBackdrop({ bgFile = "", edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], edgeSize = 15 })
     iicon:EnableMouse(true)
     iicon:RegisterForClicks("AnyUp")
-    iicon.Desaturate = SetDesaturated ---@diagnostic disable-line: inject-field
+    iicon.SetDesaturated = SetDesaturated ---@diagnostic disable-line: inject-field
     iicon.SetOnClick = SetOnClick ---@diagnostic disable-line: inject-field
     iicon.SetItemData = SetItemData ---@diagnostic disable-line: inject-field
+    iicon.GetArg = GetArg ---@diagnostic disable-line: inject-field
     iicon:SetScript("OnClick", function()
         if iicon.onClickCallback then
             iicon.onClickCallback(iicon.clickCallbackArg)
