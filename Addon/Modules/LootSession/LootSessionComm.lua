@@ -143,11 +143,12 @@ do
     ---@field responses LootResponse[]
     ---@field commVersion integer
 
-    ---@param sess SessionHost
-    function Sender.HMSG_SESSION_START(sess)
+    ---@param guid string
+    ---@param responses LootResponse[]
+    function Sender.HMSG_SESSION_START(guid, responses)
         local p = { ---@type Packet_HMSG_SESSION_START
-            guid = sess.guid,
-            responses = sess.responses.responses,
+            guid = guid,
+            responses = responses,
             commVersion = COMM_VERSION,
         }
         SendToClients(OPCODES.HMSG_SESSION_START, p)
