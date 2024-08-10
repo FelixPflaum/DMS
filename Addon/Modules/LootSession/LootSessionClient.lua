@@ -29,7 +29,7 @@ end
 
 ---@class (exact) SessionClient_Item
 ---@field guid string
----@field order integer The order/position of the item. 
+---@field order integer The order/position of the item.
 ---@field itemId integer The game's item Id.
 ---@field veiled boolean Whether this item's responses are shown to the client.
 ---@field startTime integer time() stamp of when the roll started.
@@ -103,6 +103,7 @@ function InitClient(hostName, guid, responses)
     Client.items = {}
     Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
+    Env:RegisterEvent("UNIT_CONNECTION", Client)
     Client.OnStart:Trigger()
 end
 
@@ -111,6 +112,7 @@ local function EndSession()
     timers:CancelAll()
     Client.isRunning = false
     Comm:ClientSetAllowedHost("_nohost_")
+    Env:UnregisterEvent("UNIT_CONNECTION", Client)
     Client.OnEnd:Trigger()
 end
 
@@ -146,10 +148,29 @@ end)
 Comm.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
     Env:PrintVerbose(lcs)
     for _, lc in ipairs(lcs) do
-        Client.candidates[lc.name] = lc
+        Client.candidates[lc.name] = {
+            name = lc.name,
+            classId = lc.classId,
+            leftGroup = lc.leftGroup,
+            isResponding = lc.isResponding,
+            isOffline = not UnitIsConnected(lc.name),
+        }
     end
     Client.OnCandidateUpdate:Trigger()
 end)
+
+---@private
+---@param unit string
+---@param isConnected boolean
+function Client:UNIT_CONNECTION(unit, isConnected)
+    local name = UnitName(unit)
+    local candidate = Client.candidates[name]
+    LogDebug("UNIT_CONNECTION", name, isConnected, "have candidate", candidate ~= nil)
+    if candidate and candidate.isOffline == isConnected then
+        candidate.isOffline = not isConnected
+        Client.OnCandidateUpdate:Trigger()
+    end
+end
 
 ------------------------------------------------------------------
 --- Items

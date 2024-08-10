@@ -25,7 +25,6 @@ end
 ---@class (exact) SessionHost_Candidate
 ---@field name string
 ---@field classId integer
----@field isOffline boolean
 ---@field leftGroup boolean
 ---@field isResponding boolean
 ---@field lastMessage number GetTime()
@@ -111,10 +110,6 @@ function Host:TimerUpdate()
     LogDebug("TimerUpdate")
     local nowgt = GetTime()
 
-    -- Update candidates
-    -- TODO: offline and leftgroup, only send if changed
-    -- TODO: this is completely stupid, need a group update and a candidate update function, here candidates should update themself
-    -- split UpdateCandidateList
     ---@type table<string, SessionHost_Candidate>
     local changedLootCandidates = {}
     local haveCandidateChange = false
@@ -176,7 +171,6 @@ function Host:UpdateCandidateList()
         newList[myName] = {
             name = myName,
             classId = select(3, UnitClass("player")),
-            isOffline = false,
             leftGroup = false,
             isResponding = false,
             lastMessage = 0,
@@ -189,7 +183,6 @@ function Host:UpdateCandidateList()
             newList[name] = {
                 name = name,
                 classId = select(3, UnitClass(unit)),
-                isOffline = UnitIsConnected(unit),
                 leftGroup = false,
                 isResponding = false,
                 lastMessage = 0,
@@ -209,11 +202,6 @@ function Host:UpdateCandidateList()
         else
             if oldEntry.leftGroup then
                 oldEntry.leftGroup = false
-                changed = true
-                changedLootCandidates[oldName] = oldEntry
-            end
-            if oldEntry.isOffline ~= newEntry.isOffline then
-                oldEntry.isOffline = newEntry.isOffline
                 changed = true
                 changedLootCandidates[oldName] = oldEntry
             end
@@ -241,7 +229,7 @@ end
 
 ---@private
 function Host:GROUP_ROSTER_UPDATE()
-    LogDebug("LootSessionHost GROUP_ROSTER_UPDATE")
+    LogDebug("GROUP_ROSTER_UPDATE")
     local tkey = "groupupdate"
     if timers:HasTimer(tkey) then return end
     LogDebug("Start UpdateCandidateList timer")

@@ -200,6 +200,12 @@ do
     ---@field c integer
     ---@field s integer
 
+    ---@class (exact) Packet_HMSG_CANDIDATE_UPDATE
+    ---@field name string
+    ---@field classId integer
+    ---@field leftGroup boolean
+    ---@field isResponding boolean
+
     ---@param candidate SessionHost_Candidate
     local function PackLootCandidate(candidate)
         local data = { ---@type PackedLootCandidate
@@ -207,9 +213,6 @@ do
             c = candidate.classId,
             s = 0
         }
-        if candidate.isOffline then
-            data.s = data.s + 0x1
-        end
         if candidate.leftGroup then
             data.s = data.s + 0x2
         end
@@ -234,20 +237,19 @@ do
     end
 
     ---@class CommEvent_HMSG_CANDIDATE_UPDATE
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, cb:fun(lcs:SessionClient_Candidate[], sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, lcs:SessionClient_Candidate[], sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, cb:fun(lcs:Packet_HMSG_CANDIDATE_UPDATE[], sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, lcs:Packet_HMSG_CANDIDATE_UPDATE[], sender:string)
     Events.HMSG_CANDIDATE_UPDATE = Env:NewEventEmitter()
 
     messageFilter[OPCODES.HMSG_CANDIDATE_UPDATE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_CANDIDATE_UPDATE] = function(data, sender)
         ---@cast data PackedLootCandidate[]
-        local lcs = {} ---@type SessionClient_Candidate[]
+        local lcs = {} ---@type Packet_HMSG_CANDIDATE_UPDATE[]
         for _, packedLc in ipairs(data) do
-            ---@type SessionClient_Candidate
+            ---@type Packet_HMSG_CANDIDATE_UPDATE
             local lc = {
                 name = packedLc.n,
                 classId = packedLc.c,
-                isOffline = bit.band(packedLc.s, 0x1) > 0,
                 leftGroup = bit.band(packedLc.s, 0x2) > 0,
                 isResponding = bit.band(packedLc.s, 0x4) > 0,
             }
