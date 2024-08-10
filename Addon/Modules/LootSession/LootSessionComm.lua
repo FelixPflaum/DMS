@@ -33,7 +33,8 @@ local function LookupOpcodeName(opcode)
     return OPCODE_NAMES[opcode]
 end
 
-local messageHandler = {} ---@type table<Opcode, fun(data:any, sender:string)>
+local messageHandler = {} ---@type table<Opcode,fun(data:any, sender:string)>
+local messageFilter = {} ---@type table<Opcode,fun(sender:string, opcode:Opcode, data:any)|nil>
 local batchTimers = Env:NewUniqueTimers()
 local hostCommTarget = "group" ---@type CommTarget
 local clientHostName = ""
@@ -52,6 +53,9 @@ Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
         return
     end
 
+    if messageFilter[opcode] and not messageFilter[opcode](sender, opcode, data) then
+        return
+    end
     messageHandler[opcode](data, sender)
 end)
 
@@ -117,6 +121,21 @@ local function SendToClients(opcode, data)
     Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
 end
 
+---@param sender string
+---@param opcode Opcode
+---@param data any
+local function FilterReceivedOnClient(sender, opcode, data)
+    if opcode >= OPCODES.MAX_HMSG then
+        return false
+    end
+    -- Filter all but session start here if session is not from currently set host.
+    if opcode ~= OPCODES.HMSG_SESSION_START and sender ~= clientHostName then
+        Env:PrintDebug("Received", LookupOpcodeName(opcode), "from", sender, "who isn't the current host")
+        return false
+    end
+    return true
+end
+
 -- HMSG_SESSION_START
 do
     ---@class (exact) Packet_HMSG_SESSION_START
@@ -124,19 +143,20 @@ do
     ---@field responses LootResponse[]
     ---@field commVersion integer
 
-    ---@param sess LootSessionHost
+    ---@param sess SessionHost
     function Sender.HMSG_SESSION_START(sess)
         local p = { ---@type Packet_HMSG_SESSION_START
-            guid = sess.sessionGUID,
+            guid = sess.guid,
             responses = sess.responses.responses,
             commVersion = COMM_VERSION,
         }
         SendToClients(OPCODES.HMSG_SESSION_START, p)
     end
 
+    ---This event will always fire regardless of who sends it!
     ---@class CommEvent_HMSG_SESSION_START
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_SESSION_START, cb:fun(sessionGUID:string, responses:LootResponses, sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_SESSION_START, sessionGUID:string, responses:LootResponses, sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_SESSION_START, cb:fun(guid:string, responses:LootResponses, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_SESSION_START, guid:string, responses:LootResponses, sender:string)
     Events.HMSG_SESSION_START = Env:NewEventEmitter()
 
     messageHandler[OPCODES.HMSG_SESSION_START] = function(data, sender)
@@ -166,6 +186,7 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_SESSION_END, sender:string)
     Events.HMSG_SESSION_END = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_SESSION_END] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_SESSION_END] = function(data, sender)
         Events.HMSG_SESSION_END:Trigger(sender)
     end
@@ -178,7 +199,7 @@ do
     ---@field c integer
     ---@field s integer
 
-    ---@param candidate LootCandidate
+    ---@param candidate SessionHost_Candidate
     local function PackLootCandidate(candidate)
         local data = { ---@type PackedLootCandidate
             n = candidate.name,
@@ -197,7 +218,7 @@ do
         return data
     end
 
-    ---@param candidates table<string,LootCandidate>|LootCandidate
+    ---@param candidates table<string,SessionHost_Candidate>|SessionHost_Candidate
     function Sender.HMSG_CANDIDATE_UPDATE(candidates)
         ---@type PackedLootCandidate[]
         local lcPackList = {}
@@ -212,22 +233,22 @@ do
     end
 
     ---@class CommEvent_HMSG_CANDIDATE_UPDATE
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, cb:fun(lcs:LootCandidate[], sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, lcs:LootCandidate[], sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, cb:fun(lcs:SessionClient_Candidate[], sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_CANDIDATE_UPDATE, lcs:SessionClient_Candidate[], sender:string)
     Events.HMSG_CANDIDATE_UPDATE = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_CANDIDATE_UPDATE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_CANDIDATE_UPDATE] = function(data, sender)
         ---@cast data PackedLootCandidate[]
-        local lcs = {} ---@type LootCandidate[]
+        local lcs = {} ---@type SessionClient_Candidate[]
         for _, packedLc in ipairs(data) do
-            ---@type LootCandidate
+            ---@type SessionClient_Candidate
             local lc = {
                 name = packedLc.n,
                 classId = packedLc.c,
                 isOffline = bit.band(packedLc.s, 0x1) > 0,
                 leftGroup = bit.band(packedLc.s, 0x2) > 0,
                 isResponding = bit.band(packedLc.s, 0x4) > 0,
-                lastMessage = 0,
             }
             table.insert(lcs, lc)
         end
@@ -247,15 +268,15 @@ do
 
     ---@class (exact) Packet_HMSG_ITEM_ANNOUNCE_ChildItem
     ---@field guid string
-    ---@field parentGUID string
+    ---@field parentGuid string
     ---@field order integer
 
-    ---@param item LootSessionHostItem
+    ---@param item SessionHost_Item
     function Sender.HMSG_ITEM_ANNOUNCE(item)
         local pitem ---@type Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-        if not item.parentGUID then
+        if not item.parentGuid then
             pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE
-                guid = item.distributionGUID,
+                guid = item.guid,
                 order = item.order,
                 itemId = item.itemId,
                 veiled = item.veiled,
@@ -264,8 +285,8 @@ do
             }
         else
             pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-                guid = item.distributionGUID,
-                parentGUID = item.parentGUID,
+                guid = item.guid,
+                parentGuid = item.parentGuid,
                 order = item.order,
             }
         end
@@ -282,8 +303,9 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_ITEM_ANNOUNCE_ChildItem, data:Packet_HMSG_ITEM_ANNOUNCE_ChildItem, sender:string)
     Events.HMSG_ITEM_ANNOUNCE_ChildItem = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_ITEM_ANNOUNCE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_ANNOUNCE] = function(data, sender)
-        if data.parentGUID then
+        if data.parentGuid then
             ---@cast data Packet_HMSG_ITEM_ANNOUNCE_ChildItem
             Events.HMSG_ITEM_ANNOUNCE_ChildItem:Trigger(data, sender)
         else
@@ -325,7 +347,7 @@ do
     end
 
     ---@param itemGuid string
-    ---@param clientData LootSessionHostItemClient
+    ---@param clientData SessionHost_ItemResponse
     ---@param doNotBatch? boolean Do not batch and send immediately.
     function Sender.HMSG_ITEM_RESPONSE_UPDATE(itemGuid, clientData, doNotBatch)
         local packedClient = { ---@type PackedSessionItemClient
@@ -349,11 +371,11 @@ do
         batchTimers:StartUnique("HMSG_ITEM_RESPONSE_UPDATE", 1, SendResponseUpdateBatch, nil, true)
     end
 
-    ---@param item LootSessionHostItem
+    ---@param item SessionHost_Item
     ---@param sendNow? boolean Immediately send list? Default behavior is waiting for the batch timer.
     function Sender.HMSG_ITEM_RESPONSE_UPDATE_SendList(item, sendNow)
         for _, itemClient in pairs(item.responses) do
-            Sender.HMSG_ITEM_RESPONSE_UPDATE(item.distributionGUID, itemClient)
+            Sender.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemClient)
         end
         if sendNow then
             batchTimers:Cancel("HMSG_ITEM_RESPONSE_UPDATE")
@@ -366,6 +388,7 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_ITEM_RESPONSE_UPDATE, itemGuid:string, data: PackedSessionItemClient[], sender:string)
     Events.HMSG_ITEM_RESPONSE_UPDATE = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_ITEM_RESPONSE_UPDATE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_RESPONSE_UPDATE] = function(data, sender)
         ---@cast data Packet_HMSG_ITEM_RESPONSE_UPDATE
         for itemGuid, pic in pairs(data) do
@@ -408,6 +431,7 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_ITEM_UNVEIL, itemGuid:string, sender:string)
     Events.HMSG_ITEM_UNVEIL = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_ITEM_UNVEIL] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_UNVEIL] = function(data, sender)
         ---@cast data string[]
         for _, itemGuid in pairs(data) do
@@ -450,6 +474,7 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_ITEM_ROLL_END, itemGuid:string, sender:string)
     Events.HMSG_ITEM_ROLL_END = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_ITEM_ROLL_END] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_ROLL_END] = function(data, sender)
         ---@cast data string[]
         for _, itemGuid in pairs(data) do
@@ -474,6 +499,16 @@ function SendToHost(opcode, data)
     Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, data)
 end
 
+---@param sender string
+---@param opcode Opcode
+---@param data any
+local function FilterReceivedOnHost(sender, opcode, data)
+    if opcode < OPCODES.MAX_HMSG then
+        return false
+    end
+    return true
+end
+
 -- CMSG_ATTENDANCE_CHECK
 do
     function Sender.CMSG_ATTENDANCE_CHECK()
@@ -485,6 +520,7 @@ do
     ---@field Trigger fun(self:CommEvent_CMSG_ATTENDANCE_CHECK, sender:string)
     Events.CMSG_ATTENDANCE_CHECK = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.CMSG_ATTENDANCE_CHECK] = FilterReceivedOnHost
     messageHandler[OPCODES.CMSG_ATTENDANCE_CHECK] = function(data, sender)
         Events.CMSG_ATTENDANCE_CHECK:Trigger(sender)
     end
@@ -502,6 +538,7 @@ do
     ---@field Trigger fun(self:CommEvent_CMSG_ITEM_RECEIVED, sender:string, itemGuid:string)
     Events.CMSG_ITEM_RECEIVED = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.CMSG_ITEM_RECEIVED] = FilterReceivedOnHost
     messageHandler[OPCODES.CMSG_ITEM_RECEIVED] = function(data, sender)
         Events.CMSG_ITEM_RECEIVED:Trigger(sender, data)
     end
@@ -528,6 +565,7 @@ do
     ---@field Trigger fun(self:CommEvent_CMSG_ITEM_RESPONSE, sender:string, itemGuid:string, responseId:integer)
     Events.CMSG_ITEM_RESPONSE = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.CMSG_ITEM_RESPONSE] = FilterReceivedOnHost
     messageHandler[OPCODES.CMSG_ITEM_RESPONSE] = function(data, sender)
         ---@cast data Packet_CMSG_ITEM_RESPONSE
         Events.CMSG_ITEM_RESPONSE:Trigger(sender, data.itemGuid, data.responseId)

@@ -10,43 +10,43 @@ Env.Session = {}
 --- This is static and the same for host and client. Only id needs to be communicated.
 ----------------------------------------------------------------------------
 
----@class (exact) LootClientStatus
+---@class (exact) LootCandidateStatus
 ---@field id integer
 ---@field displayString string
 ---@field color [number, number, number]
 
 ---@class (exact) LootClientStatusList
----@field sent LootClientStatus Initial status. Data was sent.
----@field waitingForResponse LootClientStatus Client sent ack, no roll response given yet.
----@field unknown LootClientStatus CLient did not sent ack, may be offline, may not have the addon.
----@field responseTimeout LootClientStatus Client did not give a roll response in time.
----@field responded LootClientStatus Client responded with a roll choice.
-Env.Session.LootStatus = {
-    ---@type LootClientStatus
+---@field sent LootCandidateStatus Initial status. Data was sent.
+---@field waitingForResponse LootCandidateStatus Client sent ack, no roll response given yet.
+---@field unknown LootCandidateStatus CLient did not sent ack, may be offline, may not have the addon.
+---@field responseTimeout LootCandidateStatus Client did not give a roll response in time.
+---@field responded LootCandidateStatus Client responded with a roll choice.
+Env.Session.LootCandidateStatus = {
+    ---@type LootCandidateStatus
     sent = { -- Loot data sent, waiting for answer...
         id = 1,
         displayString = L["Loot data sent, waiting for answer..."],
         color = { 1, 0.5, 0 },
     },
-    ---@type LootClientStatus
+    ---@type LootCandidateStatus
     waitingForResponse = { -- Waiting for response selection...
         id = 2,
         displayString = L["Waiting for response selection..."],
         color = { 1, 1, 0 },
     },
-    ---@type LootClientStatus
+    ---@type LootCandidateStatus
     unknown = { -- Unknown, offline or addon not installed
         id = 3,
         displayString = L["Unknown, offline or addon not installed"],
         color = { 0.5, 0.5, 0.5 },
     },
-    ---@type LootClientStatus
+    ---@type LootCandidateStatus
     responseTimeout = { -- Did not respond in time
         id = 4,
         displayString = L["Did not respond in time"],
         color = { 1, 0, 0 },
     },
-    ---@type LootClientStatus
+    ---@type LootCandidateStatus
     responded = { -- Response given
         id = 5,
         displayString = L["Response given"],
@@ -56,8 +56,8 @@ Env.Session.LootStatus = {
 
 ---Get status data by id.
 ---@param id integer
----@return LootClientStatus|nil lootStatus Will return nothing if status doesn't exist.
-function Env.Session.LootStatus:GetById(id)
+---@return LootCandidateStatus|nil lootStatus Will return nothing if status doesn't exist.
+function Env.Session.LootCandidateStatus:GetById(id)
     ---@diagnostic disable-next-line: no-unknown
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then
@@ -70,7 +70,7 @@ end
 ---@param id integer
 ---@return string statusText Will be "UNKNOWN STATUS" if status with id doesn't exist.
 ---@return [number, number, number] colorInfo The RGB color data.
-function Env.Session.LootStatus:GetDisplayFromId(id)
+function Env.Session.LootCandidateStatus:GetDisplayFromId(id)
     ---@diagnostic disable-next-line: no-unknown
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then

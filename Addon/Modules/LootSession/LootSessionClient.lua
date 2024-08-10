@@ -3,7 +3,7 @@ local Env = select(2, ...)
 
 local L = Env:GetLocalization()
 local Comm2 = Env.Session.Comm2
-local LootStatus = Env.Session.LootStatus
+local LootStatus = Env.Session.LootCandidateStatus
 
 local function LogDebug(...)
     Env:PrintDebug("Client:", ...)
@@ -13,72 +13,79 @@ end
 --- Data Structure Types
 ------------------------------------------------------------------------------------
 
----@class (exact) LootSessionItemClient
----@field candidate LootCandidate
+---@class (exact) SessionClient_Candidate
+---@field name string
+---@field classId integer
+---@field isOffline boolean
+---@field leftGroup boolean
+---@field isResponding boolean
+
+---@class (exact) SessionClient_ItemResponse
+---@field candidate SessionClient_Candidate
 ---@field response LootResponse|nil
----@field status LootClientStatus
+---@field status LootCandidateStatus
 ---@field roll integer|nil
 ---@field sanity integer|nil
 
----@class (exact) LootSessionClientItem
+---@class (exact) SessionClient_Item
 ---@field guid string
----@field order integer
----@field itemId integer
----@field veiled boolean
----@field startTime integer
----@field endTime integer
----@field responseSent boolean
----@field parentGUID string|nil
----@field childGUIDs string[]|nil
----@field responses table<string, LootSessionItemClient>
+---@field order integer The order/position of the item. 
+---@field itemId integer The game's item Id.
+---@field veiled boolean Whether this item's responses are shown to the client.
+---@field startTime integer time() stamp of when the roll started.
+---@field endTime integer time() stamp of when the roll ends.
+---@field responseSent boolean To keep track of whether an response was sent, purely clientside.
+---@field parentGuid string|nil
+---@field childGuids string[]|nil
+---@field responses table<string, SessionClient_ItemResponse>
 ---@field awardedTo string|nil
 
----@class (exact) LootSessionClient
----@field sessionGUID string
----@field hostName string
+---@class (exact) SessionClient
+---@field guid string
+---@field hostName string The name of the hosting player.
 ---@field responses LootResponses|nil
----@field candidates table<string, LootCandidate>
+---@field candidates table<string, SessionClient_Candidate>
 ---@field isRunning boolean
----@field items table<string, LootSessionClientItem>
-local LootSessionClient = {}
-
-local timers = Env:NewUniqueTimers()
-
-Env.Session.Client = LootSessionClient
-
----@type table<Opcode, fun(data:any, sender:string)>
-Env.Session.ClientCommHandlers = {}
+---@field items table<string, SessionClient_Item>
+local Client = {}
+Env.Session.Client = Client
 
 ------------------------------------------------------------------------------------
---- Construction
+--- Events
 ------------------------------------------------------------------------------------
 
 ---@class (exact) LootSessionClientStartEvent
 ---@field RegisterCallback fun(self:LootSessionClientStartEvent, cb:fun())
 ---@field Trigger fun(self:LootSessionClientStartEvent)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnStart = Env:NewEventEmitter()
+Client.OnStart = Env:NewEventEmitter()
 
 ---@class (exact) LSClientEndEvent
 ---@field RegisterCallback fun(self:LSClientEndEvent, cb:fun())
 ---@field Trigger fun(self:LSClientEndEvent)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnEnd = Env:NewEventEmitter()
+Client.OnEnd = Env:NewEventEmitter()
 
 ---@class (exact) LSClientCandidateUpdateEvent
 ---@field RegisterCallback fun(self:LSClientCandidateUpdateEvent, cb:fun())
 ---@field Trigger fun(self:LSClientCandidateUpdateEvent)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnCandidateUpdate = Env:NewEventEmitter()
+Client.OnCandidateUpdate = Env:NewEventEmitter()
 
 ---@class (exact) LSClientItemUpdateEvent
----@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:LootSessionClientItem))
----@field Trigger fun(self:LSClientItemUpdateEvent, item:LootSessionClientItem)
+---@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:SessionClient_Item))
+---@field Trigger fun(self:LSClientItemUpdateEvent, item:SessionClient_Item)
 ---@diagnostic disable-next-line: inject-field
-LootSessionClient.OnItemUpdate = Env:NewEventEmitter()
+Client.OnItemUpdate = Env:NewEventEmitter()
+
+------------------------------------------------------------------------------------
+--- Construction
+------------------------------------------------------------------------------------
+
+local timers = Env:NewUniqueTimers()
 
 local function KeepAlive()
-    if not LootSessionClient.isRunning then return end
+    if not Client.isRunning then return end
     Comm2.Send.CMSG_ATTENDANCE_CHECK()
     timers:StartUnique("keepaliveTimer", 20, KeepAlive)
 end
@@ -87,83 +94,71 @@ end
 ---@param hostName string
 ---@param guid string
 ---@param responses LootResponses
-function LootSessionClient:Init(hostName, guid, responses)
-    LootSessionClient.sessionGUID = guid
-    LootSessionClient.hostName = hostName
-    LootSessionClient.responses = responses
-    LootSessionClient.candidates = {}
-    LootSessionClient.isRunning = true
-    LootSessionClient.items = {}
+function InitClient(hostName, guid, responses)
+    Client.guid = guid
+    Client.hostName = hostName
+    Client.responses = responses
+    Client.candidates = {}
+    Client.isRunning = true
+    Client.items = {}
     Comm2:ClientSetAllowedHost(hostName)
     KeepAlive()
-    LootSessionClient.OnStart:Trigger()
+    Client.OnStart:Trigger()
 end
 
 local function EndSession()
-    if not LootSessionClient.isRunning then
-        return
-    end
+    if not Client.isRunning then return end
     timers:CancelAll()
-    LootSessionClient.isRunning = false
+    Client.isRunning = false
     Comm2:ClientSetAllowedHost("_nohost_")
-    LootSessionClient.OnEnd:Trigger()
+    Client.OnEnd:Trigger()
 end
 
-------------------------------------------------------------------------------------
---- Host Communiction
-------------------------------------------------------------------------------------
-
-Comm2.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
-    LootSessionClient:HandleMessage_LootCandidate(lcs)
+Comm2.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
+    if Client.isRunning and Client.hostName ~= sender then
+        LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
+        return
+    end
+    InitClient(sender, guid, responses)
 end)
 
-Comm2.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
-    LootSessionClient:HandleMessage_LootSessionItem(data)
-end)
-
-Comm2.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
-    LootSessionClient:HandleMessage_LootSessionItemChild(data)
-end)
-
-Comm2.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, sender)
-    LootSessionClient:HandleMessage_LootResponseUpdate(itemGuid, data)
+Comm2.Events.HMSG_SESSION_END:RegisterCallback(function(sender)
+    EndSession()
 end)
 
 Comm2.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
-    local item = LootSessionClient.items[itemGuid]
+    local item = Client.items[itemGuid]
     if not item then return end
-    LootSessionClient.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item)
 end)
 
 Comm2.Events.HMSG_ITEM_UNVEIL:RegisterCallback(function(itemGuid, sender)
-    local item = LootSessionClient.items[itemGuid]
+    local item = Client.items[itemGuid]
     if not item then return end
     item.veiled = false
-    LootSessionClient.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item)
 end)
 
 ------------------------------------------------------------------------------------
 --- Candidate List
 ------------------------------------------------------------------------------------
 
----@param list LootCandidate[]
-function LootSessionClient:HandleMessage_LootCandidate(list)
-    LogDebug("Got candidate update list")
-    Env:PrintVerbose(list)
-    for _, lc in ipairs(list) do
-        self.candidates[lc.name] = lc
+Comm2.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
+    Env:PrintVerbose(lcs)
+    for _, lc in ipairs(lcs) do
+        Client.candidates[lc.name] = lc
     end
-    self.OnCandidateUpdate:Trigger()
-end
+    Client.OnCandidateUpdate:Trigger()
+end)
 
 ------------------------------------------------------------------
 --- Items
 ------------------------------------------------------------------
 
 ---@param data PackedSessionItemClient
-function LootSessionClient:Parse_Packet_LootSessionItemClient(data)
-    local candidate = self.candidates[data.candidate]
-    local response = data.responseId and self.responses:GetResponse(data.responseId)
+local function GetClientFromPackedClient(data)
+    local candidate = Client.candidates[data.candidate]
+    local response = data.responseId and Client.responses:GetResponse(data.responseId)
     local status = LootStatus:GetById(data.statusId)
     if not candidate then
         LogDebug("got item client update for unknown candidate", data.candidate)
@@ -175,7 +170,7 @@ function LootSessionClient:Parse_Packet_LootSessionItemClient(data)
         LogDebug("got item client update with unknown status id", data.statusId)
         return
     else
-        ---@type LootSessionItemClient
+        ---@type SessionClient_ItemResponse
         local lsic = {
             name = data.candidate,
             candidate = candidate,
@@ -188,15 +183,13 @@ function LootSessionClient:Parse_Packet_LootSessionItemClient(data)
     end
 end
 
----@param itemGuid string
----@param data PackedSessionItemClient[]
-function LootSessionClient:HandleMessage_LootResponseUpdate(itemGuid, data)
-    local item = self.items[itemGuid]
+Comm2.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, sender)
+    local item = Client.items[itemGuid]
     if not item then
         LogDebug("got item response update for unknown item", itemGuid)
     end
     for _, packedClient in ipairs(data) do
-        local itemCLient = self:Parse_Packet_LootSessionItemClient(packedClient)
+        local itemCLient = GetClientFromPackedClient(packedClient)
         if not itemCLient then
             return
         end
@@ -204,26 +197,25 @@ function LootSessionClient:HandleMessage_LootResponseUpdate(itemGuid, data)
     end
 
     LogDebug("item updated OnPacket_LootResponseUpdate", itemGuid)
-    self.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item)
 
-    if item.childGUIDs and #item.childGUIDs > 0 then
-        for _, childGUID in ipairs(item.childGUIDs) do
-            local childItem = self.items[childGUID]
+    if item.childGuids and #item.childGuids > 0 then
+        for _, childGuid in ipairs(item.childGuids) do
+            local childItem = Client.items[childGuid]
             if childItem then
-                self.OnItemUpdate:Trigger(childItem)
+                Client.OnItemUpdate:Trigger(childItem)
             end
         end
     end
-end
+end)
 
----@param data Packet_HMSG_ITEM_ANNOUNCE
-function LootSessionClient:HandleMessage_LootSessionItem(data)
-    if self.items[data.guid] then
+Comm2.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
+    if Client.items[data.guid] then
         LogDebug("Got item announce but already have item!", data.guid)
         return
     end
 
-    ---@type LootSessionClientItem
+    ---@type SessionClient_Item
     local newItem = {
         guid = data.guid,
         order = data.order,
@@ -235,27 +227,27 @@ function LootSessionClient:HandleMessage_LootSessionItem(data)
         responseSent = false,
     }
 
-    self.items[data.guid] = newItem
+    Client.items[data.guid] = newItem
     Comm2.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
-    self.OnItemUpdate:Trigger(newItem)
-end
+    Client.OnItemUpdate:Trigger(newItem)
+end)
 
----@param data Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-function LootSessionClient:HandleMessage_LootSessionItemChild(data)
-    if self.items[data.guid] then
+
+Comm2.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
+    if Client.items[data.guid] then
         LogDebug("Got item announce but already have item!", data.guid)
         return
     end
 
-    local parentIitem = self.items[data.parentGUID]
+    local parentIitem = Client.items[data.parentGuid]
 
     if not parentIitem then
-        Env:PrintError(L["Got child item %s but data for parent %s doesn't exit!"]:format(data.guid, data.parentGUID))
+        Env:PrintError(L["Got child item %s but data for parent %s doesn't exit!"]:format(data.guid, data.parentGuid))
         return
     end
 
-    ---@type LootSessionClientItem
+    ---@type SessionClient_Item
     local newItem = {
         guid = data.guid,
         order = data.order,
@@ -265,22 +257,22 @@ function LootSessionClient:HandleMessage_LootSessionItemChild(data)
         endTime = parentIitem.endTime,
         responses = parentIitem.responses,
         responseSent = false,
-        parentGUID = parentIitem.guid,
+        parentGuid = parentIitem.guid,
     }
 
-    parentIitem.childGUIDs = parentIitem.childGUIDs or {}
-    table.insert(parentIitem.childGUIDs, newItem.guid)
+    parentIitem.childGuids = parentIitem.childGuids or {}
+    table.insert(parentIitem.childGuids, newItem.guid)
 
-    self.items[data.guid] = newItem
+    Client.items[data.guid] = newItem
     Comm2.Send.CMSG_ITEM_RECEIVED(newItem.guid)
-    LogDebug("Child item added", newItem.guid, "parent", newItem.parentGUID)
-    self.OnItemUpdate:Trigger(newItem)
-end
+    LogDebug("Child item added", newItem.guid, "parent", newItem.parentGuid)
+    Client.OnItemUpdate:Trigger(newItem)
+end)
 
 ---Send reponse for an item roll.
 ---@param itemGuid string
 ---@param responseId integer
-function LootSessionClient:RespondToItem(itemGuid, responseId)
+function Client:RespondToItem(itemGuid, responseId)
     local item = self.items[itemGuid]
     if not item then
         Env:PrintError(L["Tried to respond to item %s but distribution with that GUID doesn't exist!"]:format(itemGuid))
@@ -288,7 +280,7 @@ function LootSessionClient:RespondToItem(itemGuid, responseId)
     elseif not self.responses:GetResponse(responseId) then
         Env:PrintError(L["Tried to respond with response Id %d but response doesn't exist!"]:format(responseId))
         return
-    elseif item.parentGUID then
+    elseif item.parentGuid then
         Env:PrintError(L["Tried to respond to child item distribution %s!"]:format(itemGuid))
         return
     elseif item.endTime < time() then
@@ -299,22 +291,3 @@ function LootSessionClient:RespondToItem(itemGuid, responseId)
     item.responseSent = true
     self.OnItemUpdate:Trigger(item)
 end
-
-------------------------------------------------------------------
---- API
-------------------------------------------------------------------
-
-Comm2.Events.HMSG_SESSION_START:RegisterCallback(function(sessionGUID, responses, sender)
-    if LootSessionClient.isRunning then
-        LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session.")
-        return
-    end
-    LootSessionClient:Init(sender, sessionGUID, responses)
-end)
-
-Comm2.Events.HMSG_SESSION_END:RegisterCallback(function(sender)
-    LogDebug("Recieved HMSG_SESSION_END from", sender)
-    if LootSessionClient.hostName == sender then
-        EndSession()
-    end
-end)

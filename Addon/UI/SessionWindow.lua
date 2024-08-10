@@ -17,12 +17,12 @@ local Client = Env.Session.Client
 
 ---Is host with the same guid as client running.
 local function IsHosting()
-    return Client.sessionGUID == Host.sessionGUID and Host.isRunning
+    return Client.guid == Host.guid and Host.isRunning
 end
 
 local frame ---@type SessionWindowFrame
 local itemSelectIcons = {} ---@type IconButon[]
-local selectedItemGUID ---@type string|nil
+local selectedItemGuid ---@type string|nil
 
 ---------------------------------------------------------------------------
 --- Frame Functions
@@ -30,7 +30,7 @@ local selectedItemGUID ---@type string|nil
 
 ---Update the session item shown in the window.
 local function UpdateShownItem()
-    local item = selectedItemGUID and Client.items[selectedItemGUID]
+    local item = selectedItemGuid and Client.items[selectedItemGuid]
 
     if not item then
         frame.ItemInfoIcon:SetItemData()
@@ -101,10 +101,10 @@ end
 
 ---@param guid string
 local function Script_ItemSelectClicked(guid)
-    selectedItemGUID = guid
+    selectedItemGuid = guid
     UpdateShownItem()
     for _, v in ipairs(itemSelectIcons) do
-        if v:GetArg() == selectedItemGUID then
+        if v:GetArg() == selectedItemGuid then
             v:ShowBorder(true)
         else
             v:ShowBorder(false)
@@ -297,7 +297,7 @@ end
 Env:OnAddonLoaded(CreateWindow)
 
 local function UpdateItemSelect()
-    ---@type LootSessionClientItem[]
+    ---@type SessionClient_Item[]
     local ordered = {}
     for _, item in pairs(Client.items) do
         table.insert(ordered, item)
@@ -310,7 +310,7 @@ local function UpdateItemSelect()
         local btn = GetOrCreateItemSelectIcon(k)
         btn:SetItemData(item.itemId, item.guid)
         btn:ShowCheckmark(item.awardedTo ~= nil)
-        if item.guid == selectedItemGUID then
+        if item.guid == selectedItemGuid then
             btn:ShowBorder(true)
         else
             btn:ShowBorder(false)
@@ -342,7 +342,7 @@ local openDialogData = {
 }
 
 Client.OnStart:RegisterCallback(function()
-    selectedItemGUID = nil
+    selectedItemGuid = nil
     UpdateItemSelect()
     if not IsHosting() and not Env.settings.autoOpenOnStart == "yes" then
         if Env.settings.autoOpenOnStart == "no" then
@@ -361,12 +361,12 @@ Client.OnEnd:RegisterCallback(function()
 end)
 
 Client.OnItemUpdate:RegisterCallback(function(item)
-    if selectedItemGUID == nil then
+    if selectedItemGuid == nil then
         Env:PrintDebug("Setting shown item because no item selected.")
-        selectedItemGUID = item.guid
+        selectedItemGuid = item.guid
     end
     UpdateItemSelect()
-    if item.guid == selectedItemGUID then
+    if item.guid == selectedItemGuid then
         UpdateShownItem()
     end
     -- TODO: child item update (need data for children in client)

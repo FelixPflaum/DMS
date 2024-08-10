@@ -174,7 +174,7 @@ local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 
 ---Show item at given position.
 ---@param posIndex integer
----@param item LootSessionClientItem|nil Set nil to hide frame.
+---@param item SessionClient_Item|nil Set nil to hide frame.
 local function SetitemAtPosition(posIndex, item)
     local rif = GetOrCreateRollItemFrame(posIndex)
     if not item then
@@ -221,12 +221,12 @@ end)
 
 Env.Session.Client.OnItemUpdate:RegisterCallback(function()
     local now = time()
-    ---@type LootSessionClientItem[]
+    ---@type SessionClient_Item[]
     local itemsOrdered = {}
     local shown = 0
 
     for _, v in pairs(Client.items) do
-        if not v.parentGUID and not v.responseSent and v.endTime - now > 0 then
+        if not v.parentGuid and not v.responseSent and v.endTime - now > 0 then
             table.insert(itemsOrdered, v)
         end
     end

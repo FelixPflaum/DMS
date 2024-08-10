@@ -3,7 +3,7 @@ local Env = select(2, ...)
 local L = Env:GetLocalization()
 
 local Comm2 = Env.Session.Comm2
-local LootStatus = Env.Session.LootStatus
+local LootStatus = Env.Session.LootCandidateStatus
 
 local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
 
@@ -12,15 +12,13 @@ local function LogDebug(...)
 end
 
 ---Create a simple unique identifier.
-local function MakeGUID()
-    local g = time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
-    LogDebug("Creating GUID:", g)
-    return g
+local function MakeGuid()
+    return time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
 end
 
 ---@alias CommTarget "group"|"self"
 
----@class (exact) LootCandidate
+---@class (exact) SessionHost_Candidate
 ---@field name string
 ---@field classId integer
 ---@field isOffline boolean
@@ -28,63 +26,63 @@ end
 ---@field isResponding boolean
 ---@field lastMessage number GetTime()
 
----@class (exact) LootSessionHostItemClient
----@field candidate LootCandidate
----@field status LootClientStatus
+---@class (exact) SessionHost_ItemResponse
+---@field candidate SessionHost_Candidate
+---@field status LootCandidateStatus
 ---@field response LootResponse|nil
 ---@field roll integer|nil
 ---@field sanity integer|nil
 
----@class (exact) LootSessionHostItem
----@field distributionGUID string Unique id for that specific loot distribution.
+---@class (exact) SessionHost_Item
+---@field guid string Unique id for that specific loot distribution.
 ---@field order integer For ordering items in the UI.
----@field parentGUID string|nil If this item is a duplicate this will be the guid of the main item, i.e. the one people respond to.
----@field childGUIDs string[]|nil If duplicates of the item exist their guids will be in here.
+---@field parentGuid string|nil If this item is a duplicate this will be the guid of the main item, i.e. the one people respond to.
+---@field childGuids string[]|nil If duplicates of the item exist their guids will be in here.
 ---@field itemId integer
 ---@field veiled boolean Details are not sent to clients until item is unveiled.
 ---@field startTime integer
 ---@field endTime integer
 ---@field status "waiting"|"timeout"|"child"
 ---@field roller UniqueRoller
----@field responses table<string, LootSessionHostItemClient>
+---@field responses table<string, SessionHost_ItemResponse>
 ---@field awardedTo string|nil
 
----@class (exact) LootSessionHost
----@field sessionGUID string
+---@class (exact) SessionHost
+---@field guid string
 ---@field target CommTarget
 ---@field responses LootResponses
----@field candidates table<string, LootCandidate>
+---@field candidates table<string, SessionHost_Candidate>
 ---@field isRunning boolean
 ---@field itemCount integer
----@field items table<string, LootSessionHostItem>
+---@field items table<string, SessionHost_Item>
 ---@field timers UniqueTimers
-local LootSessionHost = {
+local Host = {
     timers = Env:NewUniqueTimers(),
 }
 
-Env.Session.Host = LootSessionHost
+Env.Session.Host = Host
 
 ---@param target CommTarget
 local function InitHost(target)
-    LootSessionHost.sessionGUID = MakeGUID()
-    LootSessionHost.target = target
-    LootSessionHost.responses = Env.Session:CreateLootResponses()
-    LootSessionHost.candidates = {}
-    LootSessionHost.isRunning = true
-    LootSessionHost.itemCount = 0
-    LootSessionHost.items = {}
+    Host.guid = MakeGuid()
+    Host.target = target
+    Host.responses = Env.Session:CreateLootResponses()
+    Host.candidates = {}
+    Host.isRunning = true
+    Host.itemCount = 0
+    Host.items = {}
 
-    LootSessionHost:Setup()
+    Host:Setup()
 end
 
 local updateTimerKey = "mainUpdate"
 
-function LootSessionHost:Setup()
+function Host:Setup()
     Env:RegisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:RegisterEvent("GROUP_LEFT", self)
 
     Env:PrintSuccess("Started a new host session for " .. self.target)
-    LogDebug("Session GUID", self.sessionGUID)
+    LogDebug("Session GUID", self.guid)
 
     Comm2:HostSetCurrentTarget(self.target)
     Comm2.Send.HMSG_SESSION_START(self)
@@ -96,17 +94,17 @@ function LootSessionHost:Setup()
     -- TODO: Update responses if player db changes (points)
 end
 
-function LootSessionHost:Destroy()
+function Host:Destroy()
     if not self.isRunning then return end
     self.isRunning = false
-    LootSessionHost.sessionGUID = ""
-    LootSessionHost.timers:CancelAll()
+    Host.guid = ""
+    Host.timers:CancelAll()
     Env:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:UnregisterEvent("GROUP_LEFT", self)
     Comm2.Send.HMSG_SESSION_END()
 end
 
-function LootSessionHost:TimerUpdate()
+function Host:TimerUpdate()
     if not self.isRunning then return end
     LogDebug("TimerUpdate")
     local nowgt = GetTime()
@@ -115,7 +113,7 @@ function LootSessionHost:TimerUpdate()
     -- TODO: offline and leftgroup, only send if changed
     -- TODO: this is completely stupid, need a group update and a candidate update function, here candidates should update themself
     -- split UpdateCandidateList
-    ---@type table<string, LootCandidate>
+    ---@type table<string, SessionHost_Candidate>
     local changedLootCandidates = {}
     local haveCandidateChange = false
     for _, candidate in pairs(self.candidates) do
@@ -136,22 +134,22 @@ function LootSessionHost:TimerUpdate()
 end
 
 ---Set response, does NOT check if response was already set!
----@param item LootSessionHostItem
----@param itemClient LootSessionHostItemClient
+---@param item SessionHost_Item
+---@param itemResponse SessionHost_ItemResponse
 ---@param response LootResponse
-function LootSessionHost:SetItemResponse(item, itemClient, response)
-    itemClient.response = response
-    itemClient.roll = itemClient.roll or item.roller:GetRoll()
-    itemClient.status = LootStatus.responded
+function Host:SetItemResponse(item, itemResponse, response)
+    itemResponse.response = response
+    itemResponse.roll = itemResponse.roll or item.roller:GetRoll()
+    itemResponse.status = LootStatus.responded
     -- TODO: get sanity from DB
-    itemClient.sanity = response.isPointsRoll and 999 or nil
+    itemResponse.sanity = response.isPointsRoll and 999 or nil
     if not item.veiled then
-        Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.distributionGUID, itemClient)
+        Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
     end
 end
 
 Comm2.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
-    local candidate = LootSessionHost.candidates[sender]
+    local candidate = Host.candidates[sender]
     if not candidate then return end
     local update = not candidate.isResponding
     candidate.isResponding = true
@@ -162,28 +160,28 @@ Comm2.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
 end)
 
 Comm2.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
-    local candidate = LootSessionHost.candidates[sender]
+    local candidate = Host.candidates[sender]
     if not candidate then return end
-    local item = LootSessionHost.items[itemGuid]
+    local item = Host.items[itemGuid]
     if not item then
         Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
         return
     end
-    local itemClient = item.responses[sender]
-    if not itemClient then
+    local itemResponse = item.responses[sender]
+    if not itemResponse then
         Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate client not known!")
         return
     end
-    if itemClient.status == LootStatus.sent then
-        itemClient.status = LootStatus.waitingForResponse
+    if itemResponse.status == LootStatus.sent then
+        itemResponse.status = LootStatus.waitingForResponse
         if not item.veiled then
-            Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.distributionGUID, itemClient)
+            Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
         end
     end
 end)
 
 Comm2.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
-    local item = LootSessionHost.items[itemGuid]
+    local item = Host.items[itemGuid]
     if not item then
         Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
         return
@@ -192,29 +190,29 @@ Comm2.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, resp
         Env:PrintError(sender .. " tried to respond to expired item " .. itemGuid)
         return
     end
-    if item.parentGUID ~= nil then
+    if item.parentGuid ~= nil then
         Env:PrintError(sender .. " tried to respond to child item " .. itemGuid)
         return
     end
-    local itemClient = item.responses[sender]
-    if not itemClient then
+    local itemResponse = item.responses[sender]
+    if not itemResponse then
         Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate not known for that item")
         return
     end
-    if itemClient.response then
+    if itemResponse.response then
         Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but already responded")
         return
     end
-    local response = LootSessionHost.responses:GetResponse(responseId)
+    local response = Host.responses:GetResponse(responseId)
     if not response then
         Env:PrintError(sender ..
             " tried to respond to item " .. itemGuid .. " but response id " .. responseId .. " invalid")
         return
     end
-    LootSessionHost:SetItemResponse(item, itemClient, response)
+    Host:SetItemResponse(item, itemResponse, response)
 end)
 
-function LootSessionHost:GROUP_LEFT()
+function Host:GROUP_LEFT()
     if not self.isRunning then return end
     if self.target == "group" then
         Env:PrintError("Session host destroyed because you left the group!")
@@ -222,7 +220,7 @@ function LootSessionHost:GROUP_LEFT()
     end
 end
 
-function LootSessionHost:GROUP_ROSTER_UPDATE()
+function Host:GROUP_ROSTER_UPDATE()
     LogDebug("LootSessionHost GROUP_ROSTER_UPDATE")
     local tkey = "groupupdate"
     if self.timers:HasTimer(tkey) then return end
@@ -232,12 +230,12 @@ end
 
 ---Create list of loot candidates, i.e. list of all raid members at this point in time.
 ---Players that leave the party will be kept in the list if an existing list is provided.
-function LootSessionHost:UpdateCandidateList()
-    ---@type table<string, LootCandidate>
+function Host:UpdateCandidateList()
+    ---@type table<string, SessionHost_Candidate>
     local newList = {}
     local prefix = ""
     local changed = false
-    ---@type table<string, LootCandidate>
+    ---@type table<string, SessionHost_Candidate>
     local changedLootCandidates = {}
 
     if self.target == "group" then
@@ -326,40 +324,40 @@ end
 ------------------------------------------------------------------
 
 ---Sets next item after the last awarded item to be unveiled.
-function LootSessionHost:UnveilNextItem()
-    ---@type LootSessionHostItem[]
+function Host:UnveilNextItem()
+    ---@type SessionHost_Item[]
     local orderedItem = {}
 
-    for _, sessionItem in pairs(self.items) do
-        table.insert(orderedItem, sessionItem)
+    for _, item in pairs(self.items) do
+        table.insert(orderedItem, item)
     end
 
     table.sort(orderedItem, function(a, b)
         return a.order < b.order
     end)
 
-    for _, sessionItem in ipairs(orderedItem) do
-        if not sessionItem.veiled then
-            if not sessionItem.awardedTo then
+    for _, item in ipairs(orderedItem) do
+        if not item.veiled then
+            if not item.awardedTo then
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
                 return
             end
         else
-            LogDebug("Unveil item: ", sessionItem.distributionGUID, sessionItem.itemId)
-            sessionItem.veiled = false
-            Comm2.Send.HMSG_ITEM_UNVEIL(sessionItem.distributionGUID)
-            if sessionItem.childGUIDs then
-                for _, childGUID in ipairs(sessionItem.childGUIDs) do
-                    local childItem = self.items[childGUID]
+            LogDebug("Unveil item: ", item.guid, item.itemId)
+            item.veiled = false
+            Comm2.Send.HMSG_ITEM_UNVEIL(item.guid)
+            if item.childGuids then
+                for _, childGuid in ipairs(item.childGuids) do
+                    local childItem = self.items[childGuid]
                     if childItem.veiled then
-                        LogDebug("Unveil child item because parent was unveiled", childGUID)
+                        LogDebug("Unveil child item because parent was unveiled", childGuid)
                         childItem.veiled = false
-                        Comm2.Send.HMSG_ITEM_UNVEIL(childItem.distributionGUID)
+                        Comm2.Send.HMSG_ITEM_UNVEIL(childItem.guid)
                     end
                 end
             end
 
-            if not sessionItem.awardedTo then
+            if not item.awardedTo then
                 LogDebug("Unveiled item is the next to be awarded, not unveiling more.")
                 return
             end
@@ -367,37 +365,37 @@ function LootSessionHost:UnveilNextItem()
     end
 end
 
-function LootSessionHost:ItemStopRoll(guid)
-    local lootItem = self.items[guid]
-    if not lootItem then return end
-    LogDebug("ItemStopRoll", guid, lootItem.itemId)
-    if lootItem.status == "waiting" then
-        lootItem.status = "timeout"
-        for _, itemClient in pairs(lootItem.responses) do
-            if not itemClient.response and itemClient.status ~= LootStatus.unknown then
-                itemClient.status = LootStatus.responseTimeout
-                if not lootItem.veiled then
-                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(lootItem.distributionGUID, itemClient)
+function Host:ItemStopRoll(guid)
+    local item = self.items[guid]
+    if not item then return end
+    LogDebug("ItemStopRoll", guid, item.itemId)
+    if item.status == "waiting" then
+        item.status = "timeout"
+        for _, itemResponse in pairs(item.responses) do
+            if not itemResponse.response and itemResponse.status ~= LootStatus.unknown then
+                itemResponse.status = LootStatus.responseTimeout
+                if not item.veiled then
+                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
                 end
             end
         end
-        Comm2.Send.HMSG_ITEM_ROLL_END(lootItem.distributionGUID)
+        Comm2.Send.HMSG_ITEM_ROLL_END(item.guid)
     end
 end
 
 ---@param itemId integer
 ---@return boolean itemAdded
 ---@return string|nil errorMessage
-function LootSessionHost:ItemAdd(itemId)
+function Host:ItemAdd(itemId)
     if not self.isRunning then
         return false, "session was already finished"
     end
 
-    ---@type LootSessionHostItem|nil
+    ---@type SessionHost_Item|nil
     local parentItem = nil
     for _, existingItem in pairs(self.items) do
         if existingItem.itemId == itemId then
-            local parentGuid = existingItem.parentGUID
+            local parentGuid = existingItem.parentGuid
             if parentGuid then
                 parentItem = self.items[parentGuid]
                 break
@@ -406,15 +404,15 @@ function LootSessionHost:ItemAdd(itemId)
         end
     end
 
-    ---@type LootSessionHostItem
-    local lootItem
+    ---@type SessionHost_Item
+    local item
 
     if parentItem then
-        parentItem.childGUIDs = parentItem.childGUIDs or {}
+        parentItem.childGuids = parentItem.childGuids or {}
 
-        lootItem = {
-            distributionGUID = MakeGUID(),
-            order = parentItem.order + #parentItem.childGUIDs + 1,
+        item = {
+            guid = MakeGuid(),
+            order = parentItem.order + #parentItem.childGuids + 1,
             itemId = itemId,
             veiled = parentItem.veiled,
             startTime = parentItem.startTime,
@@ -422,12 +420,12 @@ function LootSessionHost:ItemAdd(itemId)
             status = "child",
             responses = parentItem.responses,
             roller = parentItem.roller,
-            parentGUID = parentItem.distributionGUID,
+            parentGuid = parentItem.guid,
         }
 
-        table.insert(parentItem.childGUIDs, lootItem.distributionGUID)
+        table.insert(parentItem.childGuids, item.guid)
     else
-        ---@type table<string, LootSessionHostItemClient>
+        ---@type table<string, SessionHost_ItemResponse>
         local candidateResponseList = {}
         for name, candidate in pairs(self.candidates) do
             candidateResponseList[name] = {
@@ -436,8 +434,8 @@ function LootSessionHost:ItemAdd(itemId)
             }
         end
 
-        lootItem = {
-            distributionGUID = MakeGUID(),
+        item = {
+            guid = MakeGuid(),
             order = self.itemCount * 100,
             itemId = itemId,
             veiled = true,
@@ -448,24 +446,24 @@ function LootSessionHost:ItemAdd(itemId)
             roller = Env:NewUniqueRoller(),
         }
 
-        self.timers:StartUnique(lootItem.distributionGUID, Env.settings.lootSession.timeout, "ItemStopRoll", self)
+        self.timers:StartUnique(item.guid, Env.settings.lootSession.timeout, "ItemStopRoll", self)
     end
 
-    LogDebug("ItemAdd", itemId, "have parent ", parentItem ~= nil, "guid:", lootItem.distributionGUID)
+    LogDebug("ItemAdd", itemId, "have parent ", parentItem ~= nil, "guid:", item.guid)
 
     self.itemCount = self.itemCount + 1
-    self.items[lootItem.distributionGUID] = lootItem
+    self.items[item.guid] = item
     self:UnveilNextItem()
 
-    Comm2.Send.HMSG_ITEM_ANNOUNCE(lootItem)
+    Comm2.Send.HMSG_ITEM_ANNOUNCE(item)
 
-    self.timers:StartUnique(lootItem.distributionGUID .. "ackcheck", 6, function(key)
-        LogDebug("ItemAdd ackcheck", itemId, "guid:", lootItem.distributionGUID)
-        for _, itemClient in pairs(lootItem.responses) do
-            if itemClient.status == LootStatus.sent then
-                itemClient.status = LootStatus.unknown
-                if not lootItem.veiled then
-                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(lootItem.distributionGUID, itemClient)
+    self.timers:StartUnique(item.guid .. "ackcheck", 6, function(key)
+        LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)
+        for _, itemResponse in pairs(item.responses) do
+            if itemResponse.status == LootStatus.sent then
+                itemResponse.status = LootStatus.unknown
+                if not item.veiled then
+                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
                 end
             end
         end
@@ -480,10 +478,10 @@ end
 
 ---Start a new host session.
 ---@param target CommTarget
----@return LootSessionHost|nil
+---@return SessionHost|nil
 ---@return string|nil errorMessage
-function LootSessionHost:Start(target)
-    if LootSessionHost.isRunning then
+function Host:Start(target)
+    if Host.isRunning then
         return nil, L["A host session is already running."]
     end
     if target == "group" then
@@ -496,14 +494,14 @@ function LootSessionHost:Start(target)
     LogDebug("Starting host session with target: ", target)
     InitHost(target)
 
-    return LootSessionHost
+    return Host
 end
 
 Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
-    if not LootSessionHost.isRunning then
+    if not Host.isRunning then
         Env:PrintWarn(L["No session is running."])
         return
     end
     Env:PrintSuccess("Destroy host session...")
-    LootSessionHost:Destroy()
+    Host:Destroy()
 end)
