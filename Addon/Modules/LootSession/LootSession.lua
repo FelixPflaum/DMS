@@ -2,7 +2,6 @@
 local Env = select(2, ...)
 
 local L = Env:GetLocalization()
-local DB = Env.Database
 
 Env.Session = {}
 
@@ -57,8 +56,9 @@ Env.Session.LootStatus = {
 
 ---Get status data by id.
 ---@param id integer
----@return LootClientStatus|nil Will return nothing if status doesn't exist.
+---@return LootClientStatus|nil lootStatus Will return nothing if status doesn't exist.
 function Env.Session.LootStatus:GetById(id)
+    ---@diagnostic disable-next-line: no-unknown
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then
             return status
@@ -71,6 +71,7 @@ end
 ---@return string statusText Will be "UNKNOWN STATUS" if status with id doesn't exist.
 ---@return [number, number, number] colorInfo The RGB color data.
 function Env.Session.LootStatus:GetDisplayFromId(id)
+    ---@diagnostic disable-next-line: no-unknown
     for _, status in pairs(self) do
         if type(status) ~= "function" and status.id == id then
             return status.displayString, status.color
@@ -184,186 +185,4 @@ function Env.Session:CreateLootClientResponsesFromComm(list)
         lrc.responses[v.id] = v
     end
     return lrc
-end
-
-----------------------------------------------------------------------------
---- Comm
-----------------------------------------------------------------------------
-
----@enum OpCode
-local opcodes = {
-    HMSG_SESSION = 1,
-    HMSG_SESSION_END = 2,
-    HMSG_CANDIDATES_UPDATE = 3,
-    HMSG_ITEM_ANNOUNCE = 4,
-    HMSG_ITEM_RESPONSE_UPDATE = 6,
-
-    MAX_HMSG = 99,
-    CMSG_IM_HERE = 100,
-    CMSG_ITEM_ACK = 101,
-    CMSG_ITEM_RESPONSE = 102,
-}
-
-local Comm = {
-    PREFIX = "DMSanity",
-    VERSION = 1,
-    OpCodes = opcodes,
-}
-Env.Session.Comm = Comm
-
----@class (exact) Packet_LootCandidate
----@field n string
----@field c integer
----@field s integer
-
----@class (exact) Packet_HtC_LootSessionItemClient
----@field candidate string
----@field responseId integer|nil
----@field statusId integer
----@field roll integer|nil
----@field sanity integer|nil
-
----@class (exact) Packet_HtC_LootSessionItem
----@field guid string
----@field order integer
----@field itemId integer
----@field veiled boolean
----@field startTime integer
----@field endTime integer
----@field responses nil|Packet_HtC_LootSessionItemClient[]
----@field awardedTo string|nil
----@field parentGUID string|nil
-
----@class (exact) Packet_HtC_LootResponseUpdate
----@field itemGuid string
----@field client Packet_HtC_LootSessionItemClient
-
----@class (exact) Packet_HtC_LootSession
----@field guid string
----@field responses LootResponse[]
----@field commVersion integer
-
----@class (exact) Packet_CtH_LootClientResponse
----@field itemGuid string
----@field responseId integer
-
----@param host LootSessionHost
-function Comm:Packet_HtC_LootSession(host)
-    ---@type Packet_HtC_LootSession
-    local sp = {
-        guid = host.sessionGUID,
-        commVersion = self.VERSION,
-        responses = host.responses:GetCommData(),
-    }
-    return sp
-end
-
----@param candidate LootCandidate
-function Comm:Packet_LootCandidate(candidate)
-    ---@type Packet_LootCandidate
-    local data = {
-        n = candidate.name,
-        c = candidate.classId,
-        s = 0
-    }
-    if candidate.isOffline then
-        data.s = data.s + 0x1
-    end
-    if candidate.leftGroup then
-        data.s = data.s + 0x2
-    end
-    if candidate.isResponding then
-        data.s = data.s + 0x4
-    end
-    return data
-end
-
----@param candidates table<string, LootCandidate>
-function Comm:Packet_LootCandidate_List(candidates)
-    ---@type Packet_LootCandidate[]
-    local lcPacketList = {}
-    for _, lc in pairs(candidates) do
-        table.insert(lcPacketList, self:Packet_LootCandidate(lc))
-    end
-    return lcPacketList
-end
-
----@param data Packet_LootCandidate
-function Comm:Packet_Read_LootCandidate(data)
-    ---@type LootCandidate
-    local lc = {
-        name = data.n,
-        classId = data.c,
-        isOffline = bit.band(data.s, 0x1) > 0,
-        leftGroup = bit.band(data.s, 0x2) > 0,
-        isResponding = bit.band(data.s, 0x4) > 0,
-        lastMessage = 0,
-    }
-    return lc
-end
-
----@param response LootSessionHostItemClient
-function Comm:Packet_HtC_LootSessionItemClient(response)
-    ---@type Packet_HtC_LootSessionItemClient
-    local pic = {
-        candidate = response.candidate.name,
-        responseId = response.response and response.response.id or nil,
-        statusId = response.status.id,
-        roll = response.roll,
-    }
-    return pic
-end
-
----@param responseTable table<string, LootSessionHostItemClient>
-function Comm:Packet_HtC_LootSessionItemClient_List(responseTable)
-    ---@type Packet_HtC_LootSessionItemClient[]
-    local picList = {}
-    for _, v in pairs(responseTable) do
-        table.insert(picList, self:Packet_HtC_LootSessionItemClient(v))
-    end
-    return picList
-end
-
----@param itemGuid string
----@param clientData LootSessionHostItemClient
-function Comm:Packet_HtC_LootResponseUpdate(itemGuid, clientData)
-    ---@type Packet_HtC_LootResponseUpdate
-    local ru = {
-        itemGuid = itemGuid,
-        client = self:Packet_HtC_LootSessionItemClient(clientData)
-    }
-    return ru
-end
-
----@param item LootSessionHostItem
-function Comm:Packet_HtC_LootSessionItem(item)
-    ---@type Packet_HtC_LootSessionItem
-    local pitem = {
-        guid = item.distributionGUID,
-        order = item.order,
-        itemId = item.itemId,
-        veiled = item.veiled,
-        startTime = item.startTime,
-        endTime = item.endTime,
-        parentGUID = item.parentGUID,
-    }
-    if not item.veiled then
-        pitem.awardedTo = item.awardedTo
-        if not item.parentGUID then
-            pitem.responses = self:Packet_HtC_LootSessionItemClient_List(item.responses)
-        end
-    end
-    return pitem
-end
-
----@param itemGuid string
----@param responseId integer
----@return Packet_CtH_LootClientResponse
-function Comm:Packet_CtH_LootClientResponse(itemGuid, responseId)
-    ---@type Packet_CtH_LootClientResponse
-    local lcr = {
-        itemGuid = itemGuid,
-        responseId = responseId,
-    }
-    return lcr
 end

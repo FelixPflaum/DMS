@@ -9,7 +9,7 @@ local AceSerializer = LibStub("AceSerializer-3.0")
 local Net = {}
 Env.Net = Net
 
----@alias AddonCommCallback fun(prefix:string, sender:string, opcode:OpCode, data:any)
+---@alias AddonCommCallback fun(prefix:string, sender:string, opcode:Opcode, data:any)
 
 ---@type table<string, (AddonCommCallback|{object:table, funcName:string})[]>
 local callbacks = {}
@@ -165,7 +165,7 @@ local function TrackCPS(msg)
     Env:PrintDebug("Net: Sending with size", size, "CPS", cps1s, "CPS/2s", cps2s, "CPS/5s", cps5s)
 end
 
----@param opcode OpCode
+---@param opcode Opcode
 ---@return string
 local function MakeMsg(opcode, ...)
     ---@diagnostic disable-next-line: no-unknown
@@ -179,7 +179,7 @@ end
 ---Send message to a channel.
 ---@param prefix string
 ---@param channel string
----@param opcode OpCode
+---@param opcode Opcode
 function Net:Send(prefix, channel, opcode, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
@@ -189,7 +189,7 @@ end
 ---Send message in whisper channel.
 ---@param prefix string
 ---@param target string
----@param opcode OpCode
+---@param opcode Opcode
 function Net:SendWhisper(prefix, target, opcode, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)

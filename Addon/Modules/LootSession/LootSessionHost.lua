@@ -2,8 +2,7 @@
 local Env = select(2, ...)
 local L = Env:GetLocalization()
 
-local Net = Env.Net
-local Comm = Env.Session.Comm
+local Comm2 = Env.Session.Comm2
 local LootStatus = Env.Session.LootStatus
 
 local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
@@ -14,7 +13,9 @@ end
 
 ---Create a simple unique identifier.
 local function MakeGUID()
-    return time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
+    local g = time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
+    LogDebug("Creating GUID:", g)
+    return g
 end
 
 ---@alias CommTarget "group"|"self"
@@ -79,21 +80,15 @@ end
 local updateTimerKey = "mainUpdate"
 
 function LootSessionHost:Setup()
-    ---@class (exact) LSHostEndEvent
-    ---@field RegisterCallback fun(self:LSHostEndEvent, cb:fun())
-    ---@field Trigger fun(self:LSHostEndEvent)
-    ---@diagnostic disable-next-line: inject-field
-    self.OnSessionEnd = Env:NewEventEmitter()
-
     Env:RegisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:RegisterEvent("GROUP_LEFT", self)
 
     Env:PrintSuccess("Started a new host session for " .. self.target)
     LogDebug("Session GUID", self.sessionGUID)
 
-    Net:RegisterObj(Comm.PREFIX, self, "OnMsgReceived")
+    Comm2:HostSetCurrentTarget(self.target)
+    Comm2.Send.HMSG_SESSION_START(self)
 
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION, Comm:Packet_HtC_LootSession(self))
     self:UpdateCandidateList()
 
     self.timers:StartUnique(updateTimerKey, 10, "TimerUpdate", self)
@@ -108,9 +103,7 @@ function LootSessionHost:Destroy()
     LootSessionHost.timers:CancelAll()
     Env:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:UnregisterEvent("GROUP_LEFT", self)
-    Net:UnregisterObj(Comm.PREFIX, self)
-    self:Broadcast(Comm.OpCodes.HMSG_SESSION_END, self.sessionGUID)
-    self.OnSessionEnd:Trigger()
+    Comm2.Send.HMSG_SESSION_END()
 end
 
 function LootSessionHost:TimerUpdate()
@@ -135,8 +128,7 @@ function LootSessionHost:TimerUpdate()
     end
 
     if haveCandidateChange then
-        local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
-        self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
+        Comm2.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 
     -- Restart timer
@@ -154,108 +146,73 @@ function LootSessionHost:SetItemResponse(item, itemClient, response)
     -- TODO: get sanity from DB
     itemClient.sanity = response.isPointsRoll and 999 or nil
     if not item.veiled then
-        self:Broadcast(Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE,
-            Comm:Packet_HtC_LootResponseUpdate(item.distributionGUID, itemClient))
+        Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.distributionGUID, itemClient)
     end
 end
 
----@param prefix string
----@param sender string
----@param opcode OpCode
----@param data any
-function LootSessionHost:OnMsgReceived(prefix, sender, opcode, data)
-    if opcode < Comm.OpCodes.MAX_HMSG then return end
-
-    LogDebug("Received client msg", sender, opcode)
-    local candidate = self.candidates[sender]
+Comm2.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
+    local candidate = LootSessionHost.candidates[sender]
     if not candidate then return end
-
-    if opcode == Comm.OpCodes.CMSG_IM_HERE then
-        local update = not candidate.isResponding
-        candidate.isResponding = true
-        candidate.lastMessage = GetTime()
-        if update then
-            self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, Comm:Packet_LootCandidate(candidate))
-        end
-    elseif opcode == Comm.OpCodes.CMSG_ITEM_RESPONSE then
-        ---@cast data Packet_CtH_LootClientResponse
-        local item = self.items[data.itemGuid]
-        if not item then
-            Env:PrintError(sender .. " tried to respond to unknown item " .. data.itemGuid)
-            return
-        end
-        if item.endTime < time() - RESPONSE_GRACE_PERIOD then
-            Env:PrintError(sender .. " tried to respond to expired item " .. data.itemGuid)
-            return
-        end
-        if item.parentGUID ~= nil then
-            Env:PrintError(sender .. " tried to respond to child item " .. data.itemGuid)
-            return
-        end
-        local itemClient = item.responses[sender]
-        if not itemClient then
-            Env:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but candidate not known for that item")
-            return
-        end
-        if itemClient.response then
-            Env:PrintError(sender .. " tried to respond to item " .. data.itemGuid .. " but already responded")
-            return
-        end
-        local response = self.responses:GetResponse(data.responseId)
-        if not response then
-            Env:PrintError(sender ..
-                " tried to respond to item " .. data.itemGuid .. " but response id " .. data.responseId .. " invalid")
-            return
-        end
-        self:SetItemResponse(item, itemClient, response)
-    elseif opcode == Comm.OpCodes.CMSG_ITEM_ACK then
-        ---@cast data string
-        local item = self.items[data]
-        if not item then
-            Env:PrintError(sender .. " tried to respond to unknown item " .. data)
-            return
-        end
-        local itemClient = item.responses[sender]
-        if not itemClient then
-            Env:PrintError(sender .. " tried to respond to item " .. data .. " but candidate client not known!")
-            return
-        end
-
-        if itemClient.status == LootStatus.sent then
-            itemClient.status = LootStatus.waitingForResponse
-            if not item.veiled then
-                self:Broadcast(Comm.OpCodes.HMSG_ITEM_RESPONSE_UPDATE,
-                    Comm:Packet_HtC_LootResponseUpdate(item.distributionGUID, itemClient))
-            end
-        end
+    local update = not candidate.isResponding
+    candidate.isResponding = true
+    candidate.lastMessage = GetTime()
+    if update then
+        Comm2.Send.HMSG_CANDIDATE_UPDATE(candidate)
     end
-end
+end)
 
----Send comm message to target channel.
----@param opcode OpCode
----@param data any
-function LootSessionHost:Broadcast(opcode, data)
-    if self.target == "self" then
-        LogDebug("Sending broadcast whisper", opcode)
-        Net:SendWhisper(Comm.PREFIX, UnitName("player"), opcode, data)
+Comm2.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
+    local candidate = LootSessionHost.candidates[sender]
+    if not candidate then return end
+    local item = LootSessionHost.items[itemGuid]
+    if not item then
+        Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
         return
     end
-
-    local channel = ""
-    if self.target == "group" then
-        if IsInRaid() then
-            channel = "RAID"
-        elseif IsInGroup() then
-            channel = "PARTY"
-        else
-            Env:PrintError("Tried to broadcast to group but not in a group! Ending session.")
-            self:Destroy()
+    local itemClient = item.responses[sender]
+    if not itemClient then
+        Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate client not known!")
+        return
+    end
+    if itemClient.status == LootStatus.sent then
+        itemClient.status = LootStatus.waitingForResponse
+        if not item.veiled then
+            Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.distributionGUID, itemClient)
         end
     end
+end)
 
-    LogDebug("Sending broadcast", channel, opcode)
-    Net:Send(Comm.PREFIX, channel, opcode, data)
-end
+Comm2.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
+    local item = LootSessionHost.items[itemGuid]
+    if not item then
+        Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
+        return
+    end
+    if item.endTime < time() - RESPONSE_GRACE_PERIOD then
+        Env:PrintError(sender .. " tried to respond to expired item " .. itemGuid)
+        return
+    end
+    if item.parentGUID ~= nil then
+        Env:PrintError(sender .. " tried to respond to child item " .. itemGuid)
+        return
+    end
+    local itemClient = item.responses[sender]
+    if not itemClient then
+        Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate not known for that item")
+        return
+    end
+    if itemClient.response then
+        Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but already responded")
+        return
+    end
+    local response = LootSessionHost.responses:GetResponse(responseId)
+    if not response then
+        Env:PrintError(sender ..
+            " tried to respond to item " .. itemGuid .. " but response id " .. responseId .. " invalid")
+        return
+    end
+    LootSessionHost:SetItemResponse(item, itemClient, response)
+end)
 
 function LootSessionHost:GROUP_LEFT()
     if not self.isRunning then return end
@@ -360,9 +317,7 @@ function LootSessionHost:UpdateCandidateList()
                 LogDebug(" - ", lc.name)
             end
         end
-
-        local lcPacketList = Comm:Packet_LootCandidate_List(changedLootCandidates)
-        self:Broadcast(Comm.OpCodes.HMSG_CANDIDATES_UPDATE, lcPacketList)
+        Comm2.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 end
 
@@ -392,16 +347,14 @@ function LootSessionHost:UnveilNextItem()
         else
             LogDebug("Unveil item: ", sessionItem.distributionGUID, sessionItem.itemId)
             sessionItem.veiled = false
-            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(sessionItem))
-
+            Comm2.Send.HMSG_ITEM_UNVEIL(sessionItem.distributionGUID)
             if sessionItem.childGUIDs then
                 for _, childGUID in ipairs(sessionItem.childGUIDs) do
                     local childItem = self.items[childGUID]
                     if childItem.veiled then
                         LogDebug("Unveil child item because parent was unveiled", childGUID)
                         childItem.veiled = false
-                        -- TODO: don't send this, client should be able to unveil child items it self, it doesn't need this data
-                        self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(childItem))
+                        Comm2.Send.HMSG_ITEM_UNVEIL(childItem.distributionGUID)
                     end
                 end
             end
@@ -423,11 +376,12 @@ function LootSessionHost:ItemStopRoll(guid)
         for _, itemClient in pairs(lootItem.responses) do
             if not itemClient.response and itemClient.status ~= LootStatus.unknown then
                 itemClient.status = LootStatus.responseTimeout
+                if not lootItem.veiled then
+                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(lootItem.distributionGUID, itemClient)
+                end
             end
         end
-        if not lootItem.veiled then
-            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
-        end
+        Comm2.Send.HMSG_ITEM_ROLL_END(lootItem.distributionGUID)
     end
 end
 
@@ -503,17 +457,17 @@ function LootSessionHost:ItemAdd(itemId)
     self.items[lootItem.distributionGUID] = lootItem
     self:UnveilNextItem()
 
-    self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
+    Comm2.Send.HMSG_ITEM_ANNOUNCE(lootItem)
 
     self.timers:StartUnique(lootItem.distributionGUID .. "ackcheck", 6, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", lootItem.distributionGUID)
         for _, itemClient in pairs(lootItem.responses) do
             if itemClient.status == LootStatus.sent then
                 itemClient.status = LootStatus.unknown
+                if not lootItem.veiled then
+                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(lootItem.distributionGUID, itemClient)
+                end
             end
-        end
-        if not lootItem.veiled then
-            self:Broadcast(Comm.OpCodes.HMSG_ITEM_ANNOUNCE, Comm:Packet_HtC_LootSessionItem(lootItem))
         end
     end)
 

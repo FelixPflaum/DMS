@@ -181,9 +181,20 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field SetSize fun(self:ScriptRegionResizing, w:number, h:number):nil
 ---@field Show fun(self:ScriptRegionResizing)
 ---@field Hide fun(self:ScriptRegionResizing)
+---@field GetTop fun(self:ScriptRegionResizing):number Bottom side of the screen to the top edge of the region.
 local ScriptRegionResizing = {
     SetPoint = SetPointDummy
 }
+
+---Returns an anchor point for the region. 
+---@param index integer
+---@return FramePoint point
+---@return WoWFrame relativeTo
+---@return FramePoint relativePoint
+---@return number offsetX
+---@return number offsetY 
+function ScriptRegionResizing:GetPoint(index) end
+
 
 ---@class Font : FontInstance -- https://warcraft.wiki.gg/wiki/UIOBJECT_Font
 ---@field CopyFontObject fun(self:Font, sourceFont) -- https://warcraft.wiki.gg/wiki/API_Font_CopyFontObject
