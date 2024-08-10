@@ -34,7 +34,7 @@ function UniqueTimers:StartUnique(key, duration, callback, object, noError, ...)
 
     assert(object, "obj can't be nil if callback is a string!")
 
-    _self._timers[key] = C_Timer.NewTimer(duration, function(t)
+    self._timers[key] = C_Timer.NewTimer(duration, function(t)
         _self._timers[key] = nil
         object[callback](object, key, unpack(args))
     end)
@@ -57,6 +57,7 @@ end
 function UniqueTimers:Cancel(key)
     if self._timers[key] then
         self._timers[key]:Cancel()
+        self._timers[key] = nil
     end
 end
 

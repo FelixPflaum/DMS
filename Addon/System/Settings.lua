@@ -13,6 +13,7 @@ local defaultSettings = {
     firstStart = true,
     version = 2,
     logLevel = 1, ---@type LogLevel
+    autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
     UI = {
         SessionWindow = {},
         LootWindow = {},

@@ -20,6 +20,24 @@ local function CreateOptionTable()
             Env.settings[info[#info]] = val
         end,
         args = {
+            generalGroup = {
+                order = 90,
+                type = "group",
+                name = L["General"],
+                args = {
+                    autoOpenOnStart = {
+                        order = 1,
+                        name = L["Automatically open on session start"],
+                        desc = L["Open the session window automatically when a session starts, or ask with a dialog box."],
+                        type = "select",
+                        values = {
+                            ["yes"] = L["Yes"],
+                            ["no"] = L["No"],
+                            ["ask"] = L["Always ask"],
+                        }
+                    },
+                }
+            },
             responseGroup = {
                 order = 100,
                 type = "group",

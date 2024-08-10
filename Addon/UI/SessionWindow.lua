@@ -68,27 +68,29 @@ local function UpdateShownItem()
     frame.st:SetData(tableData, true)
 end
 
+local dialogData = {
+    text = L["Do you want to abort the loot session?"],
+    on_cancel = function(self, data, reason) end,
+    buttons = {
+        {
+            text = L["Abort"],
+            on_click = function()
+                Host:Destroy()
+                frame:Hide()
+            end
+        },
+        {
+            text = L["Minimize"],
+            on_click = function() frame:Hide() end
+        },
+    },
+}
+
 local function Script_OnCloseClicked()
     if IsHosting() then
-        LibDialog:Spawn({
-            text = "Do you want to abort the loot session?",
-            on_cancel = function(self, data, reason) end,
-            buttons = {
-                {
-                    text = "Abort",
-                    on_click = function()
-                        Host:Destroy()
-                        frame:Hide()
-                    end,
-                },
-                {
-                    text = "Minimize",
-                    on_click = function()
-                        frame:Hide()
-                    end,
-                },
-            },
-        })
+        if not LibDialog:ActiveDialog(dialogData) then
+            LibDialog:Spawn(dialogData)
+        end
     else
         frame:Hide()
         if Client.isRunning then
@@ -322,10 +324,36 @@ local function UpdateItemSelect()
     end
 end
 
+local openDialogData = {
+    text = L["A loot session started. Do you want to open the session window?"],
+    on_cancel = function(self, data, reason) end,
+    buttons = {
+        {
+            text = L["Yes"],
+            on_click = function()
+                frame:Show()
+            end
+        },
+        {
+            text = L["No"],
+            on_click = function() end
+        },
+    },
+}
+
 Client.OnStart:RegisterCallback(function()
     selectedItemGUID = nil
-    frame:Show()
     UpdateItemSelect()
+    if not IsHosting() and not Env.settings.autoOpenOnStart == "yes" then
+        if Env.settings.autoOpenOnStart == "no" then
+            return
+        end
+        if not LibDialog:ActiveDialog(openDialogData) then
+            LibDialog:Spawn(openDialogData)
+        end
+        return
+    end
+    frame:Show()
 end)
 
 Client.OnEnd:RegisterCallback(function()
