@@ -68,7 +68,8 @@ end
 ---@param defaultX number|nil
 ---@param defaultY number|nil
 ---@return ButtonWindow
-local function CreateButtonWindow(name, title, width, height, topInsetOffset, hasButtonBar, libWinConfig, defaultPoint, defaultX, defaultY)
+local function CreateButtonWindow(name, title, width, height, topInsetOffset, hasButtonBar, libWinConfig, defaultPoint, defaultX,
+                                  defaultY)
     ---@class ButtonWindow : DefaultPanelTemplate
     ---@field SetTitle fun(self:ButtonWindow, title:string)
     ---@field onTopCloseClicked fun()|nil
@@ -120,13 +121,26 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
     frame.AddLeftButton = AddLeftButton
     frame.AddRightButton = AddRightButton
 
-    frame.Reset = function ()
+    frame.Reset = function()
         libWinConfig.x = defaultX or 0
         libWinConfig.y = defaultY or 0
         libWinConfig.point = defaultPoint or "CENTER"
         frame:RestorePosition() ---@diagnostic disable-line: undefined-field
         libWinConfig.scale = 1.0
         frame:SetScale(1.0)
+    end
+
+    ---@param self ButtonWindow
+    ---@param point FramePoint
+    ---@param rel WoWFrame
+    ---@param relPoint FramePoint
+    ---@param x number
+    ---@param y number
+    frame.SetPosition = function(self, point, rel, relPoint, x, y)
+        libWinConfig.x = x
+        libWinConfig.y = y
+        libWinConfig.point = point
+        self:RestorePosition() ---@diagnostic disable-line: undefined-field
     end
 
     return frame

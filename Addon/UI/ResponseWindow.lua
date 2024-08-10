@@ -153,7 +153,7 @@ end
 local function CreateWindow()
     ---@class ResponseFrame : ButtonWindow
     frame = Env.UI.CreateButtonWindow("DMSResponseWindow", L["Roll on Loot"], 300, 75, 25, false, DMS_Settings.UI.ResponseWindow,
-        "TOPLEFT", 125, -200)
+        "LEFT", 125, 200)
     frame:SetToplevel(true)
 
     frame.TopText = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
@@ -232,7 +232,7 @@ Env.Session.Client.OnItemUpdate:RegisterCallback(function()
     end
 
     table.sort(itemsOrdered, function(a, b)
-        return a.endTime < b.endTime
+        return a.endTime < b.endTime or a.order < b.order
     end)
 
     frame.TopText:SetText(L["Items to roll: %d"]:format(#itemsOrdered))
@@ -251,8 +251,12 @@ Env.Session.Client.OnItemUpdate:RegisterCallback(function()
         frame:Show()
     end
 
+    local prevTop = frame:GetTop()
     frame:SetHeight(shown * ITEM_ROLL_FRAME_HEIGHT + 54)
     frame:SetWidth(rollItemFrames[1]:GetWidth() + 13)
+    local topDelta = frame:GetTop() - prevTop
+    local point, rel, relPoint, xo, yo = frame:GetPoint(1)
+    frame:SetPosition(point, rel, relPoint, xo, yo - topDelta)
 end)
 
 Env.Session.Client.OnEnd:RegisterCallback(function()
