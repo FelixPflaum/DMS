@@ -12,8 +12,8 @@ local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 
-local Host = Env.Session.Host
-local Client = Env.Session.Client
+local Host = Env.SessionHost
+local Client = Env.SessionClient
 
 ---Is host with the same guid as client running.
 local function IsHosting()

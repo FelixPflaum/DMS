@@ -2,7 +2,7 @@
 local Env = select(2, ...)
 
 local L = Env:GetLocalization()
-local Comm2 = Env.Session.Comm2
+local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
 local function LogDebug(...)
@@ -48,7 +48,7 @@ end
 ---@field isRunning boolean
 ---@field items table<string, SessionClient_Item>
 local Client = {}
-Env.Session.Client = Client
+Env.SessionClient = Client
 
 ------------------------------------------------------------------------------------
 --- Events
@@ -86,7 +86,7 @@ local timers = Env:NewUniqueTimers()
 
 local function KeepAlive()
     if not Client.isRunning then return end
-    Comm2.Send.CMSG_ATTENDANCE_CHECK()
+    Comm.Send.CMSG_ATTENDANCE_CHECK()
     timers:StartUnique("keepaliveTimer", 20, KeepAlive)
 end
 
@@ -101,7 +101,7 @@ function InitClient(hostName, guid, responses)
     Client.candidates = {}
     Client.isRunning = true
     Client.items = {}
-    Comm2:ClientSetAllowedHost(hostName)
+    Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
     Client.OnStart:Trigger()
 end
@@ -110,11 +110,11 @@ local function EndSession()
     if not Client.isRunning then return end
     timers:CancelAll()
     Client.isRunning = false
-    Comm2:ClientSetAllowedHost("_nohost_")
+    Comm:ClientSetAllowedHost("_nohost_")
     Client.OnEnd:Trigger()
 end
 
-Comm2.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
+Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
     if Client.isRunning and Client.hostName ~= sender then
         LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
         return
@@ -122,17 +122,17 @@ Comm2.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sende
     InitClient(sender, guid, responses)
 end)
 
-Comm2.Events.HMSG_SESSION_END:RegisterCallback(function(sender)
+Comm.Events.HMSG_SESSION_END:RegisterCallback(function(sender)
     EndSession()
 end)
 
-Comm2.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
+Comm.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
     Client.OnItemUpdate:Trigger(item)
 end)
 
-Comm2.Events.HMSG_ITEM_UNVEIL:RegisterCallback(function(itemGuid, sender)
+Comm.Events.HMSG_ITEM_UNVEIL:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
     item.veiled = false
@@ -143,7 +143,7 @@ end)
 --- Candidate List
 ------------------------------------------------------------------------------------
 
-Comm2.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
+Comm.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
     Env:PrintVerbose(lcs)
     for _, lc in ipairs(lcs) do
         Client.candidates[lc.name] = lc
@@ -183,7 +183,7 @@ local function GetClientFromPackedClient(data)
     end
 end
 
-Comm2.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, sender)
+Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, sender)
     local item = Client.items[itemGuid]
     if not item then
         LogDebug("got item response update for unknown item", itemGuid)
@@ -209,7 +209,7 @@ Comm2.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data,
     end
 end)
 
-Comm2.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
+Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     if Client.items[data.guid] then
         LogDebug("Got item announce but already have item!", data.guid)
         return
@@ -228,13 +228,13 @@ Comm2.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     }
 
     Client.items[data.guid] = newItem
-    Comm2.Send.CMSG_ITEM_RECEIVED(newItem.guid)
+    Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
     Client.OnItemUpdate:Trigger(newItem)
 end)
 
 
-Comm2.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
+Comm.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
     if Client.items[data.guid] then
         LogDebug("Got item announce but already have item!", data.guid)
         return
@@ -264,7 +264,7 @@ Comm2.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender
     table.insert(parentIitem.childGuids, newItem.guid)
 
     Client.items[data.guid] = newItem
-    Comm2.Send.CMSG_ITEM_RECEIVED(newItem.guid)
+    Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Child item added", newItem.guid, "parent", newItem.parentGuid)
     Client.OnItemUpdate:Trigger(newItem)
 end)
@@ -287,7 +287,7 @@ function Client:RespondToItem(itemGuid, responseId)
         Env:PrintError(L["Item %s already expired, did not send response!"]:format(itemGuid))
         return
     end
-    Comm2.Send.CMSG_ITEM_RESPONSE(itemGuid, responseId)
+    Comm.Send.CMSG_ITEM_RESPONSE(itemGuid, responseId)
     item.responseSent = true
     self.OnItemUpdate:Trigger(item)
 end

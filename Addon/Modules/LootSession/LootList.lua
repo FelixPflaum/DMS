@@ -5,7 +5,7 @@ local L = Env:GetLocalization()
 
 ---@class (exact) LootList
 local LootList = {}
-Env.Session.LootList = LootList
+Env.SessionLootList = LootList
 
 ---@alias LootListItem integer
 ---@type LootListItem[]
@@ -120,7 +120,7 @@ function LootList:AddListToSession()
         return
     end
 
-    local Host = Env.Session.Host
+    local Host = Env.SessionHost
     if not Host.isRunning then
         local session, err = Host:Start("self")
         if not session or err then

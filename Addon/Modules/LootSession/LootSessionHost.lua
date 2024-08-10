@@ -2,7 +2,7 @@
 local Env = select(2, ...)
 local L = Env:GetLocalization()
 
-local Comm2 = Env.Session.Comm2
+local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
 local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
@@ -60,13 +60,13 @@ local Host = {
     timers = Env:NewUniqueTimers(),
 }
 
-Env.Session.Host = Host
+Env.SessionHost = Host
 
 ---@param target CommTarget
 local function InitHost(target)
     Host.guid = MakeGuid()
     Host.target = target
-    Host.responses = Env.Session:CreateLootResponses()
+    Host.responses = Env.Session.CreateLootResponses()
     Host.candidates = {}
     Host.isRunning = true
     Host.itemCount = 0
@@ -84,8 +84,8 @@ function Host:Setup()
     Env:PrintSuccess("Started a new host session for " .. self.target)
     LogDebug("Session GUID", self.guid)
 
-    Comm2:HostSetCurrentTarget(self.target)
-    Comm2.Send.HMSG_SESSION_START(self)
+    Comm:HostSetCurrentTarget(self.target)
+    Comm.Send.HMSG_SESSION_START(self)
 
     self:UpdateCandidateList()
 
@@ -101,7 +101,7 @@ function Host:Destroy()
     Host.timers:CancelAll()
     Env:UnregisterEvent("GROUP_ROSTER_UPDATE", self)
     Env:UnregisterEvent("GROUP_LEFT", self)
-    Comm2.Send.HMSG_SESSION_END()
+    Comm.Send.HMSG_SESSION_END()
 end
 
 function Host:TimerUpdate()
@@ -126,7 +126,7 @@ function Host:TimerUpdate()
     end
 
     if haveCandidateChange then
-        Comm2.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 
     -- Restart timer
@@ -144,22 +144,22 @@ function Host:SetItemResponse(item, itemResponse, response)
     -- TODO: get sanity from DB
     itemResponse.sanity = response.isPointsRoll and 999 or nil
     if not item.veiled then
-        Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
     end
 end
 
-Comm2.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
+Comm.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
     local candidate = Host.candidates[sender]
     if not candidate then return end
     local update = not candidate.isResponding
     candidate.isResponding = true
     candidate.lastMessage = GetTime()
     if update then
-        Comm2.Send.HMSG_CANDIDATE_UPDATE(candidate)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
     end
 end)
 
-Comm2.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
+Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     local candidate = Host.candidates[sender]
     if not candidate then return end
     local item = Host.items[itemGuid]
@@ -175,12 +175,12 @@ Comm2.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     if itemResponse.status == LootStatus.sent then
         itemResponse.status = LootStatus.waitingForResponse
         if not item.veiled then
-            Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+            Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
         end
     end
 end)
 
-Comm2.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
+Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
     local item = Host.items[itemGuid]
     if not item then
         Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
@@ -315,7 +315,7 @@ function Host:UpdateCandidateList()
                 LogDebug(" - ", lc.name)
             end
         end
-        Comm2.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 end
 
@@ -345,14 +345,14 @@ function Host:UnveilNextItem()
         else
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
-            Comm2.Send.HMSG_ITEM_UNVEIL(item.guid)
+            Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
             if item.childGuids then
                 for _, childGuid in ipairs(item.childGuids) do
                     local childItem = self.items[childGuid]
                     if childItem.veiled then
                         LogDebug("Unveil child item because parent was unveiled", childGuid)
                         childItem.veiled = false
-                        Comm2.Send.HMSG_ITEM_UNVEIL(childItem.guid)
+                        Comm.Send.HMSG_ITEM_UNVEIL(childItem.guid)
                     end
                 end
             end
@@ -375,11 +375,11 @@ function Host:ItemStopRoll(guid)
             if not itemResponse.response and itemResponse.status ~= LootStatus.unknown then
                 itemResponse.status = LootStatus.responseTimeout
                 if not item.veiled then
-                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
                 end
             end
         end
-        Comm2.Send.HMSG_ITEM_ROLL_END(item.guid)
+        Comm.Send.HMSG_ITEM_ROLL_END(item.guid)
     end
 end
 
@@ -455,7 +455,7 @@ function Host:ItemAdd(itemId)
     self.items[item.guid] = item
     self:UnveilNextItem()
 
-    Comm2.Send.HMSG_ITEM_ANNOUNCE(item)
+    Comm.Send.HMSG_ITEM_ANNOUNCE(item)
 
     self.timers:StartUnique(item.guid .. "ackcheck", 6, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)
@@ -463,7 +463,7 @@ function Host:ItemAdd(itemId)
             if itemResponse.status == LootStatus.sent then
                 itemResponse.status = LootStatus.unknown
                 if not item.veiled then
-                    Comm2.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
                 end
             end
         end

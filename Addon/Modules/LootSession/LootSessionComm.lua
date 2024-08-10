@@ -74,7 +74,7 @@ local Comm = {
     Send = Sender,
 }
 
-Env.Session.Comm2 = Comm
+Env.SessionComm = Comm
 
 ---Set the target for host communication.
 ---@param target CommTarget
@@ -170,7 +170,7 @@ do
             end
             return
         end
-        local rebuiltResponses = Env.Session:CreateLootClientResponsesFromComm(data.responses)
+        local rebuiltResponses = Env.Session.CreateLootClientResponsesFromComm(data.responses)
         Events.HMSG_SESSION_START:Trigger(data.guid, rebuiltResponses, sender)
     end
 end

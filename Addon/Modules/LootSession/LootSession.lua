@@ -147,8 +147,18 @@ function LootResponses:GetAutoPass()
     return self.responses[RESPONSE_ID_AUTOPASS]
 end
 
+---Get data for clients. Includes all custom response options.
+function LootResponses:GetCommData()
+    ---@type LootResponse[]
+    local list = {}
+    for i = REPSONSE_ID_FIRST_CUSTOM, #self.responses do
+        table.insert(list, self.responses[i])
+    end
+    return list
+end
+
 ---Create loot response data from current settings data.
-function Env.Session:CreateLootResponses()
+function Env.Session.CreateLootResponses()
     local lrc = setmetatable({ responses = CreateDefaultResponseTable() }, LootResponses)
     local numButtons = Env.settings.lootSession.responses.buttonCount
     local buttons = Env.settings.lootSession.responses.buttons
@@ -167,19 +177,9 @@ function Env.Session:CreateLootResponses()
     return lrc
 end
 
----Get data for clients. Includes all custom response options.
-function LootResponses:GetCommData()
-    ---@type LootResponse[]
-    local list = {}
-    for i = REPSONSE_ID_FIRST_CUSTOM, #self.responses do
-        table.insert(list, self.responses[i])
-    end
-    return list
-end
-
 ---Create loot response data from received data.
 ---@param list LootResponse[]
-function Env.Session:CreateLootClientResponsesFromComm(list)
+function Env.Session.CreateLootClientResponsesFromComm(list)
     local lrc = setmetatable({ responses = CreateDefaultResponseTable() }, LootResponses)
     for _, v in ipairs(list) do
         lrc.responses[v.id] = v

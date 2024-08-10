@@ -6,7 +6,7 @@ local L = Env:GetLocalization()
 local ScrollingTable = LibStub("ScrollingTable")
 local GetImagePath = Env.UI.GetImagePath
 local ShowItemTooltip = Env.UI.ShowItemTooltip
-local LootList = Env.Session.LootList
+local LootList = Env.SessionLootList
 
 local frame ---@type ButtonWindow
 local st ---@type ST_ScrollingTable

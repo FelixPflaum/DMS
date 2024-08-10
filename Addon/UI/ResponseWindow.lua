@@ -3,7 +3,7 @@ local Env = select(2, ...)
 
 local L = Env:GetLocalization()
 
-local Client = Env.Session.Client
+local Client = Env.SessionClient
 local frame ---@type ResponseFrame
 local rollItemFrames = {} ---@type RollItemFrame[]
 local responsesOrdered = {} ---@type LootResponse[]
@@ -208,7 +208,7 @@ local function SetitemAtPosition(posIndex, item)
     rif:SetWidth(math.max(MIN_WIDTH, buttonWidth + ITEM_ROLL_FRAME_ICON_SIZE + 5))
 end
 
-Env.Session.Client.OnStart:RegisterCallback(function()
+Client.OnStart:RegisterCallback(function()
     if not Client.responses then return end
     local responses = Client.responses.responses
     ---Make a reverse array of the current response data the client has. Filtering out those that shouldn't be shown.
@@ -219,7 +219,7 @@ Env.Session.Client.OnStart:RegisterCallback(function()
     end
 end)
 
-Env.Session.Client.OnItemUpdate:RegisterCallback(function()
+Client.OnItemUpdate:RegisterCallback(function()
     local now = time()
     ---@type SessionClient_Item[]
     local itemsOrdered = {}
@@ -259,7 +259,7 @@ Env.Session.Client.OnItemUpdate:RegisterCallback(function()
     frame:SetPosition(point, rel, relPoint, xo, yo - topDelta)
 end)
 
-Env.Session.Client.OnEnd:RegisterCallback(function()
+Client.OnEnd:RegisterCallback(function()
     frame:Hide()
 end)
 
