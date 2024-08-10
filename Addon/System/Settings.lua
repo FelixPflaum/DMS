@@ -11,9 +11,14 @@ Env.LogLevel = {
 ---@class SettingsTable
 local defaultSettings = {
     firstStart = true,
-    version = 2,
+    version = 3,
     logLevel = 1, ---@type LogLevel
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
+    startPermissions = {
+        leader = true,
+        masterLooter = true,
+        guildRanks = {},
+    },
     UI = {
         SessionWindow = {},
         LootWindow = {},
@@ -21,10 +26,8 @@ local defaultSettings = {
     },
     lootSession = {
         timeout = 90,
-        responses = {
-            buttonCount = 0,
-            buttons = {}, ---@type {response:string, color:[number,number,number], pointRoll:boolean}[]
-        },
+        responseCount = 0,
+        responseButtons = {}, ---@type {response:string, color:[number,number,number], pointRoll:boolean}[]
     },
 }
 

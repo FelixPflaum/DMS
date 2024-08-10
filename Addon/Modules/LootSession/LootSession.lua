@@ -160,8 +160,8 @@ end
 ---Create loot response data from current settings data.
 function Env.Session.CreateLootResponses()
     local lrc = setmetatable({ responses = CreateDefaultResponseTable() }, LootResponses)
-    local numButtons = Env.settings.lootSession.responses.buttonCount
-    local buttons = Env.settings.lootSession.responses.buttons
+    local numButtons = Env.settings.lootSession.responseCount
+    local buttons = Env.settings.lootSession.responseButtons
     local count = 0
     for i = 1, numButtons do
         local id = REPSONSE_ID_FIRST_CUSTOM + i - 1
@@ -185,4 +185,24 @@ function Env.Session.CreateLootClientResponsesFromComm(list)
         lrc.responses[v.id] = v
     end
     return lrc
+end
+
+function Env.Session.CanUnitStartSession(unitName)
+    local canStart = false
+    local lootmethod, masterlooterPartyID, masterlooterRaidID = GetLootMethod()
+    if UnitIsGroupLeader(unitName, LE_PARTY_CATEGORY_HOME) then
+        canStart = true
+        Env:PrintDebug("Sender is party leader and can start.")
+    elseif lootmethod == "master" and ((masterlooterPartyID and UnitName("party" .. masterlooterPartyID) == unitName)
+            or (masterlooterRaidID and UnitName("raid" .. masterlooterRaidID) == unitName)) then
+        canStart = true
+        Env:PrintDebug("Sender is master looter and can start.")
+    else
+        local guildPerms = Env:GetGuildInfoData()
+        if guildPerms.allowedNames[unitName] then
+            canStart = true
+            Env:PrintDebug("Sender has permission from guild info.")
+        end
+    end
+    return canStart
 end

@@ -34,7 +34,7 @@ end
 ---@field status LootCandidateStatus
 ---@field response LootResponse|nil
 ---@field roll integer|nil
----@field sanity integer|nil
+---@field points integer|nil
 
 ---@class (exact) SessionHost_Item
 ---@field guid string Unique id for that specific loot distribution.
@@ -72,7 +72,7 @@ local responses ---@type LootResponses
 ---@param target CommTarget
 local function InitHost(target)
     Host.guid = MakeGuid()
-    target = target
+    targetChannelType = target
     responses = Env.Session.CreateLootResponses()
     candidates = {}
     Host.isRunning = true
@@ -115,7 +115,7 @@ function Host:TimerUpdate()
     local haveCandidateChange = false
     for _, candidate in pairs(candidates) do
         local oldIsResponding = candidate.isResponding
-        candidate.isResponding = candidate.lastMessage - 25 < nowgt
+        candidate.isResponding = candidate.lastMessage > nowgt - 25
         if oldIsResponding ~= candidate.isResponding then
             changedLootCandidates[candidate.name] = candidate
             haveCandidateChange = true
@@ -166,7 +166,7 @@ function Host:UpdateCandidateList()
         prefix = ""
     end
 
-    if prefix == "" then
+    if prefix == "" or prefix == "party" then
         local myName = UnitName("player")
         newList[myName] = {
             name = myName,
@@ -175,11 +175,13 @@ function Host:UpdateCandidateList()
             isResponding = false,
             lastMessage = 0,
         }
-    else
-        local numMembers = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
-        for i = 1, numMembers do
-            local unit = prefix .. i
-            local name = UnitName(unit)
+    end
+
+    local numMembers = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
+    for i = 1, numMembers do
+        local unit = prefix .. i
+        local name = UnitName(unit)
+        if name then
             newList[name] = {
                 name = name,
                 classId = select(3, UnitClass(unit)),
@@ -280,8 +282,8 @@ function Host:SetItemResponse(item, itemResponse, response)
     itemResponse.response = response
     itemResponse.roll = itemResponse.roll or item.roller:GetRoll()
     itemResponse.status = LootStatus.responded
-    -- TODO: get sanity from DB
-    itemResponse.sanity = response.isPointsRoll and 999 or nil
+    -- TODO: get points from DB
+    itemResponse.points = response.isPointsRoll and 999 or nil
     if not item.veiled then
         Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
     end
@@ -484,6 +486,11 @@ function Host:Start(target)
     if Host.isRunning then
         return nil, L["A host session is already running."]
     end
+
+    if not Env.Session.CanUnitStartSession(UnitName("player")) then
+        return nil, L["You do not have permissions to start a session."]
+    end
+
     if target == "group" then
         if not IsInRaid() and not IsInGroup() then
             return nil, L["Host target group does not work outside of a group!"]
@@ -491,6 +498,7 @@ function Host:Start(target)
     elseif target ~= "self" then
         return nil, L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
     end
+
     LogDebug("Starting host session with target: ", target)
     InitHost(target)
 

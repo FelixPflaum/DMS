@@ -325,7 +325,7 @@ do
     ---@field statusId integer
     ---@field responseId? integer
     ---@field roll? integer
-    ---@field sanity? integer
+    ---@field points? integer
 
     ---@alias Packet_HMSG_ITEM_RESPONSE_UPDATE table<string,PackedSessionItemClient[]>
 
@@ -359,7 +359,7 @@ do
         }
         if clientData.response then packedClient.responseId = clientData.response.id end
         if clientData.roll then packedClient.roll = clientData.roll end
-        if clientData.sanity then packedClient.sanity = clientData.sanity end
+        if clientData.points then packedClient.points = clientData.points end
 
         if doNotBatch then
             ---@type Packet_HMSG_ITEM_RESPONSE_UPDATE

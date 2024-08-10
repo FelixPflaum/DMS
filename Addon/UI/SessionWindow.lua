@@ -62,8 +62,8 @@ local function UpdateShownItem()
             v.status.displayString,
             v.response and v.response.displayString or "",
             v.roll or "",
-            v.sanity or "",
-            v.roll and v.sanity and v.roll + v.sanity or "" })
+            v.points or "",
+            v.roll and v.points and v.roll + v.points or "" })
     end
     frame.st:SetData(tableData, true)
 end

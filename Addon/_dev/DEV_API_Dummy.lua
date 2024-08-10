@@ -36,6 +36,9 @@ function UnitRangedAttack(unit)
     return 1, 1;
 end
 
+---@return string|nil
+function GetGuildInfoText() end
+
 ---Get the itemLink for the specified item.
 ---@param unit string
 ---@param slotId number
@@ -186,15 +189,14 @@ local ScriptRegionResizing = {
     SetPoint = SetPointDummy
 }
 
----Returns an anchor point for the region. 
+---Returns an anchor point for the region.
 ---@param index integer
 ---@return FramePoint point
 ---@return WoWFrame relativeTo
 ---@return FramePoint relativePoint
 ---@return number offsetX
----@return number offsetY 
+---@return number offsetY
 function ScriptRegionResizing:GetPoint(index) end
-
 
 ---@class Font : FontInstance -- https://warcraft.wiki.gg/wiki/UIOBJECT_Font
 ---@field CopyFontObject fun(self:Font, sourceFont) -- https://warcraft.wiki.gg/wiki/API_Font_CopyFontObject
@@ -427,7 +429,7 @@ GetItemInfoInstant = C_Item.GetItemInfoInstant
 ---@return integer expacID
 ---@return integer setID
 ---@return boolean isCraftingReagent
-function  C_Item.GetItemInfo(ident) end
+function C_Item.GetItemInfo(ident) end
 
 GetItemInfo = C_Item.GetItemInfo
 
@@ -438,7 +440,6 @@ function C_Item.DoesItemExistByID(itemId) end
 ---@param itemId integer
 ---@return boolean
 function C_Item.IsItemDataCachedByID(itemId) end
-
 
 ---Return the icon texture for the item.
 ---@param itemID integer
@@ -479,8 +480,10 @@ end
 
 ---@return boolean
 function IsControlKeyDown() end
+
 ---@return boolean
 function IsAltKeyDown() end
+
 ---@return boolean
 function IsShiftKeyDown() end
 
@@ -848,6 +851,19 @@ function IsInGuild() end
 
 ---Requests updated guild roster information from the server.
 function GuildRoster() end
+
+C_GuildInfo = {
+    GuildRoster = GuildRoster,
+}
+
+---@param unit string
+---@param groupType any If omitted, defaults to INSTANCE if applicable, HOME otherwise. LE_PARTY_CATEGORY_HOME|LE_PARTY_CATEGORY_INSTANCE
+function UnitIsGroupLeader(unit, groupType) end
+
+---@return "freeforall"|"roundrobin"|"master"|"group"|"needbeforegreed" method 
+---@return integer masterlooterPartyID Returns 0 if player is the mater looter, 1-4 if party member is master looter (corresponding to party1-4) and nil if the master looter isn't in the player's party or master looting is not used.
+---@return integer masterlooterRaidID Returns index of the master looter in the raid (corresponding to a raidX unit), or nil if the player is not in a raid or master looting is not used.
+function GetLootMethod() end
 
 ---@class TimerHandle
 ---@field IsCancelled fun(self:TimerHandle)

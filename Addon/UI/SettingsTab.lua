@@ -21,13 +21,13 @@ local function CreateOptionTable()
         end,
         args = {
             generalGroup = {
-                order = 90,
+                order = 100,
                 type = "group",
                 name = L["General"],
                 args = {
                     autoOpenOnStart = {
                         order = 1,
-                        name = L["Automatically open on session start"],
+                        name = L["Automatically Open"],
                         desc = L["Open the session window automatically when a session starts, or ask with a dialog box."],
                         type = "select",
                         values = {
@@ -38,39 +38,10 @@ local function CreateOptionTable()
                     },
                 }
             },
-            responseGroup = {
-                order = 100,
-                type = "group",
-                name = L["Loot Responses"],
-                get = function(info)
-                    return Env.settings.lootSession.responses[info[#info]]
-                end,
-                set = function(info, val)
-                    ---@diagnostic disable-next-line: no-unknown
-                    Env.settings.lootSession.responses[info[#info]] = val
-                end,
-                args = {
-                    desc = {
-                        order = 1,
-                        type = "description",
-                        name = L["Configure the available responses if you are the host. A pass button is always shown."]
-                    },
-                    buttonCount = {
-                        order = 2,
-                        name = L["Number of buttons"],
-                        desc = L["How many buttons to show as options."],
-                        type = "range",
-                        width = "full",
-                        min = 0,
-                        max = maxResponseButtons,
-                        step = 1,
-                    },
-                }
-            },
-            sessionGroup = {
+            hostGroup = {
                 order = 200,
                 type = "group",
-                name = L["Loot Session"],
+                name = L["Host Settings"],
                 get = function(info)
                     return Env.settings.lootSession[info[#info]]
                 end,
@@ -87,6 +58,26 @@ local function CreateOptionTable()
                         width = "full",
                         min = 10,
                         max = 300,
+                        step = 1,
+                    },
+                    headerResponses = {
+                        order = 2,
+                        type = "header",
+                        name = L["Responses"]
+                    },
+                    descCound = {
+                        order = 3,
+                        type = "description",
+                        name = L["Configure the available responses if you are the host. A pass button is always shown."]
+                    },
+                    responseCount = {
+                        order = 4,
+                        name = L["Number of Buttons"],
+                        desc = L["How many buttons to show as options."],
+                        type = "range",
+                        width = "full",
+                        min = 0,
+                        max = maxResponseButtons,
                         step = 1,
                     },
                 }
@@ -112,13 +103,13 @@ local function CreateOptionTable()
         }
     }
 
-    local responseArgs = optionTable.args.responseGroup.args
+    local responseArgs = optionTable.args.hostGroup.args
     local orderLast = 100
     local perRow = 5
 
     for i = 1, maxResponseButtons do
-        if not Env.settings.lootSession.responses.buttons[i] then
-            Env.settings.lootSession.responses.buttons[i] = {
+        if not Env.settings.lootSession.responseButtons[i] then
+            Env.settings.lootSession.responseButtons[i] = {
                 response = "Button" .. i,
                 color = { 1, 1, 1 },
             }
@@ -129,12 +120,12 @@ local function CreateOptionTable()
             name = L["Button %d"]:format(i),
             desc = L["Set the response for button %d."]:format(i),
             type = "input",
-            get = function() return Env.settings.lootSession.responses.buttons[i].response end,
+            get = function() return Env.settings.lootSession.responseButtons[i].response end,
             set = function(info, value)
                 if value == "" then return end
-                Env.settings.lootSession.responses.buttons[i].response = tostring(value)
+                Env.settings.lootSession.responseButtons[i].response = tostring(value)
             end,
-            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
+            hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["color" .. i] = {
             order = orderLast - i * perRow + 2,
@@ -142,9 +133,9 @@ local function CreateOptionTable()
             desc = L["Color used for response."],
             width = 0.4,
             type = "color",
-            get = function() return unpack(Env.settings.lootSession.responses.buttons[i].color) end,
-            set = function(info, r, g, b, a) Env.settings.lootSession.responses.buttons[i].color = { r, g, b } end,
-            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
+            get = function() return unpack(Env.settings.lootSession.responseButtons[i].color) end,
+            set = function(info, r, g, b, a) Env.settings.lootSession.responseButtons[i].color = { r, g, b } end,
+            hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["sanity" .. i] = {
             order = orderLast - i * perRow + 3,
@@ -152,9 +143,9 @@ local function CreateOptionTable()
             name = L["Sanity Roll"],
             desc = L["Whether this response uses sanity."],
             width = 0.7,
-            get = function() return Env.settings.lootSession.responses.buttons[i].pointRoll end,
-            set = function(info, val) Env.settings.lootSession.responses.buttons[i].pointRoll = val end,
-            hidden = function() return Env.settings.lootSession.responses.buttonCount < i end,
+            get = function() return Env.settings.lootSession.responseButtons[i].pointRoll end,
+            set = function(info, val) Env.settings.lootSession.responseButtons[i].pointRoll = val end,
+            hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["up" .. i] = {
             order = orderLast - i * perRow + 4,
@@ -163,15 +154,15 @@ local function CreateOptionTable()
             width = 0.1,
             image = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up",
             disabled = function(info)
-                return i == Env.settings.lootSession.responses.buttonCount
+                return i == Env.settings.lootSession.responseCount
             end,
             func = function()
-                local tempResponse = Env.settings.lootSession.responses.buttons[i]
-                Env.settings.lootSession.responses.buttons[i] = Env.settings.lootSession.responses.buttons[i + 1]
-                Env.settings.lootSession.responses.buttons[i + 1] = tempResponse
+                local tempResponse = Env.settings.lootSession.responseButtons[i]
+                Env.settings.lootSession.responseButtons[i] = Env.settings.lootSession.responseButtons[i + 1]
+                Env.settings.lootSession.responseButtons[i + 1] = tempResponse
             end,
             hidden = function()
-                return Env.settings.lootSession.responses.buttonCount < i
+                return Env.settings.lootSession.responseCount < i
             end,
         }
         responseArgs["down" .. i] = {
@@ -184,12 +175,12 @@ local function CreateOptionTable()
                 return i == 1
             end,
             func = function()
-                local tempResponse = Env.settings.lootSession.responses.buttons[i]
-                Env.settings.lootSession.responses.buttons[i] = Env.settings.lootSession.responses.buttons[i - 1]
-                Env.settings.lootSession.responses.buttons[i - 1] = tempResponse
+                local tempResponse = Env.settings.lootSession.responseButtons[i]
+                Env.settings.lootSession.responseButtons[i] = Env.settings.lootSession.responseButtons[i - 1]
+                Env.settings.lootSession.responseButtons[i - 1] = tempResponse
             end,
             hidden = function()
-                return Env.settings.lootSession.responses.buttonCount < i
+                return Env.settings.lootSession.responseCount < i
             end,
         }
     end

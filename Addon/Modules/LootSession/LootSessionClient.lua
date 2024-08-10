@@ -25,7 +25,7 @@ end
 ---@field response LootResponse|nil
 ---@field status LootCandidateStatus
 ---@field roll integer|nil
----@field sanity integer|nil
+---@field points integer|nil
 
 ---@class (exact) SessionClient_Item
 ---@field guid string
@@ -121,6 +121,12 @@ Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender
         LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
         return
     end
+
+    if sender ~= UnitName("player") and not Env.Session.CanUnitStartSession(sender) then
+        LogDebug("Received HMSG_SESSION_START from", sender, "but sender has no permission to start a session")
+        return
+    end
+
     InitClient(sender, guid, responses)
 end)
 
@@ -198,7 +204,7 @@ local function GetClientFromPackedClient(data)
             response = response,
             status = status,
             roll = data.roll,
-            sanity = data.sanity,
+            points = data.points,
         }
         return lsic
     end
@@ -247,6 +253,16 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
         responses = {},
         responseSent = false,
     }
+
+    -- Fill default responses until we get data from host if item should be shown.
+    if not newItem.veiled then
+        for k, v in pairs(Client.candidates) do
+            newItem.responses[k] = {
+                candidate = v,
+                status = LootStatus.sent,
+            }
+        end
+    end
 
     Client.items[data.guid] = newItem
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)

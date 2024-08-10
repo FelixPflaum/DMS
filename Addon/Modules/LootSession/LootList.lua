@@ -122,7 +122,7 @@ function LootList:AddListToSession()
 
     local Host = Env.SessionHost
     if not Host.isRunning then
-        local session, err = Host:Start("self")
+        local session, err = Host:Start(IsInGroup(LE_PARTY_CATEGORY_HOME) and "group" or "self")
         if not session or err then
             if err then Env:PrintError(err) end
             return

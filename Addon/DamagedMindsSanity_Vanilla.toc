@@ -32,6 +32,7 @@ System/Net.lua
 System/SlashCommands.lua
 System/Settings.lua
 System/Item.lua
+System/Guild.lua
 
 Database/Database.lua
 
