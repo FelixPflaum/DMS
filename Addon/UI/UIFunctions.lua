@@ -47,6 +47,12 @@ function Env.UI.ShowItemTooltip(parent, link)
     GameTooltip:SetHyperlink(link)
 end
 
+---@param color number[]
+---@param str string
+function Env.UI.ColorStringFromArray(color, str)
+    return string.format("|cFF%02x%02x%02x%s|r", math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255), str)
+end
+
 ---@type fun()[]
 local resetCallbacks = {}
 ---@param cb fun()

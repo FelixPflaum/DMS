@@ -11,6 +11,7 @@ local ScrollingTable = LibStub("ScrollingTable") ---@type LibScrollingTable
 local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
+local ColorStringFromArray = Env.UI.ColorStringFromArray
 
 local Host = Env.SessionHost
 local Client = Env.SessionClient
@@ -59,8 +60,8 @@ local function UpdateShownItem()
         table.insert(tableData, {
             v.candidate.classId,
             "|c" .. GetClassColor(v.candidate.classId).argbstr .. v.candidate.name,
-            v.status.displayString,
-            v.response and v.response.displayString or "",
+            ColorStringFromArray(v.status.color, v.status.displayString),
+            v.response and ColorStringFromArray(v.response.color, v.response.displayString) or "",
             v.roll or "",
             v.points or "",
             v.roll and v.points and v.roll + v.points or "" })
