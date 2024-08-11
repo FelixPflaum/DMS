@@ -1,0 +1,8 @@
+{
+    "devDependencies": {
+        "@types/node": "^22.2.0"
+    },
+    "scripts": {
+        "start": "tsc & node ./localeFileCreator.js"
+    }
+}
