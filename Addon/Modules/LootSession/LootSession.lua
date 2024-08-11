@@ -11,7 +11,7 @@ Env.Session = {}
 ----------------------------------------------------------------------------
 
 ---@class (exact) LootCandidateStatus
----@field id integer
+---@field id integer Also used for ordering (desc)
 ---@field displayString string
 ---@field color [number, number, number]
 
@@ -24,25 +24,25 @@ Env.Session = {}
 Env.Session.LootCandidateStatus = {
     ---@type LootCandidateStatus
     sent = { -- Loot data sent, waiting for answer...
-        id = 1,
-        displayString = L["Loot data sent, waiting for answer..."],
+        id = 4,
+        displayString = L["Sent, waiting for answer..."],
         color = { 1, 0.5, 0 },
     },
     ---@type LootCandidateStatus
     waitingForResponse = { -- Waiting for response selection...
-        id = 2,
+        id = 3,
         displayString = L["Waiting for response selection..."],
         color = { 1, 1, 0 },
     },
     ---@type LootCandidateStatus
     unknown = { -- Unknown, offline or addon not installed
-        id = 3,
-        displayString = L["Unknown, offline or addon not installed"],
+        id = 2,
+        displayString = L["Unknown, offline, not installed"],
         color = { 0.5, 0.5, 0.5 },
     },
     ---@type LootCandidateStatus
     responseTimeout = { -- Did not respond in time
-        id = 4,
+        id = 1,
         displayString = L["Did not respond in time"],
         color = { 1, 0, 0 },
     },
@@ -190,6 +190,10 @@ function Env.Session.CreateLootClientResponsesFromComm(list)
     end
     return lrc
 end
+
+----------------------------------------------------------------------------
+--- Misc
+----------------------------------------------------------------------------
 
 function Env.Session.CanUnitStartSession(unitName)
     local canStart = false
