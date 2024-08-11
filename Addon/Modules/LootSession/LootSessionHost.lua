@@ -5,6 +5,7 @@ local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
+local TEST_MODE = true          -- Generate test candidates and test responses for them.
 local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
 
 local function LogDebug(...)
@@ -28,6 +29,7 @@ end
 ---@field leftGroup boolean
 ---@field isResponding boolean
 ---@field lastMessage number GetTime()
+---@field isFake? boolean Is fake test candidate.
 
 ---@class (exact) SessionHost_ItemResponse
 ---@field candidate SessionHost_Candidate
@@ -90,6 +92,12 @@ local function InitHost(target)
 
     Host:UpdateCandidateList()
     timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", Host)
+
+    if TEST_MODE then
+        Env:PrintError("TEST MODE: Generating fake candidate entries!")
+        Env.Session.FillFakeCandidateList(candidates, 20)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
+    end
 
     -- TODO: Update responses if player db changes (points)
 end
@@ -195,7 +203,7 @@ function Host:UpdateCandidateList()
     for oldName, oldEntry in pairs(candidates) do
         local newEntry = newList[oldName]
 
-        if newEntry == nil then
+        if newEntry == nil and not oldEntry.isFake then
             if not oldEntry.leftGroup then
                 oldEntry.leftGroup = true
                 changed = true
@@ -345,6 +353,9 @@ function UnveilNextItem()
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
             Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
+            for _, v in pairs(item.responses) do
+                Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, v)
+            end
             if item.childGuids then
                 for _, childGuid in ipairs(item.childGuids) do
                     local childItem = items[childGuid]
@@ -427,15 +438,6 @@ function Host:ItemAdd(itemId)
 
         table.insert(parentItem.childGuids, item.guid)
     else
-        ---@type table<string, SessionHost_ItemResponse>
-        local candidateResponseList = {}
-        for name, candidate in pairs(candidates) do
-            candidateResponseList[name] = {
-                candidate = candidate,
-                status = LootStatus.sent,
-            }
-        end
-
         item = {
             guid = MakeGuid(),
             order = itemCount * 100,
@@ -444,9 +446,22 @@ function Host:ItemAdd(itemId)
             startTime = time(),
             endTime = time() + Env.settings.lootSession.timeout,
             status = "waiting",
-            responses = candidateResponseList,
+            responses = {},
             roller = Env:NewUniqueRoller(),
         }
+
+        for name, candidate in pairs(candidates) do
+            item.responses[name] = {
+                candidate = candidate,
+                status = LootStatus.sent,
+            }
+            if TEST_MODE and candidate.isFake then
+                local ir = item.responses[name]
+                Env.Session.FillTestResponse(ir, responses.responses, item.roller)
+                Env:PrintError("TEST MODE: Generating fake response for " .. name)
+                print(ir.status.displayString, ir.response and ir.response.displayString, ir.roll, ir.points)
+            end
+        end
 
         timers:StartUnique(item.guid, Env.settings.lootSession.timeout + RESPONSE_GRACE_PERIOD, "ItemStopRoll", self)
     end
@@ -455,9 +470,10 @@ function Host:ItemAdd(itemId)
 
     itemCount = itemCount + 1
     items[item.guid] = item
-    UnveilNextItem()
 
     Comm.Send.HMSG_ITEM_ANNOUNCE(item)
+
+    UnveilNextItem()
 
     timers:StartUnique(item.guid .. "ackcheck", 6, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)
@@ -487,13 +503,12 @@ function Host:Start(target)
         return nil, L["A host session is already running."]
     end
 
-    if not Env.Session.CanUnitStartSession(UnitName("player")) then
-        return nil, L["You do not have permissions to start a session."]
-    end
-
     if target == "group" then
         if not IsInRaid() and not IsInGroup() then
             return nil, L["Host target group does not work outside of a group!"]
+        end
+        if not Env.Session.CanUnitStartSession(UnitName("player")) then
+            return nil, L["You do not have permissions to start a session."]
         end
     elseif target ~= "self" then
         return nil, L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")

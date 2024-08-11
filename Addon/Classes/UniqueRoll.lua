@@ -1,7 +1,7 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
----Allows picking random unique numbers in [1, 100] range.
+---Allows picking random unique numbers in [1, n] range.
 ---@class (exact) UniqueRoller
 ---@field _rolls integer[]
 local UniqueRoller = {}
@@ -19,21 +19,23 @@ function UniqueRoller:GetRoll()
 end
 
 ---Get table with numbers from 1 to 100.
+---@param max integer
 ---@return integer[]
-local function MakeRollTable()
+local function MakeRollTable(max)
     ---@type integer[]
     local rolls = {}
-    for i = 1, 100 do
+    for i = 1, max do
         rolls[i] = i
     end
     return rolls
 end
 
 ---Get a new UniqueRoll instance. Can be used to generate unique rolls.
+---@param max integer? The maximum to roll for. Default 100.
 ---@return UniqueRoller
-function Env:NewUniqueRoller()
+function Env:NewUniqueRoller(max)
     ---@type UniqueRoller
-    local ur = { _rolls = MakeRollTable() }
+    local ur = { _rolls = MakeRollTable(max or 100) }
     setmetatable(ur, UniqueRoller)
     return ur
 end

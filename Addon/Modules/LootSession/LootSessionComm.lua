@@ -405,7 +405,7 @@ do
     ---@type table<string,boolean>
     local nextSend = {}
 
-    local function SendResponseUpdateBatch()
+    local function SendUpdateBatch()
         local packet = {} ---@type string[]
         for itemGuid in pairs(nextSend) do
             table.insert(packet, itemGuid)
@@ -426,7 +426,7 @@ do
         end
 
         nextSend[itemGuid] = true
-        batchTimers:StartUnique("HMSG_ITEM_UNVEIL", 0.2, SendResponseUpdateBatch, nil, true)
+        batchTimers:StartUnique("HMSG_ITEM_UNVEIL", 0.2, SendUpdateBatch, nil, true)
     end
 
     ---@class CommEvent_HMSG_ITEM_UNVEIL
@@ -448,7 +448,7 @@ do
     ---@type table<string,boolean>
     local nextSend = {}
 
-    local function SendResponseUpdateBatch()
+    local function SendUpdateBatch()
         local packet = {} ---@type string[]
         for itemGuid in pairs(nextSend) do
             table.insert(packet, itemGuid)
@@ -469,7 +469,7 @@ do
         end
 
         nextSend[itemGuid] = true
-        batchTimers:StartUnique("HMSG_ITEM_ROLL_END", 0.2, SendResponseUpdateBatch, nil, true)
+        batchTimers:StartUnique("HMSG_ITEM_ROLL_END", 0.2, SendUpdateBatch, nil, true)
     end
 
     ---@class CommEvent_HMSG_ITEM_ROLL_END
@@ -515,7 +515,7 @@ end
 -- CMSG_ATTENDANCE_CHECK
 do
     function Sender.CMSG_ATTENDANCE_CHECK()
-        SendToClients(OPCODES.CMSG_ATTENDANCE_CHECK)
+        SendToHost(OPCODES.CMSG_ATTENDANCE_CHECK)
     end
 
     ---@class CommEvent_CMSG_ATTENDANCE_CHECK
@@ -533,7 +533,7 @@ end
 do
     ---@param itemGuid string
     function Sender.CMSG_ITEM_RECEIVED(itemGuid)
-        SendToClients(OPCODES.CMSG_ITEM_RECEIVED, itemGuid)
+        SendToHost(OPCODES.CMSG_ITEM_RECEIVED, itemGuid)
     end
 
     ---@class CommEvent_CMSG_ITEM_RECEIVED
@@ -560,7 +560,7 @@ do
             itemGuid = itemGuid,
             responseId = responseId,
         }
-        SendToClients(OPCODES.CMSG_ITEM_RESPONSE, p)
+        SendToHost(OPCODES.CMSG_ITEM_RESPONSE, p)
     end
 
     ---@class CommEvent_CMSG_ITEM_RESPONSE

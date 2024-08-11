@@ -1,9 +1,11 @@
----@class ST_ScrollingTable
----@field frame WoWFrame
----@field head WoWFrame
-local ST_ScrollingTable = {}
+---------------------------------------------------------------------------------------------------------------------------------------
+--- A noncomprehensive list of typings for lib-ScrollingTable https://www.wowace.com/projects/lib-st
+---------------------------------------------------------------------------------------------------------------------------------------
 
----@alias ST_CellUpdateFunc fun(rowFrame:WoWFrame, cellFrame:WoWFrameButton, data:ST_DataMinimal[]|ST_Data[], cols:ST_ColDef[], row:integer, realrow:integer, column:integer, fShow:boolean, table, ...):boolean|nil
+---@class CallFrame : WoWFrameButton
+---@field text FontString
+
+---@alias ST_CellUpdateFunc fun(rowFrame:WoWFrame, cellFrame:CallFrame, data:ST_DataMinimal[]|ST_Data[], cols:ST_ColDef[], row:integer, realrow:integer, column:integer, fShow:boolean, table, ...):boolean|nil
 
 ---@class ST_ColDef
 ---@field name string The name to use as the column header.
@@ -13,11 +15,14 @@ local ST_ScrollingTable = {}
 ---@field colorargs any[]|nil (Opional) An array of args that will be passed to the function specified for color. See color object. Defaults to (data, cols, realrow, column, table)
 ---@field bgcolor number[]|nil (Optional) A color object. Defaults to clear. In other areas of lib-st, you will find that you can assign a function to return a color object instead. That is not the case with the bgcolor of a column.
 ---@field defaultsort "asc"|"dsc"|nil (Optional) One of ( "asc" | "dsc" ). Defaults to "asc"
+---@field sort? 1|2 This is SORT_ASC|SORT_DSC
 ---@field sortnext integer|nil (Optional) Must be a valid column number (lua indecies start at 1). Be careful with this value, you can chain across multiple columns, and get yourself into a circular loop.
----@field comparesort fun(cella, cellb, column)|nil (Optional) A comparator function used to sort values that may not be easily sorted. ex. Dates... and stuff... Be sure to check for and call the comparator of the sortnext column if you wish to keep secondary column sort functionality. See the CompareSort method in Core.lua for an example.
+---@field comparesort fun(self:ST_ScrollingTable, cella, cellb, column)|nil (Optional) A comparator function used to sort values that may not be easily sorted. ex. Dates... and stuff... Be sure to check for and call the comparator of the sortnext column if you wish to keep secondary column sort functionality. See the CompareSort method in Core.lua for an example.
 ---@field DoCellUpdate ST_CellUpdateFunc|nil A custom display function.
 
 ---@class LibScrollingTable
+---@field SORT_ASC 1
+---@field SORT_DSC 2
 local LibST = {}
 
 ---@param cols ST_ColDef[]|nil This arg is expected to be an array of tables that contain information about each column.
@@ -28,6 +33,14 @@ local LibST = {}
 ---@param multiselection any
 ---@return ST_ScrollingTable
 function LibST:CreateST(cols, numRows, rowHeight, highlight, parent, multiselection) end
+
+---@class ST_ScrollingTable
+---@field frame WoWFrame
+---@field head WoWFrame
+---@field cols ST_ColDef[]
+---@field data ST_DataMinimal[]|ST_Data[]
+---@field CompareSort fun(self:ST_ScrollingTable,rowa:integer,rowb:integer,col:integer)
+local ST_ScrollingTable = {}
 
 ---@class ST_DataColCell
 ---@field value any Just like color objects, '''value''' can be a function or a value to display. If the type of '''value''' is a function, it is evaluated for display using the args table of arguments.

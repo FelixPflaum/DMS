@@ -1,7 +1,13 @@
+---------------------------------------------------------------------------------------------------------------------------------------
+--- A noncomprehensive list of typings for the WoW lua environment
+---------------------------------------------------------------------------------------------------------------------------------------
+
 ---@diagnostic disable: lowercase-global, missing-return
+---@diagnostic disable: param-type-mismatch
+
 SlashCmdList = {}
-UIParent = CreateFrame("");
-WorldFrame = CreateFrame("");
+UIParent = CreateFrame("")
+WorldFrame = CreateFrame("")
 
 local function SetScript(self, eventName, func) end
 
@@ -365,7 +371,7 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetReverseFill fun(self:StatusBar, isReverseFill) - Sets the fill direction of the statusbar.
 ---@field SetRotatesTexture fun(self:StatusBar, rotatesTexture) - Set the color of the statusbar.
 ---@field SetStatusBarColor fun(self:StatusBar, colorR, colorG, colorB, a:number|nil)
----@field SetStatusBarDesaturated fun([desaturated])
+---@field SetStatusBarDesaturated fun(self:StatusBar, desaturated:boolean)
 ---@field SetStatusBarDesaturation fun(self:StatusBar, desaturation)
 ---@field SetStatusBarTexture fun(self:StatusBar, asset) - Sets the texture of the statusbar.
 ---@field SetValue fun(self:StatusBar, value) - Set the value of the statusbar.
@@ -860,7 +866,7 @@ C_GuildInfo = {
 ---@param groupType any If omitted, defaults to INSTANCE if applicable, HOME otherwise. LE_PARTY_CATEGORY_HOME|LE_PARTY_CATEGORY_INSTANCE
 function UnitIsGroupLeader(unit, groupType) end
 
----@return "freeforall"|"roundrobin"|"master"|"group"|"needbeforegreed" method 
+---@return "freeforall"|"roundrobin"|"master"|"group"|"needbeforegreed" method
 ---@return integer masterlooterPartyID Returns 0 if player is the mater looter, 1-4 if party member is master looter (corresponding to party1-4) and nil if the master looter isn't in the player's party or master looting is not used.
 ---@return integer masterlooterRaidID Returns index of the master looter in the raid (corresponding to a raidX unit), or nil if the player is not in a raid or master looting is not used.
 function GetLootMethod() end
@@ -934,3 +940,28 @@ function C_Container.GetContainerItemInfo(containerIndex, slotIndex) end
 
 ---@type number[][]
 CLASS_ICON_TCOORDS = {}
+
+---@param index integer
+---@return string name
+---@return string rankName
+---@return integer rankIndex
+---@return integer level
+---@return string classDisplayName
+---@return string zone
+---@return string publicNote
+---@return string officerNote
+---@return boolean isOnline
+---@return integer status 0: none - 1: AFK - 2: Busy (Do Not Disturb) (changed in 4.3.2)
+---@return string class
+---@return integer achievementPoints
+---@return integer achievementRank
+---@return boolean isMobile
+---@return boolean canSoR
+---@return integer repStanding
+---@return string guid
+function GetGuildRosterInfo(index) end
+
+---@return integer members
+---@return integer online
+---@return integer mobile
+function GetNumGuildMembers() end

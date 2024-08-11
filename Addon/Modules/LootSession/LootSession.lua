@@ -97,6 +97,10 @@ local RESPONSE_ID_AUTOPASS = 1
 local RESPONSE_ID_PASS = 2
 local REPSONSE_ID_FIRST_CUSTOM = 3
 
+Env.Session.RESPONSE_ID_AUTOPASS = RESPONSE_ID_AUTOPASS
+Env.Session.RESPONSE_ID_PASS = RESPONSE_ID_PASS
+Env.Session.REPSONSE_ID_FIRST_CUSTOM = REPSONSE_ID_FIRST_CUSTOM
+
 local defaultResponses = {
     ---@type LootResponse
     autopass = {
@@ -169,7 +173,7 @@ function Env.Session.CreateLootResponses()
             id = id,
             displayString = buttons[i].response,
             color = buttons[i].color,
-            isPontsRoll = buttons[i].pointRoll,
+            isPointsRoll = buttons[i].pointRoll,
         }
         count = count + 1
     end
@@ -205,4 +209,58 @@ function Env.Session.CanUnitStartSession(unitName)
         end
     end
     return canStart
+end
+
+----------------------------------------------------------------------------
+--- Test stuff
+----------------------------------------------------------------------------
+
+local function CreateTestCandidateEntryGenerator()
+    local namesClassGen = Env:GetRandomGuildNameGenerator()
+    return function()
+        local name, _, classId = namesClassGen()
+        local candidate = { ---@type SessionHost_Candidate
+            name = name,
+            classId = classId,
+            isOffline = false,
+            leftGroup = false,
+            isResponding = true,
+            lastMessage = time(),
+            isFake = true,
+        }
+        return candidate
+    end
+end
+
+---@param list table<string, SessionHost_Candidate>
+---@param amount integer
+function Env.Session.FillFakeCandidateList(list, amount)
+    local gen = CreateTestCandidateEntryGenerator()
+    local inserted = 0
+    while true do
+        local newCandidate = gen()
+        if not list[newCandidate.name] then
+            list[newCandidate.name] = newCandidate
+            inserted = inserted + 1
+        end
+        if inserted == amount then
+            break
+        end
+    end
+end
+
+---@param itemResponse SessionHost_ItemResponse
+---@param responses LootResponse[]
+---@param roller UniqueRoller
+function Env.Session.FillTestResponse(itemResponse, responses, roller)
+    local ls = Env.Session.LootCandidateStatus
+    local lsList = { -- lol
+        ls.sent, ls.unknown, ls.waitingForResponse, ls.responseTimeout,
+        ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded,
+        ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded,
+    }
+    itemResponse.status = lsList[math.random(#lsList)]
+    itemResponse.response = itemResponse.status == ls.responded and responses[math.random(#responses)] or nil
+    itemResponse.roll = itemResponse.response and roller:GetRoll()
+    itemResponse.points = (itemResponse.response and itemResponse.response.isPointsRoll) and math.random(300) or 0
 end

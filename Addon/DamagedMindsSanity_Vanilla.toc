@@ -2,7 +2,7 @@
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
 ## Version: 0.0.1
-## Notes: It just works!
+## Notes: 
 ## SavedVariables: DMS_Settings, DMS_Database
 
 Libs\Ace3\LibStub\LibStub.lua

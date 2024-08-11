@@ -56,15 +56,17 @@ local function UpdateShownItem()
     end
 
     local tableData = {}
-    for _, v in pairs(item.responses) do
-        table.insert(tableData, {
-            v.candidate.classId,
-            "|c" .. GetClassColor(v.candidate.classId).argbstr .. v.candidate.name,
-            ColorStringFromArray(v.status.color, v.status.displayString),
-            v.response and ColorStringFromArray(v.response.color, v.response.displayString) or "",
-            v.roll or "",
-            v.points or "",
-            v.roll and v.points and v.roll + v.points or "" })
+    for _, itemResponse in pairs(item.responses) do
+        ---@type ResponseTableRowData
+        local rowData = {
+            itemResponse.candidate.classId,
+            itemResponse.candidate,
+            itemResponse,
+            itemResponse.roll or 0,
+            itemResponse.points or 0,
+            (itemResponse.roll or 0) + (itemResponse.points or 0)
+        }
+        table.insert(tableData, rowData)
     end
     frame.st:SetData(tableData, true)
 end
@@ -205,14 +207,138 @@ local function CreateStatusHeaders(f)
     end)
 end
 
----@type ST_CellUpdateFunc
-local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
-    local classId = data[realrow][column]
-    if classId then
-        cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
-        local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
-        cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
+
+local TABLE_DEF ---@type ST_ColDef[]
+do
+    ---@type ST_CellUpdateFunc
+    local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        local classId = data[realrow][column]
+        if classId then
+            cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
+            local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
+            cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
+        end
     end
+
+    ---@type ST_CellUpdateFunc
+    local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        local candidate = data[realrow][column] ---@type SessionClient_Candidate
+        cellFrame.text:SetText("|c" .. GetClassColor(candidate.classId).argbstr .. candidate.name)
+    end
+
+    ---@type ST_CellUpdateFunc
+    local function CellUpdateResponse(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        local itemResponse = data[realrow][column] ---@type SessionClient_ItemResponse
+        if itemResponse.response then
+            cellFrame.text:SetText(ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString))
+        else
+            cellFrame.text:SetText(ColorStringFromArray(itemResponse.status.color, itemResponse.status.displayString))
+        end
+    end
+
+    ---@type ST_CellUpdateFunc
+    local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        local num = data[realrow][column] ---@type number|nil
+        if num and num ~= 0 then
+            cellFrame.text:SetText(tostring(num))
+        else
+            cellFrame.text:SetText("")
+        end
+    end
+
+    ---@param st ST_ScrollingTable
+    ---@param rowa integer
+    ---@param rowb integer
+    ---@param sortbycol integer
+    local function SortCandidate(st, rowa, rowb, sortbycol)
+        local column = st.cols[sortbycol]
+        local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol] ---@type SessionClient_Candidate, SessionClient_Candidate
+        if a.name == b.name then
+            if column.sortnext then
+                local nextcol = st.cols[column.sortnext]
+                if not (nextcol.sort) then
+                    if nextcol.comparesort then
+                        return nextcol.comparesort(st, rowa, rowb, column.sortnext)
+                    else
+                        return st:CompareSort(rowa, rowb, column.sortnext)
+                    end
+                else
+                    return false
+                end
+            else
+                return false
+            end
+        else
+            local direction = column.sort or column.defaultsort or ScrollingTable.SORT_DSC
+            if direction == ScrollingTable.SORT_ASC then
+                return a.name < b.name
+            else
+                return a.name > b.name
+            end
+        end
+    end
+
+    ---@param resp SessionClient_ItemResponse
+    local function GetResponseWeight(resp)
+        local REPSONSE_ID_FIRST_CUSTOM = Env.Session.REPSONSE_ID_FIRST_CUSTOM
+        local weight = resp.status.id
+        if resp.response then
+            if resp.response.id < REPSONSE_ID_FIRST_CUSTOM then
+                -- Show pass and autopass below everything
+                weight = -100 + resp.response.id
+            else
+                -- Show other actual responses above any non-response status
+                weight = 100 + resp.response.id
+            end
+        end
+        return weight
+    end
+
+    ---@param st ST_ScrollingTable
+    ---@param rowa any
+    ---@param rowb any
+    ---@param sortbycol any
+    local function SortResponse(st, rowa, rowb, sortbycol)
+        local column = st.cols[sortbycol]
+        ---@type SessionClient_ItemResponse, SessionClient_ItemResponse
+        local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol]
+        local aWeight = GetResponseWeight(a)
+        local bWeight = GetResponseWeight(b)
+        if aWeight == bWeight then
+            if column.sortnext then
+                local nextcol = st.cols[column.sortnext]
+                if not (nextcol.sort) then
+                    if nextcol.comparesort then
+                        return nextcol.comparesort(st, rowa, rowb, column.sortnext)
+                    else
+                        return st:CompareSort(rowa, rowb, column.sortnext)
+                    end
+                else
+                    return false
+                end
+            else
+                return false
+            end
+        else
+            local direction = column.sort or column.defaultsort or ScrollingTable.SORT_DSC
+            if direction == ScrollingTable.SORT_ASC then
+                return aWeight < bWeight
+            else
+                return aWeight > bWeight
+            end
+        end
+    end
+
+    ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer]
+
+    TABLE_DEF = {
+        { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon }, -- Class icon
+        { name = L["Name"],     width = 100,              DoCellUpdate = CellUpdateName,          comparesort = SortCandidate },
+        { name = L["Response"], width = 200,              DoCellUpdate = CellUpdateResponse,      sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = 6 },
+        { name = L["Roll"],     width = 40,               DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 2 },
+        { name = L["Sanity"],   width = 40,               DoCellUpdate = CellUpdateShowIfNotZero },
+        { name = L["Total"],    width = 40,               DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 4 },
+    }
 end
 
 local function CreateWindow()
@@ -252,16 +378,7 @@ local function CreateWindow()
 
     -- Response table
 
-    frame.st = ScrollingTable:CreateST({
-        { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon }, -- Class icon
-        { name = L["Name"],     width = 100 },
-        { name = L["Status"],   width = 175 },
-        { name = L["Response"], width = 80 },
-        { name = L["Roll"],     width = 40 },
-        { name = L["Sanity"],   width = 40 },
-        { name = L["Total"],    width = 40 },
-    }, 15, TABLE_ROW_HEIGHT, nil, frame)
-
+    frame.st = ScrollingTable:CreateST(TABLE_DEF, 15, TABLE_ROW_HEIGHT, nil, frame)
     frame.st.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -frame.st.head:GetHeight() - 4)
     --st:RegisterEvents({ OnClick = Script_TableRemoveClicked })
 
