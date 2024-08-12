@@ -105,6 +105,7 @@ function InitClient(hostName, guid, responses)
     Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
     Env:RegisterEvent("UNIT_CONNECTION", Client)
+    Env:RegisterEvent("GROUP_LEFT", Client)
     Client.OnStart:Trigger()
 end
 
@@ -114,7 +115,15 @@ local function EndSession()
     Client.isRunning = false
     Comm:ClientSetAllowedHost("_nohost_")
     Env:UnregisterEvent("UNIT_CONNECTION", Client)
+    Env:UnregisterEvent("GROUP_LEFT", Client)
     Client.OnEnd:Trigger()
+end
+
+---@private
+function Client:GROUP_LEFT()
+    if not self.isRunning then return end
+    Env:PrintError(L["Session ended because you left the group!"])
+    EndSession()
 end
 
 Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
