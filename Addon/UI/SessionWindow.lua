@@ -59,11 +59,11 @@ local function UpdateShownItem()
     end
 
     frame.ItemInfoIcon:SetItemData(item.itemId)
-    DoWhenItemInfoReady(item.itemId, function(_, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc)
-        frame.ItenInfoItemName:SetText(itemLink)
-        local equipString = _G[itemEquipLoc] or ""
-        frame.ItemInfoItemInfo:SetText(itemSubType .. " " .. equipString)
-    end)
+    DoWhenItemInfoReady(item.itemId,
+        function(_, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc, _, _, classID, subclassID)
+            frame.ItenInfoItemName:SetText(itemLink)
+            frame.ItemInfoItemInfo:SetText(Env.UI.GetItemTypeString(classID, subclassID, itemSubType, itemEquipLoc))
+        end)
 
     if item.awardedTo then
         local itemResponse = item.responses[item.awardedTo] ---@type SessionClient_ItemResponse|nil

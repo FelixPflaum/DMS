@@ -59,8 +59,26 @@ local resetCallbacks = {}
 function Env.UI:RegisterOnReset(cb)
     table.insert(resetCallbacks, cb)
 end
+
 Env:RegisterSlashCommand("resetui", L["Resets the scale and position of all UI windows."], function(args)
     for _, cb in ipairs(resetCallbacks) do
         cb()
     end
 end)
+
+---@param classId integer
+---@param subClassId integer
+---@param subType string|nil Localized sub type string.
+---@param invType string InvType identifier.
+function Env.UI.GetItemTypeString(classId, subClassId, subType, invType)
+    local classString = subType
+    local equipString = invType and _G[invType] or ""
+    if invType == "INVTYPE_2HWEAPON" or invType == "INVTYPE_WEAPON"
+        or invType == "INVTYPE_SHIELD" or invType == "INVTYPE_RANGED" then
+        equipString = ""
+    end
+    if classId == Enum.ItemClass.Weapon and subClassId == 0 then
+        classString = ""
+    end
+    return (classString or "") .. " " .. equipString
+end

@@ -184,11 +184,11 @@ local function SetitemAtPosition(posIndex, item)
     rif:Show()
 
     rif:SetItemData(item.itemId, tostring(item.itemId), "...", item.startTime, item.endTime)
-    DoWhenItemInfoReady(item.itemId, function(_, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc)
-        local equipString = _G[itemEquipLoc] or ""
-        local infoText = (itemSubType or "") .. " " .. equipString
-        rif:SetItemData(item.itemId, itemLink, infoText, item.startTime, item.endTime)
-    end)
+    DoWhenItemInfoReady(item.itemId,
+        function(_, itemLink, _, _, _, _, itemSubType, _, itemEquipLoc, _, _, classID, subclassID)
+            local infoText = Env.UI.GetItemTypeString(classID, subclassID, itemSubType, itemEquipLoc)
+            rif:SetItemData(item.itemId, itemLink, infoText, item.startTime, item.endTime)
+        end)
 
     local buttonWidth = 0
     local nextBtnIndex = 1
