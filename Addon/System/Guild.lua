@@ -67,12 +67,11 @@ function Env:GetRandomGuildNameGenerator()
     local numMembers = GetNumGuildMembers()
     local picker = Env:NewUniqueRoller(numMembers)
     local backupPicker = Env:NewUniqueRoller(#catNameList)
-    local realName = GetRealmName():gsub(" ", "")
     return function()
         local pick = picker:GetRoll()
         local name, _, _, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(pick)
         if name then
-            name = name:gsub("-"..realName, "")
+            name = Ambiguate(name, "short")
             return name, classFile, GetClassIdFromName(classFile)
         end
         local classPick = classNameAndId[math.random(#classNameAndId)]

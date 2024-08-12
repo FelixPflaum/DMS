@@ -11,7 +11,7 @@ WorldFrame = CreateFrame("")
 
 local function SetScript(self, eventName, func) end
 
----@class GameTooltip
+---@class GameTooltip : ScriptRegionResizing
 GameTooltip = {
     SetOwner = function(self, frame, anchor) end,
     SetText = function(self, text, a, r, g, b, wrap) end,
@@ -239,7 +239,7 @@ function ScriptRegionResizing:GetPoint(index) end
 ---@class Region
 ---@field GetAlpha fun(self:Region):alpha  -- Returns the region's opacity. -- https://warcraft.wiki.gg/wiki/API_Region_GetAlpha
 ---@field GetDrawLayer fun(self:Region):layer, sublayer  -- Returns the layer in which the region is drawn. -- https://warcraft.wiki.gg/wiki/API_Region_GetDrawLayer
----@field GetEffectiveScale fun(self:Region):effectiveScale  -- Returns the scale of the region after propagating from its parents. -- https://warcraft.wiki.gg/wiki/API_Region_GetEffectiveScale
+---@field GetEffectiveScale fun(self:Region):number  -- Returns the scale of the region after propagating from its parents. -- https://warcraft.wiki.gg/wiki/API_Region_GetEffectiveScale
 ---@field GetScale fun(self:Region):scale  -- Returns the scale of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetScale
 ---@field GetVertexColor fun(self:Region):colorR, colorG, colorB, colorA  -- Returns the vertex color shading of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetVertexColor
 ---@field IsIgnoringParentAlpha fun(self:Region):isIgnoring  -- Returns true if the region is ignoring parent alpha. -- https://warcraft.wiki.gg/wiki/API_Region_IsIgnoringParentAlpha
@@ -965,3 +965,14 @@ function GetGuildRosterInfo(index) end
 ---@return integer online
 ---@return integer mobile
 function GetNumGuildMembers() end
+
+---@param fullName string
+---@param context "all"|"guild"|"mail"|"none"|"short" context the name will be used in, one of: "all", "guild", "mail", "none", or "short"
+---@return string
+function Ambiguate(fullName, context) end
+
+---Returns cursor position relative to the bottom left of the screen.
+---This needs to be divided by the UI scale to get correct coordinates relative to other frames.
+---@return number x
+---@return number y
+function GetCursorPosition() end

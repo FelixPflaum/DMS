@@ -25,6 +25,19 @@ local frame ---@type SessionWindowFrame
 local itemSelectIcons = {} ---@type IconButon[]
 local selectedItemGuid ---@type string|nil
 
+---@class (exact) SessionWindowContextMenuFrame : MSA_DropDownMenuFrame
+---@field selectedItemResponse SessionClient_ItemResponse? The selected item response the context menu is open for.
+local contextMenuFrame = MSA_DropDownMenu_Create("DMSSessionTableContextMenu", UIParent)
+
+local TABLE_INDECES = {
+    ICON = 1,
+    NAME = 2,
+    RESPONSES = 3,
+    ROLL = 4,
+    SANITY = 5,
+    TOTAL = 6,
+}
+
 ---------------------------------------------------------------------------
 --- Frame Functions
 ---------------------------------------------------------------------------
@@ -115,6 +128,59 @@ local function Script_ItemSelectClicked(guid)
     end
 end
 
+---@type ST_CellUpdateFunc
+local function Script_TableRightClick(rowFrame, cellFrame, data, cols, row, realrow, column, table, button)
+    if IsHosting() and button == "RightButton" and row then
+        if MSA_DropDownList1:IsShown() then
+            MSA_ToggleDropDownMenu(1, nil, contextMenuFrame)
+        end
+
+        local itemResponse = data[realrow][TABLE_INDECES.RESPONSES] ---@type SessionClient_ItemResponse
+        contextMenuFrame.selectedItemResponse = itemResponse
+
+        local x, y = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        MSA_DropDownMenu_SetAnchor(contextMenuFrame, x / scale, y / scale, "TOPLEFT", UIParent, "BOTTOMLEFT")
+        MSA_ToggleDropDownMenu(1, nil, contextMenuFrame)
+        MSA_DropDownMenu_StartCounting(contextMenuFrame)
+    end
+    return false
+end
+
+---@param self SessionWindowContextMenuFrame
+---@param candidateName string
+---@param arg2 any
+local function Script_AwardClick(self, candidateName, arg2)
+    if not IsHosting() then return end
+end
+
+---@param self SessionWindowContextMenuFrame
+---@param candidateName string
+---@param arg2 any
+local function Script_RevokeAwardClick(self, candidateName, arg2)
+    if not IsHosting() then return end
+end
+
+---@param self SessionWindowContextMenuFrame
+---@param candidateName string
+---@param responseId integer
+local function Script_ChanceChoiceClick(self, candidateName, responseId)
+    if not IsHosting() or not selectedItemGuid then return end
+    local resp = Client.responses:GetResponse(responseId)
+    local item = Client.items[selectedItemGuid]
+    if not resp or not item then return end
+    local errMsg = Host:SetItemResponse(selectedItemGuid, candidateName, responseId)
+    MSA_CloseDropDownMenus()
+    if errMsg then
+        Env:PrintError(L["Changing roll choice failed:"])
+        Env:PrintError(errMsg)
+    else
+        DoWhenItemInfoReady(item.itemId, function(_, itemLink)
+            Host:SendMessageToTargetChannel(L["Response of %s for %s was changed to %s!"]:format(candidateName, itemLink, resp.displayString))
+        end)
+    end
+end
+
 ---------------------------------------------------------------------------
 --- Create Frames
 ---------------------------------------------------------------------------
@@ -130,17 +196,17 @@ local function CreateStatusHeaders(f)
     ---@param anchorFrame WoWFrame
     local function ShowCandidateTooltip(anchorFrame)
         local tooltipText = ""
-        local grey = "FF555555"
+        local grey = "FF777777"
         for _, v in pairs(Client.candidates) do
             local nameStr = v.name
             if v.leftGroup then
-                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Left group"] .. ")"
+                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Left group"] .. ")|r"
             elseif v.isOffline then
-                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Offline"] .. ")"
+                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Offline"] .. ")|r"
             elseif not v.isResponding then
-                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Not responding"] .. ")"
+                nameStr = "|c" .. grey .. nameStr .. " (" .. L["Not responding"] .. ")|r"
             else
-                nameStr = "|c" .. GetClassColor(v.classId).argbstr .. nameStr
+                nameStr = "|c" .. GetClassColor(v.classId).argbstr .. nameStr .. "|r"
             end
             tooltipText = tooltipText .. nameStr .. "\n"
         end
@@ -159,25 +225,15 @@ local function CreateStatusHeaders(f)
     hostName:SetPoint("TOPLEFT", hostNameLabel, "TOPRIGHT", 10, 0)
     hostName:SetText("---")
 
-    local sessionStatus = f:CreateFontString(nil, "OVERLAY", fontValue)
-    sessionStatus:SetPoint("TOPRIGHT", f, "TOPRIGHT", -35, -6)
-    sessionStatus:SetText("---")
-
-    local sessionStatusLabel = f:CreateFontString(nil, "OVERLAY", fontLabel)
-    sessionStatusLabel:SetPoint("TOPRIGHT", sessionStatus, "TOPLEFT", -10, 0)
-    sessionStatusLabel:SetText(L["Status:"])
-
     local clientsStatus = f:CreateFontString(nil, "OVERLAY", fontValue)
-    clientsStatus:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -37)
+    clientsStatus:SetPoint("TOPRIGHT", f, "TOPRIGHT", -35, -6)
     clientsStatus:SetText("---")
     clientsStatus:SetScript("OnEnter", ShowCandidateTooltip)
     clientsStatus:SetScript("OnLeave", GameTooltip_Hide)
 
-    local clientsStatusLabel = f:CreateFontString(nil, "OVERLAY", fontLabel)
-    clientsStatusLabel:SetPoint("TOPRIGHT", clientsStatus, "TOPLEFT", -10, 0)
-    clientsStatusLabel:SetText(L["Players ready:"])
-    clientsStatusLabel:SetScript("OnEnter", function() ShowCandidateTooltip(clientsStatus) end)
-    clientsStatusLabel:SetScript("OnLeave", GameTooltip_Hide)
+    local sessionStatus = f:CreateFontString(nil, "OVERLAY", fontValue)
+    sessionStatus:SetPoint("TOPRIGHT", clientsStatus, "TOPLEFT", -20, 0)
+    sessionStatus:SetText("---")
 
     -- Event Hooks
 
@@ -207,9 +263,86 @@ local function CreateStatusHeaders(f)
     end)
 end
 
+do
+    local info = { text = "text not set" } ---@type MSA_InfoTable
+
+    local function ContextAddSpacer(level)
+        wipe(info)
+        info.text = ""
+        info.disabled = true
+        info.notCheckable = true
+        MSA_DropDownMenu_AddButton(info, level)
+    end
+
+    ---@param self SessionWindowContextMenuFrame
+    ---@param level integer
+    local function FillContextMenu(self, level)
+        local item = selectedItemGuid and Client.items[selectedItemGuid]
+        local itemResponse = self.selectedItemResponse
+        if not itemResponse then
+            MSA_CloseDropDownMenus()
+            return
+        end
+
+        if level == 1 then
+            wipe(info)
+            info.text = "|c" .. GetClassColor(itemResponse.candidate.classId).argbstr .. itemResponse.candidate.name
+            info.isTitle = true
+            info.disabled = true
+            info.notCheckable = true
+            MSA_DropDownMenu_AddButton(info, level)
+
+            ContextAddSpacer()
+
+            if not item or item.awardedTo ~= itemResponse.candidate.name then
+                wipe(info)
+                info.text = L["Award"]
+                info.notCheckable = true
+                info.disabled = item and item.awardedTo == itemResponse.candidate.name
+                info.func = Script_AwardClick
+                info.arg1 = itemResponse.candidate.name
+                MSA_DropDownMenu_AddButton(info, level)
+            else
+                wipe(info)
+                info.text = L["Revoke Award"]
+                info.notCheckable = true
+                info.func = Script_RevokeAwardClick
+                info.arg1 = itemResponse.candidate.name
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+
+            ContextAddSpacer()
+
+            wipe(info)
+            info.text = L["Change Choice"]
+            info.notCheckable = true
+            info.hasArrow = true
+            info.value = "CHANGE_CHOICE"
+            MSA_DropDownMenu_AddButton(info, level)
+        elseif level == 2 then
+            if MSA_DROPDOWNMENU_MENU_VALUE == "CHANGE_CHOICE" then
+                for i = #Client.responses.responses, 1, -1 do
+                    local res = Client.responses.responses[i]
+                    if not res.noButton then
+                        wipe(info)
+                        info.text = ColorStringFromArray(res.color, res.displayString)
+                        info.notCheckable = true
+                        info.func = Script_ChanceChoiceClick
+                        info.arg1 = itemResponse.candidate.name
+                        info.arg2 = res.id
+                        MSA_DropDownMenu_AddButton(info, level)
+                    end
+                end
+            end
+        end
+    end
+
+    MSA_DropDownMenu_Initialize(contextMenuFrame, FillContextMenu, "MENU")
+end
 
 local TABLE_DEF ---@type ST_ColDef[]
 do
+    ---Update function for the class icon cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         local classId = data[realrow][column]
@@ -220,12 +353,14 @@ do
         end
     end
 
+    ---Update function for the candidate name cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         local candidate = data[realrow][column] ---@type SessionClient_Candidate
         cellFrame.text:SetText("|c" .. GetClassColor(candidate.classId).argbstr .. candidate.name)
     end
 
+    ---Update function for the response/status cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateResponse(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         local itemResponse = data[realrow][column] ---@type SessionClient_ItemResponse
@@ -236,6 +371,7 @@ do
         end
     end
 
+    ---Update function for roll, points and total cells.
     ---@type ST_CellUpdateFunc
     local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         local num = data[realrow][column] ---@type number|nil
@@ -246,6 +382,7 @@ do
         end
     end
 
+    ---Sort function for the name column.
     ---@param st ST_ScrollingTable
     ---@param rowa integer
     ---@param rowb integer
@@ -278,6 +415,7 @@ do
         end
     end
 
+    ---Returns a weight depending on status and selected response.
     ---@param resp SessionClient_ItemResponse
     local function GetResponseWeight(resp)
         local REPSONSE_ID_FIRST_CUSTOM = Env.Session.REPSONSE_ID_FIRST_CUSTOM
@@ -294,6 +432,7 @@ do
         return weight
     end
 
+    ---Sort function for the response/status column.
     ---@param st ST_ScrollingTable
     ---@param rowa any
     ---@param rowb any
@@ -332,12 +471,12 @@ do
     ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer]
 
     TABLE_DEF = {
-        { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon }, -- Class icon
-        { name = L["Name"],     width = 100,              DoCellUpdate = CellUpdateName,          comparesort = SortCandidate },
-        { name = L["Response"], width = 200,              DoCellUpdate = CellUpdateResponse,      sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = 6 },
-        { name = L["Roll"],     width = 40,               DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 2 },
-        { name = L["Sanity"],   width = 40,               DoCellUpdate = CellUpdateShowIfNotZero },
-        { name = L["Total"],    width = 40,               DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 4 },
+        [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
+        [TABLE_INDECES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
+        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = 6 },
+        [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 2 },
+        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero },
+        [TABLE_INDECES.TOTAL] = { name = L["Total"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 4 },
     }
 end
 
@@ -380,7 +519,7 @@ local function CreateWindow()
 
     frame.st = ScrollingTable:CreateST(TABLE_DEF, 15, TABLE_ROW_HEIGHT, nil, frame)
     frame.st.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -frame.st.head:GetHeight() - 4)
-    --st:RegisterEvents({ OnClick = Script_TableRemoveClicked })
+    frame.st:RegisterEvents({ OnClick = Script_TableRightClick })
 
     frame:SetWidth(frame.st.frame:GetWidth() + 7)
     frame:SetHeight(frame.st.frame:GetHeight() + 86)

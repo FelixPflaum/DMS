@@ -18,6 +18,7 @@ Libs\Ace3\AceComm-3.0\AceComm-3.0.xml
 Libs\Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
 Libs\LibDialog-1.0\LibDialog-1.0.lua
 Libs\lib-st\Core.lua
+Libs\MSA-DropDownMenu-1.0\MSA-DropDownMenu-1.0.lua
 
 Utils.lua
 

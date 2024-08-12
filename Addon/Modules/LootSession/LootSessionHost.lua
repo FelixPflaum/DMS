@@ -147,6 +147,29 @@ function Host:GROUP_LEFT()
     end
 end
 
+---Send message to target channel of host session.
+---Will be raid, party or whisper to self.
+---@param message string
+function Host:SendMessageToTargetChannel(message)
+    local channel = "WHISPER"
+    if targetChannelType == "group" then
+        if IsInRaid() then
+            channel = "RAID"
+        elseif IsInGroup() then
+            channel = "PARTY"
+        else
+            Env:PrintError(L["Can't send message! Session target is group but you are not in any group!"])
+            return
+        end
+    end
+    if channel == "WHISPER" then
+        print(message, channel, UnitName("player"))
+        SendChatMessage(message, channel, nil, select(1, UnitName("player")))
+    else
+        SendChatMessage(message, channel)
+    end
+end
+
 ------------------------------------------------------------------------------------
 --- Candidates
 ------------------------------------------------------------------------------------
@@ -282,11 +305,11 @@ Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     end
 end)
 
----Set response, does NOT check if response was already set!
+---Set response, does NOT do any checks, it will simply change the response!
 ---@param item SessionHost_Item
 ---@param itemResponse SessionHost_ItemResponse
 ---@param response LootResponse
-function Host:SetItemResponse(item, itemResponse, response)
+local function SetItemResponse(item, itemResponse, response)
     itemResponse.response = response
     itemResponse.roll = itemResponse.roll or item.roller:GetRoll()
     itemResponse.status = LootStatus.responded
@@ -295,6 +318,21 @@ function Host:SetItemResponse(item, itemResponse, response)
     if not item.veiled then
         Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
     end
+end
+
+---Manually set response of a player for a given item.
+---@param itemGuid string
+---@param candidateName string
+---@param responseId integer
+---@return string? error If arguments are not valid will return an error message.
+function Host:SetItemResponse(itemGuid, candidateName, responseId)
+    local item = items[itemGuid]
+    local response = responses:GetResponse(responseId)
+    local itemResponse = item.responses[candidateName]
+    if not item then return L["Invalid item guid!"] end
+    if not response then return L["Invalid response id!"] end
+    if not itemResponse then return L["Invalid candidate name!"] end
+    SetItemResponse(item, itemResponse, response)
 end
 
 Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
@@ -323,7 +361,7 @@ Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, respo
             " tried to respond to item " .. itemGuid .. " but response id " .. responseId .. " invalid")
         return
     end
-    Host:SetItemResponse(item, itemResponse, response)
+    SetItemResponse(item, itemResponse, response)
 end)
 
 ------------------------------------------------------------------
