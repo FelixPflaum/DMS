@@ -22,6 +22,10 @@ local OPCODES = {
     CMSG_ATTENDANCE_CHECK = 100,
     CMSG_ITEM_RECEIVED = 101,
     CMSG_ITEM_RESPONSE = 102,
+
+    MAX_CMSG = 199,
+
+    CBMSG_ITEM_CURRENTLY_EQUIPPED = 200,
 }
 
 ---@type table<integer,string>
@@ -572,5 +576,73 @@ do
     messageHandler[OPCODES.CMSG_ITEM_RESPONSE] = function(data, sender)
         ---@cast data Packet_CMSG_ITEM_RESPONSE
         Events.CMSG_ITEM_RESPONSE:Trigger(sender, data.itemGuid, data.responseId)
+    end
+end
+
+--------------------------------------------------------------------------
+--- Client To All
+--------------------------------------------------------------------------
+
+local function LogDebugCtA(...)
+    Env:PrintDebug("Comm Client:", ...)
+end
+
+---Send message to host.
+---@param opcode Opcode
+---@param data any
+function SendClientToAll(opcode, data)
+    if hostCommTarget and hostCommTarget == "self" then
+        LogDebugCtA("Sending client broadcast to self", LookupOpcodeName(opcode))
+        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, data)
+        return
+    end
+    local channel = ""
+    if IsInRaid() then
+        channel = "RAID"
+    elseif IsInGroup() then
+        channel = "PARTY"
+    else
+        Env:PrintError("Tried to broadcast to group but not in a group!")
+        return false
+    end
+    LogDebugCtA("Sending client broadcast", channel, LookupOpcodeName(opcode))
+    Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
+end
+
+---@param sender string
+---@param opcode Opcode
+---@param data any
+local function FilterReceivedClientBroadcast(sender, opcode, data)
+    if opcode < OPCODES.MAX_CMSG then
+        return false
+    end
+    return true
+end
+
+-- CBMSG_ITEM_CURRENTLY_EQUIPPED
+do
+    ---@class (exact) Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
+    ---@field itemGuid string
+    ---@field currentItems string[] [item1[, item2]]
+
+    ---@param itemGuid string
+    ---@param currentItems string[] [item1[, item2]]
+    function Sender.CBMSG_ITEM_CURRENTLY_EQUIPPED(itemGuid, currentItems)
+        local packet = { ---@type Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
+            itemGuid = itemGuid,
+            currentItems = currentItems,
+        }
+        SendClientToAll(OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED, packet)
+    end
+
+    ---@class CommEvent_CBMSG_ITEM_CURRENTLY_EQUIPPED
+    ---@field RegisterCallback fun(self:CommEvent_CBMSG_ITEM_CURRENTLY_EQUIPPED, cb:fun(sender:string, data:Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED))
+    ---@field Trigger fun(self:CommEvent_CBMSG_ITEM_CURRENTLY_EQUIPPED, sender:string, data:Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED)
+    Events.CBMSG_ITEM_CURRENTLY_EQUIPPED = Env:NewEventEmitter()
+
+    messageFilter[OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED] = FilterReceivedClientBroadcast
+    messageHandler[OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED] = function(data, sender)
+        ---@cast data Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
+        Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:Trigger(sender, data)
     end
 end

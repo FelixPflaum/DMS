@@ -133,3 +133,53 @@ do
         itemsWaitedOn = itemsWaitedOn + 1
     end
 end
+
+---@type table<string, integer|integer[]|nil>
+local INVTYPE_TO_SLOTS = {
+    -- INVTYPE_NON_EQUIP = nil,
+    INVTYPE_HEAD = 1,
+    INVTYPE_NECK = 2,
+    INVTYPE_SHOULDER = 3,
+    INVTYPE_BODY = 4,
+    INVTYPE_CHEST = 5,
+    INVTYPE_WAIST = 6,
+    INVTYPE_LEGS = 7,
+    INVTYPE_FEET = 8,
+    INVTYPE_WRIST = 9,
+    INVTYPE_HAND = 10,
+    INVTYPE_FINGER = { 11, 12 },
+    INVTYPE_TRINKET = { 13, 14 },
+    INVTYPE_WEAPON = { 16, 17 },
+    INVTYPE_SHIELD = 17,
+    INVTYPE_RANGED = Env.IS_CLASSIC and 18 or 16,
+    INVTYPE_CLOAK = 15,
+    INVTYPE_2HWEAPON = 16,
+    -- INVTYPE_BAG = nil,
+    INVTYPE_TABARD = 19,
+    INVTYPE_ROBE = 5,
+    INVTYPE_WEAPONMAINHAND = 16,
+    INVTYPE_WEAPONOFFHAND = 16,
+    INVTYPE_HOLDABLE = 17,
+    INVTYPE_AMMO = 0,
+    INVTYPE_THROWN = 16,
+    INVTYPE_RANGEDRIGHT = 16,
+    -- INVTYPE_QUIVER
+    INVTYPE_RELIC = 18,
+    -- INVTYPE_PROFESSION_TOOL = { 20, 23 }
+    -- INVTYPE_PROFESSION_GEAR = { 21, 22, 24, 25 }
+}
+
+---Get currently equipped items for inventory type.
+---@param invType string
+---@return string? item1Link
+---@return string? item2Link If slot is ring, weapon, or trinket this will be the 2nd one.
+function Env.Item.GetCurrentlyEquippedItem(invType)
+    local slotOrSloty = INVTYPE_TO_SLOTS[invType]
+    if not slotOrSloty then return end
+    if type(slotOrSloty) == "number" then
+        return GetInventoryItemLink("player", slotOrSloty)
+    end
+    local link1 = GetInventoryItemLink("player", slotOrSloty[1])
+    local link2 = GetInventoryItemLink("player", slotOrSloty[2])
+    return link1, link2
+end

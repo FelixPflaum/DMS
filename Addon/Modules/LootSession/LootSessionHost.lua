@@ -309,14 +309,15 @@ end)
 ---@param item SessionHost_Item
 ---@param itemResponse SessionHost_ItemResponse
 ---@param response LootResponse
-local function SetItemResponse(item, itemResponse, response)
+---@param doInstant boolean? Do not batch response change comm message.
+local function SetItemResponse(item, itemResponse, response, doInstant)
     itemResponse.response = response
     itemResponse.roll = itemResponse.roll or item.roller:GetRoll()
     itemResponse.status = LootStatus.responded
     -- TODO: get points from DB
     itemResponse.points = response.isPointsRoll and 999 or nil
     if not item.veiled then
-        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse, doInstant)
     end
 end
 
@@ -324,15 +325,16 @@ end
 ---@param itemGuid string
 ---@param candidateName string
 ---@param responseId integer
+---@param doInstant boolean? Do not batch response change comm message.
 ---@return string? error If arguments are not valid will return an error message.
-function Host:SetItemResponse(itemGuid, candidateName, responseId)
+function Host:SetItemResponse(itemGuid, candidateName, responseId, doInstant)
     local item = items[itemGuid]
     local response = responses:GetResponse(responseId)
     local itemResponse = item.responses[candidateName]
     if not item then return L["Invalid item guid!"] end
     if not response then return L["Invalid response id!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
-    SetItemResponse(item, itemResponse, response)
+    SetItemResponse(item, itemResponse, response, doInstant)
 end
 
 Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)

@@ -36,6 +36,8 @@ local TABLE_INDECES = {
     ROLL = 4,
     SANITY = 5,
     TOTAL = 6,
+    CURRENT_GEAR1 = 7,
+    CURRENT_GEAR2 = 8,
 }
 
 ---------------------------------------------------------------------------
@@ -77,7 +79,9 @@ local function UpdateShownItem()
             itemResponse,
             itemResponse.roll or 0,
             itemResponse.points or 0,
-            (itemResponse.roll or 0) + (itemResponse.points or 0)
+            (itemResponse.roll or 0) + (itemResponse.points or 0),
+            itemResponse.currentItem and itemResponse.currentItem[1],
+            itemResponse.currentItem and itemResponse.currentItem[2],
         }
         table.insert(tableData, rowData)
     end
@@ -169,14 +173,15 @@ local function Script_ChanceChoiceClick(self, candidateName, responseId)
     local resp = Client.responses:GetResponse(responseId)
     local item = Client.items[selectedItemGuid]
     if not resp or not item then return end
-    local errMsg = Host:SetItemResponse(selectedItemGuid, candidateName, responseId)
+    local errMsg = Host:SetItemResponse(selectedItemGuid, candidateName, responseId, true)
     MSA_CloseDropDownMenus()
     if errMsg then
         Env:PrintError(L["Changing roll choice failed:"])
         Env:PrintError(errMsg)
     else
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
-            Host:SendMessageToTargetChannel(L["Response of %s for %s was changed to %s!"]:format(candidateName, itemLink, resp.displayString))
+            Host:SendMessageToTargetChannel(L["Response of %s for %s was changed to %s!"]:format(candidateName, itemLink,
+                resp.displayString))
         end)
     end
 end
@@ -345,6 +350,7 @@ do
     ---Update function for the class icon cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        if not fShow then return end
         local classId = data[realrow][column]
         if classId then
             cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
@@ -353,9 +359,27 @@ do
         end
     end
 
+    ---Update function for the gear icon cell.
+    ---@type ST_CellUpdateFunc
+    local function CellUpdateGearIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        if not fShow then return end
+        local itemLink = data[realrow][column] ---@type string?
+        if not itemLink then
+            cellFrame:ClearNormalTexture()
+            cellFrame:SetScript("OnEnter", nil)
+            return
+        end
+        local itemId = Env.Item:GetIdFromLink(itemLink)
+        local icon = itemId and GetItemIcon(itemId)
+        cellFrame:SetNormalTexture(icon or [[Interface/Icons/inv_misc_questionmark]])
+        cellFrame:SetScript("OnEnter", function() Env.UI.ShowItemTooltip(cellFrame, itemLink) end)
+        cellFrame:SetScript("OnLeave", GameTooltip_Hide)
+    end
+
     ---Update function for the candidate name cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        if not fShow then return end
         local candidate = data[realrow][column] ---@type SessionClient_Candidate
         cellFrame.text:SetText("|c" .. GetClassColor(candidate.classId).argbstr .. candidate.name)
     end
@@ -363,6 +387,7 @@ do
     ---Update function for the response/status cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateResponse(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        if not fShow then return end
         local itemResponse = data[realrow][column] ---@type SessionClient_ItemResponse
         if itemResponse.response then
             cellFrame.text:SetText(ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString))
@@ -374,6 +399,7 @@ do
     ---Update function for roll, points and total cells.
     ---@type ST_CellUpdateFunc
     local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+        if not fShow then return end
         local num = data[realrow][column] ---@type number|nil
         if num and num ~= 0 then
             cellFrame.text:SetText(tostring(num))
@@ -468,7 +494,7 @@ do
         end
     end
 
-    ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer]
+    ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer,string?,string?]
 
     TABLE_DEF = {
         [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
@@ -477,6 +503,8 @@ do
         [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 2 },
         [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero },
         [TABLE_INDECES.TOTAL] = { name = L["Total"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 4 },
+        [TABLE_INDECES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
+        [TABLE_INDECES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
     }
 end
 

@@ -26,6 +26,7 @@ end
 ---@field status LootCandidateStatus
 ---@field roll integer|nil
 ---@field points integer|nil
+---@field currentItem string[]? ItemLinks [item1[,item2]] for currently equipped items. Item2 is used for rings and trinkets.
 
 ---@class (exact) SessionClient_Item
 ---@field guid string
@@ -182,8 +183,9 @@ end
 --- Items
 ------------------------------------------------------------------
 
+---@param item SessionClient_Item
 ---@param data PackedSessionItemClient
-local function GetClientFromPackedClient(data)
+local function UpdateResponseFromPacket(item, data)
     local candidate = Client.candidates[data.candidate]
     local response = data.responseId and Client.responses:GetResponse(data.responseId)
     local status = LootStatus:GetById(data.statusId)
@@ -197,16 +199,22 @@ local function GetClientFromPackedClient(data)
         LogDebug("got item client update with unknown status id", data.statusId)
         return
     else
-        ---@type SessionClient_ItemResponse
-        local lsic = {
-            name = data.candidate,
-            candidate = candidate,
-            response = response,
-            status = status,
-            roll = data.roll,
-            points = data.points,
-        }
-        return lsic
+        local entry = item.responses[candidate.name]
+        if entry then
+            entry.response = response
+            entry.status = status
+            entry.roll = data.roll
+            entry.points = data.points
+        else
+            item.responses[candidate.name] = {
+                name = data.candidate,
+                candidate = candidate,
+                response = response,
+                status = status,
+                roll = data.roll,
+                points = data.points,
+            }
+        end
     end
 end
 
@@ -216,16 +224,10 @@ Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, 
         LogDebug("got item response update for unknown item", itemGuid)
     end
     for _, packedClient in ipairs(data) do
-        local itemCLient = GetClientFromPackedClient(packedClient)
-        if not itemCLient then
-            return
-        end
-        item.responses[itemCLient.candidate.name] = itemCLient
+        UpdateResponseFromPacket(item, packedClient)
     end
-
-    LogDebug("item updated OnPacket_LootResponseUpdate", itemGuid)
+    LogDebug("item updated HMSG_ITEM_RESPONSE_UPDATE", itemGuid)
     Client.OnItemUpdate:Trigger(item)
-
     if item.childGuids and #item.childGuids > 0 then
         for _, childGuid in ipairs(item.childGuids) do
             local childItem = Client.items[childGuid]
@@ -234,6 +236,27 @@ Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, 
             end
         end
     end
+end)
+
+-- itemGuid -> candidateName -> [link1[, link2]]
+local gearReceivedBuffer = {} ---@type table<string, table<string, string[]>>
+
+Comm.Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:RegisterCallback(function(sender, data)
+    local item = Client.items[data.itemGuid]
+    if item then
+        local itemResponse = item.responses[sender]
+        if not itemResponse then
+            LogDebug("Tried to add currently equipped items but candidate doesn't exist.", item.guid, sender)
+            return
+        end
+        itemResponse.currentItem = data.currentItems
+        LogDebug("Added current items for candidate.", item.guid, sender, unpack(data.currentItems))
+        Client.OnItemUpdate:Trigger(item)
+        return
+    end
+    LogDebug("Adding current items to buffer because we did not yet get item data.", item.guid, sender)
+    gearReceivedBuffer[data.itemGuid] = gearReceivedBuffer[data.itemGuid] or {}
+    gearReceivedBuffer[data.itemGuid][sender] = data.currentItems
 end)
 
 Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
@@ -254,13 +277,15 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
         responseSent = false,
     }
 
-    -- Fill default responses until we get data from host if item should be shown.
-    if not newItem.veiled then
-        for k, v in pairs(Client.candidates) do
-            newItem.responses[k] = {
-                candidate = v,
-                status = LootStatus.sent,
-            }
+    local gearBuffer = gearReceivedBuffer[newItem.guid]
+    gearReceivedBuffer[newItem.guid] = nil
+    for k, v in pairs(Client.candidates) do
+        newItem.responses[k] = {
+            candidate = v,
+            status = LootStatus.veiled,
+        }
+        if gearBuffer and gearBuffer[v.name] then
+            newItem.responses[k].currentItem = gearBuffer[v.name]
         end
     end
 
@@ -268,8 +293,12 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
     Client.OnItemUpdate:Trigger(newItem)
-end)
 
+    local itemEquipLoc = select(9, C_Item.GetItemInfo(newItem.itemId))
+    local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
+    Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1, current2 })
+    LogDebug("Gear sent", newItem.guid, current1, current2)
+end)
 
 Comm.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
     if Client.items[data.guid] then

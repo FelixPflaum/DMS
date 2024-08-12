@@ -21,6 +21,7 @@ Env.Session = {}
 ---@field unknown LootCandidateStatus CLient did not sent ack, may be offline, may not have the addon.
 ---@field responseTimeout LootCandidateStatus Client did not give a roll response in time.
 ---@field responded LootCandidateStatus Client responded with a roll choice.
+---@field veiled LootCandidateStatus Responses are hidden.
 Env.Session.LootCandidateStatus = {
     ---@type LootCandidateStatus
     sent = { -- Loot data sent, waiting for answer...
@@ -51,6 +52,12 @@ Env.Session.LootCandidateStatus = {
         id = 5,
         displayString = L["Response given"],
         color = { 0.5, 1, 0.5 },
+    },
+    ---@type LootCandidateStatus
+    veiled = { -- Response not shown to client
+        id = 6,
+        displayString = L["Not yet unveiled"],
+        color = { 0.7, 0.7, 0.7 },
     },
 }
 
