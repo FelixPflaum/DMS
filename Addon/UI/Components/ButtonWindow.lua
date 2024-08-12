@@ -8,11 +8,6 @@ local LibWindow = LibStub("LibWindow-1.1")
 ---@field Bg Texture
 
 ---@param self ButtonWindow
-local function SetContent(self)
-
-end
-
----@param self ButtonWindow
 ---@param text string
 ---@param onClick fun(button:ButtonWindowLeftButton)
 local function AddLeftButton(self, text, onClick)
@@ -117,7 +112,6 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
     frame:SetScript("OnMouseWheel", function(f, d) if IsControlKeyDown() then LibWindow.OnMouseWheel(f, d) end end)
 
     -- Custom functions
-    frame.SetContent = SetContent
     frame.AddLeftButton = AddLeftButton
     frame.AddRightButton = AddRightButton
 
@@ -137,8 +131,9 @@ local function CreateButtonWindow(name, title, width, height, topInsetOffset, ha
     ---@param x number
     ---@param y number
     frame.SetPosition = function(self, point, rel, relPoint, x, y)
-        libWinConfig.x = x
-        libWinConfig.y = y
+        local scale = self:GetScale()
+        libWinConfig.x = x * scale
+        libWinConfig.y = y * scale
         libWinConfig.point = point
         self:RestorePosition() ---@diagnostic disable-line: undefined-field
     end

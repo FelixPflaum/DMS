@@ -1,6 +1,7 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
+local LibDialog = LibStub("LibDialog-1.1")
 local L = Env:GetLocalization()
 
 local Client = Env.SessionClient
@@ -27,6 +28,43 @@ local function Script_TimerBarUpdate(self)
         else
             self.Text:SetText(L["%d sec"]:format(remaining))
             self:SetValue(remaining)
+        end
+    end
+end
+
+local itemsNotRolled = {} ---@type SessionClient_Item[]
+
+local areYouSure = {
+    text = L["Do you really want to pass on all open rolls?"],
+    on_cancel = function(self, data, reason) end,
+    buttons = {
+        {
+            text = L["Yes"],
+            on_click = function()
+                for _, inr in ipairs(itemsNotRolled) do
+                    Client:RespondToItem(inr.guid, Client.responses:GetPass().id)
+                end
+                frame:Hide()
+            end
+        },
+        {
+            text = L["No"],
+            on_click = function() frame:Hide() end
+        },
+    },
+}
+
+local function CloseClicked()
+    local now = time()
+    itemsNotRolled = {} ---@type SessionClient_Item[]
+    for _, v in pairs(Client.items) do
+        if not v.parentGuid and not v.responseSent and v.endTime - now > 0 then
+            table.insert(itemsNotRolled, v)
+        end
+    end
+    if #itemsNotRolled > 0 then
+        if not LibDialog:ActiveDialog(areYouSure) then
+            LibDialog:Spawn(areYouSure)
         end
     end
 end
@@ -158,7 +196,8 @@ local function CreateWindow()
 
     frame.TopText = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
     frame.TopText:SetPoint("TOP", frame, "TOP", 0, -31)
-    frame.TopText:SetText("Items to roll: 23")
+
+    frame.onTopCloseClicked = CloseClicked
 end
 
 -- Create frame when settings are ready.
@@ -205,6 +244,7 @@ local function SetitemAtPosition(posIndex, item)
         rif.Buttons[i]:Hide()
     end
 
+    rif.ItenInfoItemName:SetWidth(math.min(MIN_WIDTH - ITEM_ROLL_FRAME_ICON_SIZE, buttonWidth))
     rif:SetWidth(math.max(MIN_WIDTH, buttonWidth + ITEM_ROLL_FRAME_ICON_SIZE + 5))
 end
 
