@@ -16,6 +16,7 @@ local OPCODES = {
     HMSG_ITEM_RESPONSE_UPDATE = 5,
     HMSG_ITEM_UNVEIL = 6,
     HMSG_ITEM_ROLL_END = 7,
+    HMSG_ITEM_AWARD_UPDATE = 8,
 
     MAX_HMSG = 99,
 
@@ -487,6 +488,34 @@ do
         for _, itemGuid in pairs(data) do
             Events.HMSG_ITEM_ROLL_END:Trigger(itemGuid, sender)
         end
+    end
+end
+
+-- HMSG_ITEM_AWARD_UPDATE
+do
+    ---@class Packet_HMSG_ITEM_AWARD_UPDATE
+    ---@field itemGuid string
+    ---@field candidateName string?
+
+    ---@param itemGuid string
+    ---@param candidateName? string
+    function Sender.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName)
+        local packet = { ---@type Packet_HMSG_ITEM_AWARD_UPDATE
+            itemGuid = itemGuid,
+            candidateName = candidateName,
+        }
+        SendToClients(OPCODES.HMSG_ITEM_AWARD_UPDATE, packet)
+    end
+
+    ---@class CommEvent_HMSG_ITEM_AWARD_UPDATE
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, cb:fun(itemGuid:string, candidateName:string, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, itemGuid:string, candidateName:string, sender:string)
+    Events.HMSG_ITEM_AWARD_UPDATE = Env:NewEventEmitter()
+
+    messageFilter[OPCODES.HMSG_ITEM_AWARD_UPDATE] = FilterReceivedOnClient
+    messageHandler[OPCODES.HMSG_ITEM_AWARD_UPDATE] = function(data, sender)
+        ---@cast data Packet_HMSG_ITEM_AWARD_UPDATE
+        Events.HMSG_ITEM_AWARD_UPDATE:Trigger(data.itemGuid, data.candidateName, sender)
     end
 end
 

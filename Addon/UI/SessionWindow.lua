@@ -7,6 +7,7 @@ local LibWindow = LibStub("LibWindow-1.1")
 local LibDialog = LibStub("LibDialog-1.1")
 local L = Env:GetLocalization()
 local ScrollingTable = LibStub("ScrollingTable") ---@type LibScrollingTable
+local LootCandidateStatus = Env.Session.LootCandidateStatus
 
 local GetImagePath = Env.UI.GetImagePath
 local GetClassColor = Env.UI.GetClassColor
@@ -65,7 +66,12 @@ local function UpdateShownItem()
     end)
 
     if item.awardedTo then
-        frame.ItemInfoAwarded:SetText(L["Awarded to: %s"]:format(item.awardedTo))
+        local itemResponse = item.responses[item.awardedTo] ---@type SessionClient_ItemResponse|nil
+        local candidateName = item.awardedTo
+        if itemResponse then
+            candidateName = "|c" .. GetClassColor(itemResponse.candidate.classId).argbstr .. candidateName .. "|r"
+        end
+        frame.ItemInfoAwarded:SetText("> " .. L["Awarded to: %s"]:format(candidateName))
     else
         frame.ItemInfoAwarded:SetText("")
     end
@@ -140,6 +146,7 @@ local function Script_TableRightClick(rowFrame, cellFrame, data, cols, row, real
         end
 
         local itemResponse = data[realrow][TABLE_INDECES.RESPONSES] ---@type SessionClient_ItemResponse
+        if itemResponse.status == LootCandidateStatus.veiled then return false end
         contextMenuFrame.selectedItemResponse = itemResponse
 
         local x, y = GetCursorPosition()
@@ -151,18 +158,86 @@ local function Script_TableRightClick(rowFrame, cellFrame, data, cols, row, real
     return false
 end
 
+local function UpdateItemSelect()
+    ---@type SessionClient_Item[]
+    local ordered = {}
+    for _, item in pairs(Client.items) do
+        table.insert(ordered, item)
+    end
+    table.sort(ordered, function(a, b)
+        return a.order < b.order
+    end)
+
+    for k, item in ipairs(ordered) do
+        local btn = itemSelectIcons[k]
+        btn:SetItemData(item.itemId, item.guid)
+        btn:ShowCheckmark(item.awardedTo ~= nil)
+        if item.guid == selectedItemGuid then
+            btn:ShowBorder(true)
+        else
+            btn:ShowBorder(false)
+        end
+        btn:SetDesaturated(item.veiled)
+        btn:Show()
+    end
+
+    for i = #ordered + 1, #itemSelectIcons do
+        itemSelectIcons[i]:Hide()
+    end
+end
+
 ---@param self SessionWindowContextMenuFrame
 ---@param candidateName string
 ---@param arg2 any
 local function Script_AwardClick(self, candidateName, arg2)
-    if not IsHosting() then return end
+    if not IsHosting() or not selectedItemGuid then return end
+    local item = Client.items[selectedItemGuid]
+    local itemResp = Client.items[selectedItemGuid].responses[candidateName]
+    if not item or not itemResp then return end
+    local errMsg = Host:AwardItem(item.guid, candidateName)
+    MSA_CloseDropDownMenus()
+    if errMsg then
+        Env:PrintError(L["Awarding item failed:"])
+        Env:PrintError(errMsg)
+    else
+        local reasonStr = itemResp.response and itemResp.response.displayString or itemResp.status.displayString
+        DoWhenItemInfoReady(item.itemId, function(_, itemLink)
+            Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
+        end)
+        -- Get next unawarded item and select it.
+        local nextOrder = 99999999
+        local nextItemGuid ---@type string?
+        for _, it in pairs(Client.items) do
+            if it.order ~= item.order and it.order < nextOrder and not it.awardedTo then
+                nextOrder = it.order
+                nextItemGuid = it.guid
+            end
+        end
+        if nextItemGuid then
+            selectedItemGuid = nextItemGuid
+            UpdateItemSelect()
+            UpdateShownItem()
+        end
+    end
 end
 
 ---@param self SessionWindowContextMenuFrame
 ---@param candidateName string
 ---@param arg2 any
 local function Script_RevokeAwardClick(self, candidateName, arg2)
-    if not IsHosting() then return end
+    if not IsHosting() or not selectedItemGuid then return end
+    local item = Client.items[selectedItemGuid]
+    if not item then return end
+    local errMsg = Host:RevokeAwardItem(item.guid, candidateName)
+    MSA_CloseDropDownMenus()
+    if errMsg then
+        Env:PrintError(L["Revoking awarded item failed:"])
+        Env:PrintError(errMsg)
+    else
+        DoWhenItemInfoReady(item.itemId, function(_, itemLink)
+            Host:SendMessageToTargetChannel(L["Revoked award of %s from %s!"]:format(itemLink, candidateName))
+        end)
+    end
 end
 
 ---@param self SessionWindowContextMenuFrame
@@ -388,7 +463,46 @@ do
     ---@type ST_CellUpdateFunc
     local function CellUpdateResponse(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         if not fShow then return end
+        local item = selectedItemGuid and Client.items[selectedItemGuid]
         local itemResponse = data[realrow][column] ---@type SessionClient_ItemResponse
+        -- Check if the item or any of its duplicates were awarded to this player.
+        if item then
+            local candidateName = itemResponse.candidate.name
+            local awardCountThisPlayer = 0
+            local awardCountAll = 0
+            local awardedThis = false
+            if item.awardedTo then
+                awardCountAll = awardCountAll + 1
+                if item.awardedTo == candidateName then
+                    awardCountThisPlayer = awardCountThisPlayer + 1
+                    awardedThis = true
+                end
+            end
+            Client:DoForEachRelatedItem(item, function(relatedItem)
+                if relatedItem.awardedTo then
+                    awardCountAll = awardCountAll + 1
+                    if relatedItem.awardedTo == candidateName then
+                        awardCountThisPlayer = awardCountThisPlayer + 1
+                    end
+                end
+            end)
+            -- Item was awarded to this player at least one time.
+            if awardCountThisPlayer > 0 then
+                local respString = ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString)
+                local txt ---@type string
+                if awardCountThisPlayer > 1 then
+                    txt = L["Awarded (%s) (%dx)"]:format(respString, awardCountThisPlayer)
+                else
+                    txt = L["Awarded (%s)"]:format(respString)
+                end
+                if awardCountAll > awardCountThisPlayer and awardedThis then
+                    txt = "> " .. txt .. " <"
+                end
+                cellFrame.text:SetText(txt)
+                return
+            end
+        end
+        -- Set response or status as text
         if itemResponse.response then
             cellFrame.text:SetText(ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString))
         else
@@ -540,7 +654,7 @@ local function CreateWindow()
     frame.ItemInfoItemInfo:SetPoint("TOPLEFT", frame.ItenInfoItemName, "BOTTOMLEFT", 0, -3)
 
     frame.ItemInfoAwarded = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
-    frame.ItemInfoAwarded:SetPoint("TOP", frame, "TOP", 0, -37)
+    frame.ItemInfoAwarded:SetPoint("LEFT", frame.ItemInfoItemInfo, "RIGHT", 15, 0)
     frame.ItemInfoAwarded:SetText("")
 
     -- Response table
@@ -556,10 +670,8 @@ local function CreateWindow()
 end
 
 ---@param index integer
-local function GetOrCreateItemSelectIcon(index)
-    if itemSelectIcons[index] then
-        return itemSelectIcons[index]
-    end
+local function CreateItemSelectIconIfMissing(index)
+    if itemSelectIcons[index] then return end
     local newBtn = Env.UI.CreateIconButton(frame, ITEM_SELECT_ICON_SIZE)
     itemSelectIcons[index] = newBtn
     newBtn:SetOnClick(Script_ItemSelectClicked)
@@ -572,7 +684,6 @@ local function GetOrCreateItemSelectIcon(index)
     else
         newBtn:SetPoint("TOP", itemSelectIcons[index - 1], "BOTTOM", 0, ITEM_SELECT_ICON_OFFSET_Y)
     end
-    return newBtn
 end
 
 ---------------------------------------------------------------------------
@@ -580,34 +691,6 @@ end
 ---------------------------------------------------------------------------
 
 Env:OnAddonLoaded(CreateWindow)
-
-local function UpdateItemSelect()
-    ---@type SessionClient_Item[]
-    local ordered = {}
-    for _, item in pairs(Client.items) do
-        table.insert(ordered, item)
-    end
-    table.sort(ordered, function(a, b)
-        return a.order < b.order
-    end)
-
-    for k, item in ipairs(ordered) do
-        local btn = GetOrCreateItemSelectIcon(k)
-        btn:SetItemData(item.itemId, item.guid)
-        btn:ShowCheckmark(item.awardedTo ~= nil)
-        if item.guid == selectedItemGuid then
-            btn:ShowBorder(true)
-        else
-            btn:ShowBorder(false)
-        end
-        btn:SetDesaturated(item.veiled)
-        btn:Show()
-    end
-
-    for i = #ordered + 1, #itemSelectIcons do
-        itemSelectIcons[i]:Hide()
-    end
-end
 
 local openDialogData = {
     text = L["A loot session started. Do you want to open the session window?"],
@@ -628,7 +711,6 @@ local openDialogData = {
 
 Client.OnStart:RegisterCallback(function()
     selectedItemGuid = nil
-    UpdateItemSelect()
     if not IsHosting() and not Env.settings.autoOpenOnStart == "yes" then
         if Env.settings.autoOpenOnStart == "no" then
             return
@@ -650,11 +732,20 @@ Client.OnItemUpdate:RegisterCallback(function(item)
         Env:PrintDebug("Setting shown item because no item selected.")
         selectedItemGuid = item.guid
     end
+    local itemCount = Client:GetItemCount()
+    for i = 1, itemCount do
+        CreateItemSelectIconIfMissing(i)
+    end
     UpdateItemSelect()
     if item.guid == selectedItemGuid then
         UpdateShownItem()
+    else
+        Client:DoForEachRelatedItem(item, function(relatedItem)
+            if relatedItem.guid == selectedItemGuid then
+                UpdateShownItem()
+            end
+        end)
     end
-    -- TODO: child item update (need data for children in client)
 end)
 
 ---------------------------------------------------------------------------

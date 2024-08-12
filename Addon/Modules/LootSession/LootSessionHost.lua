@@ -163,7 +163,6 @@ function Host:SendMessageToTargetChannel(message)
         end
     end
     if channel == "WHISPER" then
-        print(message, channel, UnitName("player"))
         SendChatMessage(message, channel, nil, select(1, UnitName("player")))
     else
         SendChatMessage(message, channel)
@@ -367,6 +366,43 @@ Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, respo
 end)
 
 ------------------------------------------------------------------
+--- Award Item
+------------------------------------------------------------------
+
+---Award item to a candidate.
+---@param itemGuid string
+---@param candidateName string
+---@return string? error If arguments are not valid will return an error message.
+function Host:AwardItem(itemGuid, candidateName)
+    local item = items[itemGuid]
+    local itemResponse = item.responses[candidateName]
+    if not item then return L["Invalid item guid!"] end
+    if not itemResponse then return L["Invalid candidate name!"] end
+    if item.awardedTo then return L["Item already awarded to %s!"]:format(item.awardedTo) end
+    -- TODO: if points roll check DB to make sure we should award it to this player
+    -- otherwise ask to make sure this is the correct decission
+    item.awardedTo = candidateName
+    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName)
+    UnveilNextItem()
+    -- TODO: DB stuff, update point value for player
+end
+
+---Revoke awarded item from a candidate.
+---@param itemGuid string
+---@param candidateName string
+---@return string? error If arguments are not valid will return an error message.
+function Host:RevokeAwardItem(itemGuid, candidateName)
+    local item = items[itemGuid]
+    local itemResponse = item.responses[candidateName]
+    if not item then return L["Invalid item guid!"] end
+    if not itemResponse then return L["Invalid candidate name!"] end
+    if not item.awardedTo or item.awardedTo ~= candidateName then return L["Item isn't awarded to %s!"]:format(item.awardedTo) end
+    item.awardedTo = nil
+    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid)
+    -- TODO: DB stuff, update point value for player
+end
+
+------------------------------------------------------------------
 --- Add Item
 ------------------------------------------------------------------
 
@@ -393,16 +429,19 @@ function UnveilNextItem()
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
             Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
-            for _, v in pairs(item.responses) do
-                Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, v)
-            end
-            if item.childGuids then
-                for _, childGuid in ipairs(item.childGuids) do
-                    local childItem = items[childGuid]
-                    if childItem.veiled then
-                        LogDebug("Unveil child item because parent was unveiled", childGuid)
-                        childItem.veiled = false
-                        Comm.Send.HMSG_ITEM_UNVEIL(childItem.guid)
+
+            if not item.parentGuid then
+                for _, v in pairs(item.responses) do
+                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, v)
+                end
+                if item.childGuids then
+                    for _, childGuid in ipairs(item.childGuids) do
+                        local childItem = items[childGuid]
+                        if childItem.veiled then
+                            LogDebug("Unveil child item because parent was unveiled", childGuid)
+                            childItem.veiled = false
+                            Comm.Send.HMSG_ITEM_UNVEIL(childItem.guid)
+                        end
                     end
                 end
             end
@@ -513,7 +552,13 @@ function Host:ItemAdd(itemId)
 
     Comm.Send.HMSG_ITEM_ANNOUNCE(item)
 
-    UnveilNextItem()
+    if parentItem then
+        if not parentItem.veiled then
+            Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
+        end
+    else
+        UnveilNextItem()
+    end
 
     timers:StartUnique(item.guid .. "ackcheck", 6, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)

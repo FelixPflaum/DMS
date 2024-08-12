@@ -366,3 +366,45 @@ function Client:RespondToItem(itemGuid, responseId)
     item.responseSent = true
     self.OnItemUpdate:Trigger(item)
 end
+
+Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(itemGuid, candidateName, sender)
+    local item = Client.items[itemGuid]
+    if not item then
+        LogDebug("got HMSG_ITEM_AWARD_UPDATE for unknown item", itemGuid)
+        return
+    end
+    item.awardedTo = candidateName
+    LogDebug("item awardedTo updated", itemGuid, candidateName)
+    Client.OnItemUpdate:Trigger(item)
+end)
+
+---@return integer
+function Client:GetItemCount()
+    local count = 0
+    for _ in pairs(self.items) do
+        count = count + 1
+    end
+    return count
+end
+
+---Run callback for each realted item, i.e. childred or parend and other children of the parent.
+---@param item SessionClient_Item
+---@param func fun(relatedItem:SessionClient_Item)
+function Client:DoForEachRelatedItem(item, func)
+    local childGuids = item.childGuids
+    if item.parentGuid then
+        local pitem = self.items[item.parentGuid] ---@type SessionClient_Item?
+        if pitem then
+            func(pitem)
+            childGuids = pitem.childGuids
+        end
+    end
+    if childGuids then
+        for _, childGuid in ipairs(childGuids) do
+            if childGuid ~= item.guid then
+                local citem = self.items[childGuid]
+                if citem then func(citem) end
+            end
+        end
+    end
+end
