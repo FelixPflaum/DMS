@@ -311,7 +311,9 @@ end)
 ---@param doInstant boolean? Do not batch response change comm message.
 local function SetItemResponse(item, itemResponse, response, doInstant)
     itemResponse.response = response
-    itemResponse.roll = itemResponse.roll or item.roller:GetRoll()
+    if not itemResponse.roll and itemResponse.response.id >= Env.Session.REPSONSE_ID_FIRST_CUSTOM then
+        itemResponse.roll = item.roller:GetRoll()
+    end
     itemResponse.status = LootStatus.responded
     -- TODO: get points from DB
     itemResponse.points = response.isPointsRoll and 999 or nil
