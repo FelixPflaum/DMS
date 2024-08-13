@@ -19,14 +19,18 @@ end
 ---@field isOffline boolean
 ---@field leftGroup boolean
 ---@field isResponding boolean
+---@field currentPoints integer
 
 ---@class (exact) SessionClient_ItemResponse
 ---@field candidate SessionClient_Candidate
 ---@field response LootResponse|nil
 ---@field status LootCandidateStatus
 ---@field roll integer|nil
----@field points integer|nil
 ---@field currentItem string[]? ItemLinks [item1[,item2]] for currently equipped items. Item2 is used for rings and trinkets.
+
+---@class (exact) SessionClient_ItemAwardData
+---@field candidateName string The name of the player the item was awarded to.
+---@field pointsSnapshot? table<string,integer> Snapshot of point count the award was based on.
 
 ---@class (exact) SessionClient_Item
 ---@field guid string
@@ -39,7 +43,7 @@ end
 ---@field parentGuid string|nil
 ---@field childGuids string[]|nil
 ---@field responses table<string, SessionClient_ItemResponse>
----@field awardedTo string|nil
+---@field awarded SessionClient_ItemAwardData?
 
 ---@class (exact) SessionClient
 ---@field guid string
@@ -164,13 +168,22 @@ end)
 Comm.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
     Env:PrintVerbose(lcs)
     for _, lc in ipairs(lcs) do
-        Client.candidates[lc.name] = {
-            name = lc.name,
-            classId = lc.classId,
-            leftGroup = lc.leftGroup,
-            isResponding = lc.isResponding,
-            isOffline = not UnitIsConnected(lc.name),
-        }
+        if not Client.candidates[lc.name] then
+            Client.candidates[lc.name] = {
+                name = lc.name,
+                classId = lc.classId,
+                leftGroup = lc.leftGroup,
+                isResponding = lc.isResponding,
+                isOffline = not UnitIsConnected(lc.name),
+                currentPoints = lc.currentPoints,
+            }
+        else
+            local candidate = Client.candidates[lc.name]
+            candidate.leftGroup = lc.leftGroup
+            candidate.isResponding = lc.isResponding
+            candidate.isOffline = not UnitIsConnected(lc.name)
+            candidate.currentPoints = lc.currentPoints
+        end
     end
     Client.OnCandidateUpdate:Trigger()
 end)
@@ -213,7 +226,6 @@ local function UpdateResponseFromPacket(item, data)
             entry.response = response
             entry.status = status
             entry.roll = data.roll
-            entry.points = data.points
         else
             item.responses[candidate.name] = {
                 name = data.candidate,
@@ -221,7 +233,6 @@ local function UpdateResponseFromPacket(item, data)
                 response = response,
                 status = status,
                 roll = data.roll,
-                points = data.points,
             }
         end
     end
@@ -367,15 +378,22 @@ function Client:RespondToItem(itemGuid, responseId)
     self.OnItemUpdate:Trigger(item, false)
 end
 
-Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(itemGuid, candidateName, sender)
-    local item = Client.items[itemGuid]
+Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(data, sender)
+    local item = Client.items[data.itemGuid]
     if not item then
-        LogDebug("got HMSG_ITEM_AWARD_UPDATE for unknown item", itemGuid)
+        LogDebug("got HMSG_ITEM_AWARD_UPDATE for unknown item", data.itemGuid)
         return
     end
-    item.awardedTo = candidateName
-    LogDebug("item awardedTo updated", itemGuid, candidateName)
-    Client.OnItemUpdate:Trigger(item, candidateName ~= nil)
+    if data.candidateName then
+        item.awarded = {
+            candidateName = data.candidateName,
+            pointsSnapshot = data.pointSnapshot,
+        }
+    else
+        item.awarded = nil
+    end
+    LogDebug("item awarded updated", data.itemGuid, data.candidateName)
+    Client.OnItemUpdate:Trigger(item, data.candidateName ~= nil)
 end)
 
 ---@return integer

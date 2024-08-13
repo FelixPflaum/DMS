@@ -29,6 +29,7 @@ end
 ---@field leftGroup boolean
 ---@field isResponding boolean
 ---@field lastMessage number GetTime()
+---@field currentPoints integer Current point count. ONLY EVER update this from DB data!
 ---@field isFake? boolean Is fake test candidate.
 
 ---@class (exact) SessionHost_ItemResponse
@@ -36,7 +37,11 @@ end
 ---@field status LootCandidateStatus
 ---@field response LootResponse|nil
 ---@field roll integer|nil
----@field points integer|nil
+
+---@class (exact) SessionHost_ItemAwardData
+---@field candidateName string The name of the player the item was awarded to.
+---@field usedResponse LootResponse
+---@field pointsSnapshot? table<string,integer> Snapshot of point count the award was based on.
 
 ---@class (exact) SessionHost_Item
 ---@field guid string Unique id for that specific loot distribution.
@@ -50,7 +55,7 @@ end
 ---@field status "waiting"|"timeout"|"child"
 ---@field roller UniqueRoller
 ---@field responses table<string, SessionHost_ItemResponse>
----@field awardedTo string|nil
+---@field awarded SessionHost_ItemAwardData?
 
 ---@class (exact) SessionHost
 ---@field guid string
@@ -204,6 +209,7 @@ function Host:UpdateCandidateList()
             leftGroup = false,
             isResponding = false,
             lastMessage = 0,
+            currentPoints = 999, -- TODO: get from DB
         }
     end
 
@@ -218,6 +224,7 @@ function Host:UpdateCandidateList()
                 leftGroup = false,
                 isResponding = false,
                 lastMessage = 0,
+                currentPoints = 999, -- TODO: get from DB
             }
         end
     end
@@ -315,8 +322,6 @@ local function SetItemResponse(item, itemResponse, response, doInstant)
         itemResponse.roll = item.roller:GetRoll()
     end
     itemResponse.status = LootStatus.responded
-    -- TODO: get points from DB
-    itemResponse.points = response.isPointsRoll and 999 or nil
     if not item.veiled then
         Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse, doInstant)
     end
@@ -371,37 +376,81 @@ end)
 --- Award Item
 ------------------------------------------------------------------
 
+---@param item SessionHost_Item
+local function MakePointsSnapshot(item)
+    ---@type table<string,integer>
+    local ss = {}
+    for _, v in pairs(item.responses) do
+        ss[v.candidate.name] = v.candidate.currentPoints
+    end
+    return ss
+end
+
 ---Award item to a candidate.
 ---@param itemGuid string
 ---@param candidateName string
 ---@return string? error If arguments are not valid will return an error message.
+---@return integer? pointsUsed
 function Host:AwardItem(itemGuid, candidateName)
     local item = items[itemGuid]
     local itemResponse = item.responses[candidateName]
     if not item then return L["Invalid item guid!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
-    if item.awardedTo then return L["Item already awarded to %s!"]:format(item.awardedTo) end
-    -- TODO: if points roll check DB to make sure we should award it to this player
-    -- otherwise ask to make sure this is the correct decission
-    item.awardedTo = candidateName
-    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName)
+    if item.awarded then return L["Item already awarded to %s!"]:format(item.awarded.candidateName) end
+
+    local pointsUsed ---@type integer?
+
+    item.awarded = {
+        candidateName = candidateName,
+        usedResponse = itemResponse.response,
+        pointsSnapshot = itemResponse.response.isPointsRoll and MakePointsSnapshot(item) or nil
+    }
+
+    if itemResponse.response.isPointsRoll then
+        -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
+        --Fake DB op
+        local candidate = itemResponse.candidate
+        pointsUsed = math.ceil(candidate.currentPoints / 2)
+        candidate.currentPoints = candidate.currentPoints - pointsUsed
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
+    end
+
+    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, item.awarded.pointsSnapshot)
+
     UnveilNextItem()
-    -- TODO: DB stuff, update point value for player
+
+    return nil, pointsUsed
 end
 
 ---Revoke awarded item from a candidate.
 ---@param itemGuid string
 ---@param candidateName string
 ---@return string? error If arguments are not valid will return an error message.
+---@return integer? pointsReturned
 function Host:RevokeAwardItem(itemGuid, candidateName)
     local item = items[itemGuid]
     local itemResponse = item.responses[candidateName]
     if not item then return L["Invalid item guid!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
-    if not item.awardedTo or item.awardedTo ~= candidateName then return L["Item isn't awarded to %s!"]:format(item.awardedTo) end
-    item.awardedTo = nil
+    if not item.awarded or item.awarded.candidateName ~= candidateName then
+        return L["Item isn't awarded to %s!"]:format(item.awarded.candidateName)
+    end
+
+    local pointsReturned ---@type integer?
+
+    if item.awarded.usedResponse.isPointsRoll then
+        -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
+        -- Fake DB op
+        local candidate = itemResponse.candidate
+        pointsReturned = math.ceil(item.awarded.pointsSnapshot[candidateName] / 2)
+        candidate.currentPoints = candidate.currentPoints + pointsReturned
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
+    end
+
+    item.awarded = nil
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid)
-    -- TODO: DB stuff, update point value for player
+
+    return nil, pointsReturned
 end
 
 ------------------------------------------------------------------
@@ -423,7 +472,7 @@ function UnveilNextItem()
 
     for _, item in ipairs(orderedItem) do
         if not item.veiled then
-            if not item.awardedTo then
+            if not item.awarded then
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
                 return
             end
@@ -448,7 +497,7 @@ function UnveilNextItem()
                 end
             end
 
-            if not item.awardedTo then
+            if not item.awarded then
                 LogDebug("Unveiled item is the next to be awarded, not unveiling more.")
                 return
             end
@@ -540,7 +589,7 @@ function Host:ItemAdd(itemId)
                 local ir = item.responses[name]
                 Env.Session.FillTestResponse(ir, responses.responses, item.roller)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)
-                print(ir.status.displayString, ir.response and ir.response.displayString, ir.roll, ir.points)
+                print(ir.status.displayString, ir.response and ir.response.displayString, ir.roll, ir.candidate.currentPoints)
             end
         end
 

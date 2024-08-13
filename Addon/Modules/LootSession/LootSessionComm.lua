@@ -204,19 +204,22 @@ do
     ---@field n string
     ---@field c integer
     ---@field s integer
+    ---@field cp integer
 
     ---@class (exact) Packet_HMSG_CANDIDATE_UPDATE
     ---@field name string
     ---@field classId integer
     ---@field leftGroup boolean
     ---@field isResponding boolean
+    ---@field currentPoints integer
 
     ---@param candidate SessionHost_Candidate
     local function PackLootCandidate(candidate)
         local data = { ---@type PackedLootCandidate
             n = candidate.name,
             c = candidate.classId,
-            s = 0
+            s = 0,
+            cp = candidate.currentPoints,
         }
         if candidate.leftGroup then
             data.s = data.s + 0x2
@@ -257,6 +260,7 @@ do
                 classId = packedLc.c,
                 leftGroup = bit.band(packedLc.s, 0x2) > 0,
                 isResponding = bit.band(packedLc.s, 0x4) > 0,
+                currentPoints = packedLc.cp,
             }
             table.insert(lcs, lc)
         end
@@ -330,7 +334,6 @@ do
     ---@field statusId integer
     ---@field responseId? integer
     ---@field roll? integer
-    ---@field points? integer
 
     ---@alias Packet_HMSG_ITEM_RESPONSE_UPDATE table<string,PackedSessionItemClient[]>
 
@@ -364,7 +367,6 @@ do
         }
         if clientData.response then packedClient.responseId = clientData.response.id end
         if clientData.roll then packedClient.roll = clientData.roll end
-        if clientData.points then packedClient.points = clientData.points end
 
         if doNotBatch then
             ---@type Packet_HMSG_ITEM_RESPONSE_UPDATE
@@ -493,29 +495,32 @@ end
 
 -- HMSG_ITEM_AWARD_UPDATE
 do
-    ---@class Packet_HMSG_ITEM_AWARD_UPDATE
+    ---@class (exact) Packet_HMSG_ITEM_AWARD_UPDATE
     ---@field itemGuid string
-    ---@field candidateName string?
+    ---@field candidateName? string
+    ---@field pointSnapshot? table<string,integer>
 
     ---@param itemGuid string
     ---@param candidateName? string
-    function Sender.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName)
+    ---@param pointSnapshot? table<string,integer>
+    function Sender.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, pointSnapshot)
         local packet = { ---@type Packet_HMSG_ITEM_AWARD_UPDATE
             itemGuid = itemGuid,
             candidateName = candidateName,
+            pointSnapshot = pointSnapshot,
         }
         SendToClients(OPCODES.HMSG_ITEM_AWARD_UPDATE, packet)
     end
 
     ---@class CommEvent_HMSG_ITEM_AWARD_UPDATE
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, cb:fun(itemGuid:string, candidateName:string?, sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, itemGuid:string, candidateName:string?, sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, cb:fun(data:Packet_HMSG_ITEM_AWARD_UPDATE, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, data:Packet_HMSG_ITEM_AWARD_UPDATE, sender:string)
     Events.HMSG_ITEM_AWARD_UPDATE = Env:NewEventEmitter()
 
     messageFilter[OPCODES.HMSG_ITEM_AWARD_UPDATE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_AWARD_UPDATE] = function(data, sender)
         ---@cast data Packet_HMSG_ITEM_AWARD_UPDATE
-        Events.HMSG_ITEM_AWARD_UPDATE:Trigger(data.itemGuid, data.candidateName, sender)
+        Events.HMSG_ITEM_AWARD_UPDATE:Trigger(data, sender)
     end
 end
 

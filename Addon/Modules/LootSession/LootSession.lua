@@ -237,6 +237,7 @@ local function CreateTestCandidateEntryGenerator()
             leftGroup = false,
             isResponding = true,
             lastMessage = time(),
+            currentPoints = math.random(300),
             isFake = true,
         }
         return candidate
@@ -273,5 +274,4 @@ function Env.Session.FillTestResponse(itemResponse, responses, roller)
     itemResponse.status = lsList[math.random(#lsList)]
     itemResponse.response = itemResponse.status == ls.responded and responses[math.random(#responses)] or nil
     itemResponse.roll = itemResponse.response and roller:GetRoll()
-    itemResponse.points = (itemResponse.response and itemResponse.response.isPointsRoll) and math.random(300) or 0
 end

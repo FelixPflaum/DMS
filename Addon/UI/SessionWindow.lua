@@ -65,9 +65,9 @@ local function UpdateShownItem()
             frame.ItemInfoItemInfo:SetText(Env.UI.GetItemTypeString(classID, subclassID, itemSubType, itemEquipLoc))
         end)
 
-    if item.awardedTo then
-        local itemResponse = item.responses[item.awardedTo] ---@type SessionClient_ItemResponse|nil
-        local candidateName = item.awardedTo
+    if item.awarded then
+        local itemResponse = item.responses[item.awarded.candidateName]
+        local candidateName = item.awarded.candidateName
         if itemResponse then
             candidateName = "|c" .. GetClassColor(itemResponse.candidate.classId).argbstr .. candidateName .. "|r"
         end
@@ -78,14 +78,18 @@ local function UpdateShownItem()
 
     local tableData = {}
     for _, itemResponse in pairs(item.responses) do
+        local points = itemResponse.candidate.currentPoints
+        if item.awarded and item.awarded.pointsSnapshot and item.awarded.pointsSnapshot[itemResponse.candidate.name] then
+            points = item.awarded.pointsSnapshot[itemResponse.candidate.name]
+        end
         ---@type ResponseTableRowData
         local rowData = {
             itemResponse.candidate.classId,
             itemResponse.candidate,
             itemResponse,
             itemResponse.roll or 0,
-            itemResponse.points or 0,
-            (itemResponse.roll or 0) + (itemResponse.points or 0),
+            points,
+            (itemResponse.roll or 0) + points,
             itemResponse.currentItem and itemResponse.currentItem[1],
             itemResponse.currentItem and itemResponse.currentItem[2],
         }
@@ -128,6 +132,7 @@ end
 
 ---@param guid string
 local function Script_ItemSelectClicked(guid)
+    MSA_CloseDropDownMenus()
     selectedItemGuid = guid
     UpdateShownItem()
     for _, v in ipairs(itemSelectIcons) do
@@ -172,7 +177,7 @@ local function UpdateItemSelect()
     for k, item in ipairs(ordered) do
         local btn = itemSelectIcons[k]
         btn:SetItemData(item.itemId, item.guid)
-        btn:ShowCheckmark(item.awardedTo ~= nil)
+        btn:ShowCheckmark(item.awarded ~= nil)
         if item.guid == selectedItemGuid then
             btn:ShowBorder(true)
         else
@@ -195,7 +200,7 @@ local function Script_AwardClick(self, candidateName, arg2)
     local item = Client.items[selectedItemGuid]
     local itemResp = Client.items[selectedItemGuid].responses[candidateName]
     if not item or not itemResp then return end
-    local errMsg = Host:AwardItem(item.guid, candidateName)
+    local errMsg, pointsUsed = Host:AwardItem(item.guid, candidateName)
     MSA_CloseDropDownMenus()
     if errMsg then
         Env:PrintError(L["Awarding item failed:"])
@@ -203,7 +208,12 @@ local function Script_AwardClick(self, candidateName, arg2)
     else
         local reasonStr = itemResp.response and itemResp.response.displayString or itemResp.status.displayString
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
-            Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
+            if pointsUsed then
+                Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s! Used %d sanity."]:format(itemLink, candidateName,
+                    reasonStr, pointsUsed))
+            else
+                Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
+            end
         end)
     end
 end
@@ -215,14 +225,19 @@ local function Script_RevokeAwardClick(self, candidateName, arg2)
     if not IsHosting() or not selectedItemGuid then return end
     local item = Client.items[selectedItemGuid]
     if not item then return end
-    local errMsg = Host:RevokeAwardItem(item.guid, candidateName)
+    local errMsg, pointsReturned = Host:RevokeAwardItem(item.guid, candidateName)
     MSA_CloseDropDownMenus()
     if errMsg then
         Env:PrintError(L["Revoking awarded item failed:"])
         Env:PrintError(errMsg)
     else
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
-            Host:SendMessageToTargetChannel(L["Revoked award of %s from %s!"]:format(itemLink, candidateName))
+            if pointsReturned then
+                Host:SendMessageToTargetChannel(L["Revoked award of %s from %s! Returned %d sanity."]:format(itemLink,
+                    candidateName, pointsReturned))
+            else
+                Host:SendMessageToTargetChannel(L["Revoked award of %s from %s!"]:format(itemLink, candidateName))
+            end
         end)
     end
 end
@@ -361,11 +376,11 @@ do
 
             ContextAddSpacer()
 
-            if not item or item.awardedTo ~= itemResponse.candidate.name then
+            if not item or not item.awarded or item.awarded.candidateName ~= itemResponse.candidate.name then
                 wipe(info)
                 info.text = L["Award"]
                 info.notCheckable = true
-                info.disabled = item and item.awardedTo == itemResponse.candidate.name
+                info.disabled = item and item.awarded ~= nil
                 info.func = Script_AwardClick
                 info.arg1 = itemResponse.candidate.name
                 MSA_DropDownMenu_AddButton(info, level)
@@ -458,17 +473,17 @@ do
             local awardCountThisPlayer = 0
             local awardCountAll = 0
             local awardedThis = false
-            if item.awardedTo then
+            if item.awarded then
                 awardCountAll = awardCountAll + 1
-                if item.awardedTo == candidateName then
+                if item.awarded.candidateName == candidateName then
                     awardCountThisPlayer = awardCountThisPlayer + 1
                     awardedThis = true
                 end
             end
             Client:DoForEachRelatedItem(item, function(relatedItem)
-                if relatedItem.awardedTo then
+                if relatedItem.awarded then
                     awardCountAll = awardCountAll + 1
-                    if relatedItem.awardedTo == candidateName then
+                    if relatedItem.awarded.candidateName == candidateName then
                         awardCountThisPlayer = awardCountThisPlayer + 1
                     end
                 end
@@ -502,11 +517,26 @@ do
 
     ---Update function for roll, points and total cells.
     ---@type ST_CellUpdateFunc
-    local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+    local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, st)
+        ---@cast st SessionWindowScrollingTable
         if not fShow then return end
-        local num = data[realrow][column] ---@type number|nil
-        if num and num ~= 0 then
-            cellFrame.text:SetText(tostring(num))
+        local value = data[realrow][column] ---@type number|nil
+        local isPointsCol = column == TABLE_INDECES.SANITY
+        if isPointsCol then
+            local itemResponse = data[realrow][TABLE_INDECES.RESPONSES] ---@type SessionClient_ItemResponse
+            if not itemResponse.response or not itemResponse.response.isPointsRoll then
+                value = nil
+            end
+        end
+        if value and value ~= 0 then
+            local valueString = tostring(value)
+            if isPointsCol then
+                local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
+                if pointsAreSnapshotted then
+                    valueString = "|cFF70acc0" .. valueString .. "|r"
+                end
+            end
+            cellFrame.text:SetText(valueString)
         else
             cellFrame.text:SetText("")
         end
@@ -560,12 +590,12 @@ do
                 weight = 100 + resp.response.id
             end
         end
-        if item.awardedTo == resp.candidate.name then
+        if item.awarded and item.awarded.candidateName == resp.candidate.name then
             -- Show awarded row at the top, regardless of status or response
             weight = weight + 1000
         end
         Client:DoForEachRelatedItem(item, function(relatedItem)
-            if relatedItem.awardedTo == resp.candidate.name then
+            if relatedItem.awarded and relatedItem.awarded.candidateName == resp.candidate.name then
                 weight = weight + 1000
             end
         end)
@@ -729,6 +759,10 @@ Client.OnEnd:RegisterCallback(function()
 
 end)
 
+Client.OnCandidateUpdate:RegisterCallback(function()
+    UpdateShownItem()
+end)
+
 Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
     if selectedItemGuid == nil then
         Env:PrintDebug("Setting shown item because no item selected.")
@@ -752,11 +786,12 @@ Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
     -- After award, if item is selected and still selected 1s later, select next unawarded item in order.
     if isAwardEvent and item.guid == selectedItemGuid then
         C_Timer.NewTimer(0.5, function()
+            MSA_CloseDropDownMenus()
             if item.guid == selectedItemGuid then
                 local nextOrder = 99999999
                 local nextItemGuid ---@type string?
                 for _, it in pairs(Client.items) do
-                    if it.order ~= item.order and it.order < nextOrder and not it.awardedTo then
+                    if it.order ~= item.order and it.order < nextOrder and not it.awarded then
                         nextOrder = it.order
                         nextItemGuid = it.guid
                     end
