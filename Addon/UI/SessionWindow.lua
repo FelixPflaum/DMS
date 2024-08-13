@@ -555,6 +555,7 @@ do
         ---@cast st SessionWindowScrollingTable
         if not fShow then return end
         local value = data[realrow][column] ---@type number|nil
+        cellFrame:ClearNormalTexture()
         if value and value ~= 0 then
             local valueString = tostring(value)
             local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
@@ -569,8 +570,6 @@ do
                     tex:ClearAllPoints()
                     tex:SetSize(32, 8)
                     tex:SetPoint("TOPRIGHT", 0, -5)
-                else
-                    cellFrame:ClearNormalTexture()
                 end
             end
             cellFrame.text:SetText(valueString)
