@@ -800,7 +800,7 @@ Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
     end)
 
     -- After award, if item is selected and still selected 1s later, select next unawarded item in order.
-    if isAwardEvent and item.guid == selectedItemGuid then
+    if isAwardEvent and item.guid == selectedItemGuid and Env.settings.autoSwitchToNextItem then
         C_Timer.NewTimer(0.5, function()
             MSA_CloseDropDownMenus()
             if item.guid == selectedItemGuid then

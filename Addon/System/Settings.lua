@@ -14,6 +14,7 @@ local defaultSettings = {
     version = 3,
     logLevel = 1, ---@type LogLevel
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
+    autoSwitchToNextItem = false,
     startPermissions = {
         leader = true,
         masterLooter = true,

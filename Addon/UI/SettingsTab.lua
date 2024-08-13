@@ -27,14 +27,22 @@ local function CreateOptionTable()
                 args = {
                     autoOpenOnStart = {
                         order = 1,
-                        name = L["Automatically Open"],
+                        name = L["Automatically open"],
                         desc = L["Open the session window automatically when a session starts, or ask with a dialog box."],
                         type = "select",
+                        width = 0.75,
                         values = {
                             ["yes"] = L["Yes"],
                             ["no"] = L["No"],
                             ["ask"] = L["Always ask"],
                         }
+                    },
+                    autoSwitchToNextItem = {
+                        order = 2,
+                        name = L["Automatically switch to next"],
+                        desc = L["Automatically switch to next unawarded item if the currently selected one is awarded."],
+                        width = 1.5,
+                        type = "toggle",
                     },
                 }
             },
@@ -144,7 +152,14 @@ local function CreateOptionTable()
             desc = L["Whether this response uses sanity."],
             width = 0.7,
             get = function() return Env.settings.lootSession.responseButtons[i].pointRoll end,
-            set = function(info, val) Env.settings.lootSession.responseButtons[i].pointRoll = val end,
+            set = function(info, val)
+                if val then
+                    for _, v in pairs(Env.settings.lootSession.responseButtons) do
+                        v.pointRoll = false
+                    end
+                end
+                Env.settings.lootSession.responseButtons[i].pointRoll = val
+            end,
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["up" .. i] = {
