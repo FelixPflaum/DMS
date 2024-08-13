@@ -37,15 +37,22 @@ local function GetArg(self)
     return self.clickCallbackArg
 end
 
----Show or hide checkmark.
+---Show or hide status texture overlay.
 ---@param self IconButon
----@param show boolean
-local function ShowCheckmark(self, show)
-    if show then
-        self.OverlayCheckmark:Show()
-    else
-        self.OverlayCheckmark:Hide()
+---@param status "checked"|"roll"|nil
+local function ShowStatus(self, status)
+    if not status then
+        self.OverlayTexStatus:Hide()
+        return
     end
+    local tex = ""
+    if status == "checked" then
+        tex = GetImagePath("check_shadow.png")
+    elseif status == "roll" then
+        tex = GetImagePath("icon_die_trans80.png")
+    end
+    self.OverlayTexStatus:SetTexture(tex)
+    self.OverlayTexStatus:Show()
 end
 
 ---Show or hide border.
@@ -103,12 +110,11 @@ local function CreateIconButton(parent, size, noHighlight)
     iicon:SetScript("OnLeave", GameTooltip_Hide)
 
     local checkMarkOverlayInset = size / 10
-    iicon.OverlayCheckmark = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
-    iicon.OverlayCheckmark:SetTexture(GetImagePath("check_shadow.png"))
-    iicon.OverlayCheckmark:SetPoint("TOPLEFT", checkMarkOverlayInset, -checkMarkOverlayInset)
-    iicon.OverlayCheckmark:SetPoint("BOTTOMRIGHT", -checkMarkOverlayInset, checkMarkOverlayInset)
-    iicon.OverlayCheckmark:Hide()
-    iicon.ShowCheckmark = ShowCheckmark ---@diagnostic disable-line: inject-field
+    iicon.OverlayTexStatus = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
+    iicon.OverlayTexStatus:SetPoint("TOPLEFT", checkMarkOverlayInset, -checkMarkOverlayInset)
+    iicon.OverlayTexStatus:SetPoint("BOTTOMRIGHT", -checkMarkOverlayInset, checkMarkOverlayInset)
+    iicon.OverlayTexStatus:Hide()
+    iicon.ShowStatus = ShowStatus ---@diagnostic disable-line: inject-field
 
     local borderOverlayInset = 1
     iicon.OverLayTexture = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field

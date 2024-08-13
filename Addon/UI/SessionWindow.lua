@@ -10,7 +10,7 @@ local ScrollingTable = LibStub("ScrollingTable") ---@type LibScrollingTable
 local LootCandidateStatus = Env.Session.LootCandidateStatus
 
 local GetImagePath = Env.UI.GetImagePath
-local GetClassColor = Env.UI.GetClassColor
+local ColorByClassId = Env.UI.ColorByClassId
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 local ColorStringFromArray = Env.UI.ColorStringFromArray
 
@@ -53,7 +53,6 @@ local function UpdateShownItem()
         frame.ItemInfoIcon:SetItemData()
         frame.ItenInfoItemName:SetText("")
         frame.ItemInfoItemInfo:SetText("")
-        frame.ItemInfoAwarded:SetText("")
         frame.st:SetData({}, true)
         return
     end
@@ -64,17 +63,6 @@ local function UpdateShownItem()
             frame.ItenInfoItemName:SetText(itemLink)
             frame.ItemInfoItemInfo:SetText(Env.UI.GetItemTypeString(classID, subclassID, itemSubType, itemEquipLoc))
         end)
-
-    if item.awarded then
-        local itemResponse = item.responses[item.awarded.candidateName]
-        local candidateName = item.awarded.candidateName
-        if itemResponse then
-            candidateName = "|c" .. GetClassColor(itemResponse.candidate.classId).argbstr .. candidateName .. "|r"
-        end
-        frame.ItemInfoAwarded:SetText("> " .. L["Awarded to: %s"]:format(candidateName))
-    else
-        frame.ItemInfoAwarded:SetText("")
-    end
 
     local tableData = {}
     for _, itemResponse in pairs(item.responses) do
@@ -97,6 +85,8 @@ local function UpdateShownItem()
     end
     frame.st.item = item
     frame.st:SetData(tableData, true)
+
+    frame.UpdateItemStatus(item)
 end
 
 local dialogData = {
@@ -177,7 +167,13 @@ local function UpdateItemSelect()
     for k, item in ipairs(ordered) do
         local btn = itemSelectIcons[k]
         btn:SetItemData(item.itemId, item.guid)
-        btn:ShowCheckmark(item.awarded ~= nil)
+        if item.awarded then
+            btn:ShowStatus("checked")
+        elseif item.endTime > time() then
+            btn:ShowStatus("roll")
+        else
+            btn:ShowStatus()
+        end
         if item.guid == selectedItemGuid then
             btn:ShowBorder(true)
         else
@@ -294,7 +290,7 @@ local function CreateStatusHeaders(f)
             elseif not v.isResponding then
                 nameStr = "|c" .. grey .. nameStr .. " (" .. L["Not responding"] .. ")|r"
             else
-                nameStr = "|c" .. GetClassColor(v.classId).argbstr .. nameStr .. "|r"
+                nameStr = ColorByClassId(nameStr, v.classId)
             end
             tooltipText = tooltipText .. nameStr .. "\n"
         end
@@ -374,7 +370,7 @@ do
 
         if level == 1 then
             wipe(info)
-            info.text = "|c" .. GetClassColor(itemResponse.candidate.classId).argbstr .. itemResponse.candidate.name
+            info.text = ColorByClassId(itemResponse.candidate.name, itemResponse.candidate.classId)
             info.isTitle = true
             info.disabled = true
             info.notCheckable = true
@@ -485,7 +481,7 @@ do
     local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         if not fShow then return end
         local candidate = data[realrow][column] ---@type SessionClient_Candidate
-        cellFrame.text:SetText("|c" .. GetClassColor(candidate.classId).argbstr .. candidate.name)
+        cellFrame.text:SetText(ColorByClassId(candidate.name, candidate.classId))
     end
 
     ---Update function for the response/status cell.
@@ -671,6 +667,71 @@ do
     }
 end
 
+local function CreateItemStatusDisplay()
+    local W_HEIGHT = 32
+    local wrapper = CreateFrame("Frame", nil, frame)
+    wrapper:SetPoint("TOPRIGHT", -20, -27)
+    wrapper:SetSize(100, W_HEIGHT)
+
+    local icon = wrapper:CreateTexture(nil, "OVERLAY")
+    icon:SetSize(W_HEIGHT, W_HEIGHT)
+    icon:SetPoint("TOPRIGHT", 0, 0)
+
+    local statusLabel = wrapper:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
+    statusLabel:SetPoint("RIGHT", icon, "LEFT", -30, 0)
+    statusLabel:SetText("-")
+
+    local statusText = wrapper:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
+    statusText:SetPoint("LEFT", statusLabel, "RIGHT", 3, 0)
+    statusText:SetText("-")
+
+    local lastState = "none" ---@type "none"|"awarded"|"timer"
+    local itemForTimerUpdate = nil ---@type SessionClient_Item|nil
+
+    local function TimerTextUpdateFunc()
+        local now = time()
+        if not itemForTimerUpdate or itemForTimerUpdate.endTime < now then
+            wrapper:SetScript("OnUpdate", nil)
+            itemForTimerUpdate = nil
+            return
+        end
+        statusText:SetText(tostring(itemForTimerUpdate.endTime - now))
+    end
+
+    ---Update item status display.
+    ---@param item SessionClient_Item
+    ---@diagnostic disable-next-line: inject-field
+    frame.UpdateItemStatus = function(item)
+        if item.awarded then
+            if lastState ~= "awarded" then
+                icon:SetTexture("")
+                statusLabel:SetText(L["Awarded to:"])
+                lastState = "awarded"
+                itemForTimerUpdate = nil
+            end
+            local cname = item.awarded.candidateName
+            local classId = Client.candidates[cname] and Client.candidates[cname].classId or 1
+            statusText:SetText(ColorByClassId(item.awarded.candidateName, classId))
+        elseif item.endTime > time() then
+            if lastState ~= "timer" then
+                icon:SetTexture(GetImagePath("icon_die_trans.png"))
+                statusLabel:SetText(L["Expires in:"])
+                lastState = "timer"
+            end
+            if itemForTimerUpdate ~= item then
+                itemForTimerUpdate = item
+                wrapper:SetScript("OnUpdate", TimerTextUpdateFunc)
+            end
+        elseif lastState ~= "none" then
+            icon:SetTexture("")
+            statusLabel:SetText("")
+            statusText:SetText("")
+            itemForTimerUpdate = nil
+            lastState = "none"
+        end
+    end
+end
+
 local function CreateWindow()
     ---@class SessionWindowFrame : ButtonFrameTemplate
     frame = CreateFrame("Frame", "DMSSessionWindow", UIParent, "ButtonFrameTemplate")
@@ -702,10 +763,6 @@ local function CreateWindow()
     frame.ItemInfoItemInfo = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
     frame.ItemInfoItemInfo:SetPoint("TOPLEFT", frame.ItenInfoItemName, "BOTTOMLEFT", 0, -3)
 
-    frame.ItemInfoAwarded = frame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
-    frame.ItemInfoAwarded:SetPoint("LEFT", frame.ItemInfoItemInfo, "RIGHT", 15, 0)
-    frame.ItemInfoAwarded:SetText("")
-
     -- Response table
 
     ---@class SessionWindowScrollingTable : ST_ScrollingTable
@@ -717,6 +774,7 @@ local function CreateWindow()
     frame:SetWidth(frame.st.frame:GetWidth() + 7)
     frame:SetHeight(frame.st.frame:GetHeight() + 86)
 
+    CreateItemStatusDisplay()
     CreateStatusHeaders(frame)
 end
 
