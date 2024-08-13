@@ -329,7 +329,10 @@ local function SetItemResponse(item, itemResponse, response, doInstant)
 
     local allResponded = true
     for _, itemResponseItr in pairs(item.responses) do
-        if not itemResponseItr.response then
+        if not itemResponseItr.response and not (
+                itemResponseItr.status.id == LootStatus.unknown.id or
+                itemResponseItr.status.id == LootStatus.responseTimeout.id
+            ) then
             allResponded = false
             break
         end
