@@ -325,6 +325,17 @@ local function SetItemResponse(item, itemResponse, response, doInstant)
     if not item.veiled then
         Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse, doInstant)
     end
+
+    local allResponded = true
+    for _, itemResponseItr in pairs(item.responses) do
+        if not itemResponseItr.response then
+            allResponded = false
+            break
+        end
+    end
+    if allResponded then
+        Host:ItemStopRoll(item.guid)
+    end
 end
 
 ---Manually set response of a player for a given item.
@@ -340,6 +351,7 @@ function Host:SetItemResponse(itemGuid, candidateName, responseId, doInstant)
     if not item then return L["Invalid item guid!"] end
     if not response then return L["Invalid response id!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
+    if item.awarded then return L["Can't change response after item was awarded!"] end
     SetItemResponse(item, itemResponse, response, doInstant)
 end
 
@@ -397,6 +409,8 @@ function Host:AwardItem(itemGuid, candidateName)
     if not item then return L["Invalid item guid!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
     if item.awarded then return L["Item already awarded to %s!"]:format(item.awarded.candidateName) end
+
+    self:ItemStopRoll(itemGuid)
 
     local pointsUsed ---@type integer?
 
@@ -513,6 +527,13 @@ function Host:ItemStopRoll(guid)
     LogDebug("ItemStopRoll", guid, item.itemId)
     if item.status == "waiting" then
         item.status = "timeout"
+        local now = time()
+        if item.endTime > now then
+            self:DoForEachRelatedItem(item, true, function(relatedItem, isThis)
+                LogDebug("Set end time for item", relatedItem.guid, now)
+                relatedItem.endTime = now
+            end)
+        end
         for _, itemResponse in pairs(item.responses) do
             if not itemResponse.response and itemResponse.status ~= LootStatus.unknown then
                 itemResponse.status = LootStatus.responseTimeout
@@ -624,6 +645,34 @@ function Host:ItemAdd(itemId)
     end)
 
     return true
+end
+
+---Run func for each realted item, i.e. children or parent and other children of the parent.
+---@param item SessionHost_Item
+---@param includeThis boolean Run function for the argument item too.
+---@param func fun(relatedItem:SessionHost_Item, isThis:boolean):boolean? Return true to break out after this callback.
+function Host:DoForEachRelatedItem(item, includeThis, func)
+    local childGuids = item.childGuids
+    if item.parentGuid then
+        local pitem = items[item.parentGuid] ---@type SessionHost_Item?
+        if pitem then
+            if func(pitem, false) then return end
+            childGuids = pitem.childGuids
+        end
+    elseif includeThis then
+        if func(item, true) then return end
+    end
+    if childGuids then
+        for _, childGuid in ipairs(childGuids) do
+            local isThis = childGuid == item.guid
+            if not isThis or includeThis then
+                local citem = items[childGuid]
+                if citem then
+                    if func(citem, isThis) then return end
+                end
+            end
+        end
+    end
 end
 
 ------------------------------------------------------------------

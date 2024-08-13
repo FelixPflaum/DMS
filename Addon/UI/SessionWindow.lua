@@ -192,6 +192,12 @@ local function UpdateItemSelect()
     end
 end
 
+local function Script_StopRollClick()
+    if not IsHosting() or not selectedItemGuid then return end
+    Host:ItemStopRoll(selectedItemGuid)
+    MSA_CloseDropDownMenus()
+end
+
 ---@param self SessionWindowContextMenuFrame
 ---@param candidateName string
 ---@param arg2 any
@@ -376,30 +382,51 @@ do
 
             ContextAddSpacer()
 
-            if not item or not item.awarded or item.awarded.candidateName ~= itemResponse.candidate.name then
+            if item then
+                local isAwarded = item.awarded ~= nil
+                local canAward = not isAwarded
+                if time() < item.endTime then
+                    wipe(info)
+                    info.text = "|cFFFF4444" .. L["Stop roll now!"] .. "|r"
+                    info.notCheckable = true
+                    info.func = Script_StopRollClick
+                    MSA_DropDownMenu_AddButton(info, level)
+                    canAward = false
+                end
+                if not item.awarded or item.awarded.candidateName ~= itemResponse.candidate.name then
+                    wipe(info)
+                    info.text = L["Award"]
+                    info.notCheckable = true
+                    info.disabled = not canAward
+                    info.func = Script_AwardClick
+                    info.arg1 = itemResponse.candidate.name
+                    MSA_DropDownMenu_AddButton(info, level)
+                else
+                    wipe(info)
+                    info.text = L["Revoke Award"]
+                    info.notCheckable = true
+                    info.func = Script_RevokeAwardClick
+                    info.arg1 = itemResponse.candidate.name
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+
                 wipe(info)
-                info.text = L["Award"]
+                info.text = L["Change Choice"]
                 info.notCheckable = true
-                info.disabled = item and item.awarded ~= nil
-                info.func = Script_AwardClick
-                info.arg1 = itemResponse.candidate.name
+                info.hasArrow = true
+                info.disabled = isAwarded
+                info.value = "CHANGE_CHOICE"
                 MSA_DropDownMenu_AddButton(info, level)
             else
-                wipe(info)
-                info.text = L["Revoke Award"]
-                info.notCheckable = true
-                info.func = Script_RevokeAwardClick
-                info.arg1 = itemResponse.candidate.name
-                MSA_DropDownMenu_AddButton(info, level)
+                Env:PrintError("Item could not be found when opening context menu!")
             end
 
             ContextAddSpacer()
 
             wipe(info)
-            info.text = L["Change Choice"]
+            info.text = L["Close"]
             info.notCheckable = true
-            info.hasArrow = true
-            info.value = "CHANGE_CHOICE"
+            info.func = MSA_CloseDropDownMenus
             MSA_DropDownMenu_AddButton(info, level)
         elseif level == 2 then
             if MSA_DROPDOWNMENU_MENU_VALUE == "CHANGE_CHOICE" then
@@ -473,18 +500,12 @@ do
             local awardCountThisPlayer = 0
             local awardCountAll = 0
             local awardedThis = false
-            if item.awarded then
-                awardCountAll = awardCountAll + 1
-                if item.awarded.candidateName == candidateName then
-                    awardCountThisPlayer = awardCountThisPlayer + 1
-                    awardedThis = true
-                end
-            end
-            Client:DoForEachRelatedItem(item, function(relatedItem)
+            Client:DoForEachRelatedItem(item, true, function(relatedItem, isThis)
                 if relatedItem.awarded then
                     awardCountAll = awardCountAll + 1
                     if relatedItem.awarded.candidateName == candidateName then
                         awardCountThisPlayer = awardCountThisPlayer + 1
+                        if isThis then awardedThis = true end
                     end
                 end
             end)
@@ -590,13 +611,11 @@ do
                 weight = 100 + resp.response.id
             end
         end
-        if item.awarded and item.awarded.candidateName == resp.candidate.name then
-            -- Show awarded row at the top, regardless of status or response
-            weight = weight + 1000
-        end
-        Client:DoForEachRelatedItem(item, function(relatedItem)
+        Client:DoForEachRelatedItem(item, true, function(relatedItem)
             if relatedItem.awarded and relatedItem.awarded.candidateName == resp.candidate.name then
+                -- Show awarded row at the top, regardless of status or response
                 weight = weight + 1000
+                return true
             end
         end)
         return weight
@@ -773,15 +792,12 @@ Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
         CreateItemSelectIconIfMissing(i)
     end
     UpdateItemSelect()
-    if item.guid == selectedItemGuid then
-        UpdateShownItem()
-    else
-        Client:DoForEachRelatedItem(item, function(relatedItem)
-            if relatedItem.guid == selectedItemGuid then
-                UpdateShownItem()
-            end
-        end)
-    end
+    Client:DoForEachRelatedItem(item, true, function(relatedItem)
+        if relatedItem.guid == selectedItemGuid then
+            UpdateShownItem()
+            return true
+        end
+    end)
 
     -- After award, if item is selected and still selected 1s later, select next unawarded item in order.
     if isAwardEvent and item.guid == selectedItemGuid then

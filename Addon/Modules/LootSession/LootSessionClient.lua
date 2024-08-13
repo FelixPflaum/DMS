@@ -151,6 +151,13 @@ end)
 Comm.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
+    local now = time()
+    if item.endTime > now then
+        Client:DoForEachRelatedItem(item, true, function(relatedItem)
+            relatedItem.endTime = now
+        end)
+        LogDebug("Item", itemGuid, "dist was closed before default timeout, ran for", item.endTime - item.startTime)
+    end
     Client.OnItemUpdate:Trigger(item, false)
 end)
 
@@ -405,23 +412,29 @@ function Client:GetItemCount()
     return count
 end
 
----Run callback for each realted item, i.e. childred or parend and other children of the parent.
+---Run func for each realted item, i.e. children or parent and other children of the parent.
 ---@param item SessionClient_Item
----@param func fun(relatedItem:SessionClient_Item)
-function Client:DoForEachRelatedItem(item, func)
+---@param includeThis boolean Run function for the argument item too.
+---@param func fun(relatedItem:SessionClient_Item, isThis:boolean):boolean? Return true to break out after this callback.
+function Client:DoForEachRelatedItem(item, includeThis, func)
     local childGuids = item.childGuids
     if item.parentGuid then
         local pitem = self.items[item.parentGuid] ---@type SessionClient_Item?
         if pitem then
-            func(pitem)
+            if func(pitem, false) then return end
             childGuids = pitem.childGuids
         end
+    elseif includeThis then
+        if func(item, true) then return end
     end
     if childGuids then
         for _, childGuid in ipairs(childGuids) do
-            if childGuid ~= item.guid then
+            local isThis = childGuid == item.guid
+            if not isThis or includeThis then
                 local citem = self.items[childGuid]
-                if citem then func(citem) end
+                if citem then
+                    if func(citem, isThis) then return end
+                end
             end
         end
     end
