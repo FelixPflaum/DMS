@@ -32,7 +32,7 @@ Env.Session.LootCandidateStatus = {
     ---@type LootCandidateStatus
     waitingForResponse = { -- Waiting for response selection...
         id = 3,
-        displayString = L["Waiting for response selection..."],
+        displayString = L["Waiting for roll decision..."],
         color = { 1, 1, 0 },
     },
     ---@type LootCandidateStatus
@@ -273,5 +273,5 @@ function Env.Session.FillTestResponse(itemResponse, responses, roller)
     }
     itemResponse.status = lsList[math.random(#lsList)]
     itemResponse.response = itemResponse.status == ls.responded and responses[math.random(#responses)] or nil
-    itemResponse.roll = itemResponse.response and roller:GetRoll()
+    itemResponse.roll = itemResponse.response and itemResponse.response.id >= REPSONSE_ID_FIRST_CUSTOM and roller:GetRoll() or nil
 end

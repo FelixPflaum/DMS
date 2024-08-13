@@ -6,7 +6,7 @@ local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
 local TEST_MODE = true          -- Generate test candidates and test responses for them.
-local RESPONSE_GRACE_PERIOD = 3 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
+local RESPONSE_GRACE_PERIOD = 2 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
 
 local function LogDebug(...)
     Env:PrintDebug("Host:", ...)
@@ -409,6 +409,9 @@ function Host:AwardItem(itemGuid, candidateName)
     local itemResponse = item.responses[candidateName]
     if not item then return L["Invalid item guid!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
+    if not itemResponse.response or itemResponse.response.id < Env.Session.REPSONSE_ID_FIRST_CUSTOM then
+        return L["Candidate has no response set or passed!"]
+    end
     if item.awarded then return L["Item already awarded to %s!"]:format(item.awarded.candidateName) end
 
     self:ItemStopRoll(itemGuid)

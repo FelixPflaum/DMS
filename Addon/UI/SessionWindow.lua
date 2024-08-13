@@ -66,18 +66,21 @@ local function UpdateShownItem()
 
     local tableData = {}
     for _, itemResponse in pairs(item.responses) do
-        local points = itemResponse.candidate.currentPoints
-        if item.awarded and item.awarded.pointsSnapshot and item.awarded.pointsSnapshot[itemResponse.candidate.name] then
-            points = item.awarded.pointsSnapshot[itemResponse.candidate.name]
+        local points = 0
+        if itemResponse.response and itemResponse.response.isPointsRoll then
+            points = itemResponse.candidate.currentPoints
+            if item.awarded and item.awarded.pointsSnapshot and item.awarded.pointsSnapshot[itemResponse.candidate.name] then
+                points = item.awarded.pointsSnapshot[itemResponse.candidate.name]
+            end
         end
+        local roll = itemResponse.roll or 0
+        local total = points ~= 0 and roll + points or 0
         ---@type ResponseTableRowData
         local rowData = {
             itemResponse.candidate.classId,
             itemResponse.candidate,
             itemResponse,
-            itemResponse.roll or 0,
-            points,
-            (itemResponse.roll or 0) + points,
+            roll, points, total,
             itemResponse.currentItem and itemResponse.currentItem[1],
             itemResponse.currentItem and itemResponse.currentItem[2],
         }
@@ -380,7 +383,8 @@ do
 
             if item then
                 local isAwarded = item.awarded ~= nil
-                local canAward = not isAwarded
+                local canAward = not isAwarded and itemResponse.response and
+                    itemResponse.response.id >= Env.Session.REPSONSE_ID_FIRST_CUSTOM
                 if time() < item.endTime then
                     wipe(info)
                     info.text = "|cFFFF4444" .. L["Stop roll now!"] .. "|r"
@@ -538,16 +542,9 @@ do
         ---@cast st SessionWindowScrollingTable
         if not fShow then return end
         local value = data[realrow][column] ---@type number|nil
-        local isPointsCol = column == TABLE_INDECES.SANITY
-        if isPointsCol then
-            local itemResponse = data[realrow][TABLE_INDECES.RESPONSES] ---@type SessionClient_ItemResponse
-            if not itemResponse.response or not itemResponse.response.isPointsRoll then
-                value = nil
-            end
-        end
         if value and value ~= 0 then
             local valueString = tostring(value)
-            if isPointsCol then
+            if column == TABLE_INDECES.SANITY then
                 local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
                 if pointsAreSnapshotted then
                     valueString = "|cFF70acc0" .. valueString .. "|r"
@@ -658,10 +655,10 @@ do
     TABLE_DEF = {
         [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
         [TABLE_INDECES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
-        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = 6 },
-        [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 2 },
+        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = TABLE_INDECES.TOTAL },
+        [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.NAME },
         [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero },
-        [TABLE_INDECES.TOTAL] = { name = L["Total"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = 4 },
+        [TABLE_INDECES.TOTAL] = { name = L["Total"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.ROLL },
         [TABLE_INDECES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
         [TABLE_INDECES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
     }
