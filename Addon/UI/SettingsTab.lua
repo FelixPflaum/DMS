@@ -79,17 +79,17 @@ local function CreateOptionTable()
                         step = 1,
                     },
                     headerResponses = {
-                        order = 97,
+                        order = 10,
                         type = "header",
                         name = L["Responses"]
                     },
                     descCound = {
-                        order = 98,
+                        order = 11,
                         type = "description",
                         name = L["Configure the available responses if you are the host. A pass button is always shown."]
                     },
                     responseCount = {
-                        order = 99,
+                        order = 12,
                         name = L["Number of Buttons"],
                         desc = L["How many buttons to show as options."],
                         type = "range",
@@ -100,7 +100,6 @@ local function CreateOptionTable()
                     },
                 }
             },
-
             debugGroup = {
                 order = -1,
                 type = "group",
