@@ -41,6 +41,7 @@ end
 ---@class (exact) SessionHost_ItemAwardData
 ---@field candidateName string The name of the player the item was awarded to.
 ---@field usedResponse LootResponse
+---@field awardTime integer
 ---@field pointsSnapshot? table<string,integer> Snapshot of point count the award was based on.
 
 ---@class (exact) SessionHost_Item
@@ -417,6 +418,7 @@ function Host:AwardItem(itemGuid, candidateName)
     item.awarded = {
         candidateName = candidateName,
         usedResponse = itemResponse.response,
+        awardTime = time(),
         pointsSnapshot = itemResponse.response.isPointsRoll and MakePointsSnapshot(item) or nil
     }
 
@@ -453,7 +455,22 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
     local pointsReturned ---@type integer?
 
     if item.awarded.usedResponse.isPointsRoll then
+        -- Check if candidate was awarded another item using points after this. Fail if so, it would fuck up points.
+        -- Host should manually go back the chain and revert awards if needed.
+        for _, otherItem in pairs(items) do
+            if otherItem.awarded and otherItem.awarded.awardTime > item.awarded.awardTime
+                and otherItem.awarded.candidateName == candidateName then
+                local itemLink = select(2, C_Item.GetItemInfo(otherItem.itemId))
+                return L
+                    ["Candidate was awarded another item (%s) using sanity after this! Manually revoke awards in order if needed."]
+                    :format(itemLink)
+            end
+        end
+
         -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
+        -- TODO: Prevent revocation if another item was awarded to this player using points after this!
+        --       Items after this would need to update their points used in a chain,
+        --       that's to too much of a hassle, just have the host do it manually if needed.
         -- Fake DB op
         local candidate = itemResponse.candidate
         pointsReturned = math.ceil(item.awarded.pointsSnapshot[candidateName] / 2)

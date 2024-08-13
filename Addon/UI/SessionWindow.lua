@@ -205,13 +205,13 @@ local function Script_AwardClick(self, candidateName, arg2)
     local errMsg, pointsUsed = Host:AwardItem(item.guid, candidateName)
     MSA_CloseDropDownMenus()
     if errMsg then
-        Env:PrintError(L["Awarding item failed:"])
+        Env:PrintError(L["Awarding item failed!"])
         Env:PrintError(errMsg)
     else
         local reasonStr = itemResp.response and itemResp.response.displayString or itemResp.status.displayString
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
             if pointsUsed then
-                Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s! Used %d sanity."]:format(itemLink, candidateName,
+                Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s! Removed %d sanity."]:format(itemLink, candidateName,
                     reasonStr, pointsUsed))
             else
                 Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
@@ -230,12 +230,12 @@ local function Script_RevokeAwardClick(self, candidateName, arg2)
     local errMsg, pointsReturned = Host:RevokeAwardItem(item.guid, candidateName)
     MSA_CloseDropDownMenus()
     if errMsg then
-        Env:PrintError(L["Revoking awarded item failed:"])
+        Env:PrintError(L["Revoking awarded item failed!"])
         Env:PrintError(errMsg)
     else
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
             if pointsReturned then
-                Host:SendMessageToTargetChannel(L["Revoked award of %s from %s! Returned %d sanity."]:format(itemLink,
+                Host:SendMessageToTargetChannel(L["Revoked award of %s from %s! Refunded %d sanity."]:format(itemLink,
                     candidateName, pointsReturned))
             else
                 Host:SendMessageToTargetChannel(L["Revoked award of %s from %s!"]:format(itemLink, candidateName))
@@ -607,13 +607,13 @@ do
                 weight = 100 + resp.response.id
             end
         end
-        Client:DoForEachRelatedItem(item, true, function(relatedItem)
+        --[[ Client:DoForEachRelatedItem(item, true, function(relatedItem)
             if relatedItem.awarded and relatedItem.awarded.candidateName == resp.candidate.name then
                 -- Show awarded row at the top, regardless of status or response
                 weight = weight + 1000
                 return true
             end
-        end)
+        end) ]]
         return weight
     end
 
