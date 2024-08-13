@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "start": "tsc & node ./makeRelease.js"
+  },
+  "devDependencies": {
+    "@types/7zip-min": "^1.1.0",
+    "@types/node": "^12.11.5"
+  },
+  "dependencies": {
+    "7zip-min": "^1.1.1"
+  }
+}
