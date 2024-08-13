@@ -112,10 +112,10 @@ local function CreateIconButton(parent, size, noHighlight)
 
     local borderOverlayInset = 1
     iicon.OverLayTexture = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
-    iicon.OverLayTexture:SetTexture(GetImagePath("border_r10.png"))
+    iicon.OverLayTexture:SetTexture(GetImagePath("border_r10_thick.png"))
     iicon.OverLayTexture:SetPoint("TOPLEFT", borderOverlayInset, -borderOverlayInset)
     iicon.OverLayTexture:SetPoint("BOTTOMRIGHT", -borderOverlayInset, borderOverlayInset)
-    iicon.OverLayTexture:SetAlpha(0.66)
+    iicon.OverLayTexture:SetAlpha(0.8)
     iicon.OverLayTexture:Hide()
     iicon.ShowBorder = ShowBorder ---@diagnostic disable-line: inject-field
 

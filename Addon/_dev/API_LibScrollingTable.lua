@@ -32,6 +32,7 @@ local LibST = {}
 ---@param parent WoWFrame|nil This arg defines the frame that is to be used as the parent frame for the new scrolling table. If nil, it will default to UIParent
 ---@param multiselection any
 ---@return ST_ScrollingTable
+---@diagnostic disable-next-line: missing-return
 function LibST:CreateST(cols, numRows, rowHeight, highlight, parent, multiselection) end
 
 ---@class ST_ScrollingTable

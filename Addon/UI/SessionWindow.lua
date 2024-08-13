@@ -91,6 +91,7 @@ local function UpdateShownItem()
         }
         table.insert(tableData, rowData)
     end
+    frame.st.item = item
     frame.st:SetData(tableData, true)
 end
 
@@ -204,20 +205,6 @@ local function Script_AwardClick(self, candidateName, arg2)
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
             Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
         end)
-        -- Get next unawarded item and select it.
-        local nextOrder = 99999999
-        local nextItemGuid ---@type string?
-        for _, it in pairs(Client.items) do
-            if it.order ~= item.order and it.order < nextOrder and not it.awardedTo then
-                nextOrder = it.order
-                nextItemGuid = it.guid
-            end
-        end
-        if nextItemGuid then
-            selectedItemGuid = nextItemGuid
-            UpdateItemSelect()
-            UpdateShownItem()
-        end
     end
 end
 
@@ -488,7 +475,10 @@ do
             end)
             -- Item was awarded to this player at least one time.
             if awardCountThisPlayer > 0 then
-                local respString = ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString)
+                local respString = "???"
+                if itemResponse.response then
+                    respString = ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString)
+                end
                 local txt ---@type string
                 if awardCountThisPlayer > 1 then
                     txt = L["Awarded (%s) (%dx)"]:format(respString, awardCountThisPlayer)
@@ -557,7 +547,8 @@ do
 
     ---Returns a weight depending on status and selected response.
     ---@param resp SessionClient_ItemResponse
-    local function GetResponseWeight(resp)
+    ---@param item SessionClient_Item
+    local function GetResponseWeight(resp, item)
         local REPSONSE_ID_FIRST_CUSTOM = Env.Session.REPSONSE_ID_FIRST_CUSTOM
         local weight = resp.status.id
         if resp.response then
@@ -569,11 +560,20 @@ do
                 weight = 100 + resp.response.id
             end
         end
+        if item.awardedTo == resp.candidate.name then
+            -- Show awarded row at the top, regardless of status or response
+            weight = weight + 1000
+        end
+        Client:DoForEachRelatedItem(item, function(relatedItem)
+            if relatedItem.awardedTo == resp.candidate.name then
+                weight = weight + 1000
+            end
+        end)
         return weight
     end
 
     ---Sort function for the response/status column.
-    ---@param st ST_ScrollingTable
+    ---@param st SessionWindowScrollingTable
     ---@param rowa any
     ---@param rowb any
     ---@param sortbycol any
@@ -581,8 +581,8 @@ do
         local column = st.cols[sortbycol]
         ---@type SessionClient_ItemResponse, SessionClient_ItemResponse
         local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol]
-        local aWeight = GetResponseWeight(a)
-        local bWeight = GetResponseWeight(b)
+        local aWeight = GetResponseWeight(a, st.item)
+        local bWeight = GetResponseWeight(b, st.item)
         if aWeight == bWeight then
             if column.sortnext then
                 local nextcol = st.cols[column.sortnext]
@@ -659,6 +659,8 @@ local function CreateWindow()
 
     -- Response table
 
+    ---@class SessionWindowScrollingTable : ST_ScrollingTable
+    ---@field item SessionClient_Item
     frame.st = ScrollingTable:CreateST(TABLE_DEF, 15, TABLE_ROW_HEIGHT, nil, frame)
     frame.st.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -frame.st.head:GetHeight() - 4)
     frame.st:RegisterEvents({ OnClick = Script_TableRightClick })
@@ -727,7 +729,7 @@ Client.OnEnd:RegisterCallback(function()
 
 end)
 
-Client.OnItemUpdate:RegisterCallback(function(item)
+Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
     if selectedItemGuid == nil then
         Env:PrintDebug("Setting shown item because no item selected.")
         selectedItemGuid = item.guid
@@ -743,6 +745,27 @@ Client.OnItemUpdate:RegisterCallback(function(item)
         Client:DoForEachRelatedItem(item, function(relatedItem)
             if relatedItem.guid == selectedItemGuid then
                 UpdateShownItem()
+            end
+        end)
+    end
+
+    -- After award, if item is selected and still selected 1s later, select next unawarded item in order.
+    if isAwardEvent and item.guid == selectedItemGuid then
+        C_Timer.NewTimer(0.5, function()
+            if item.guid == selectedItemGuid then
+                local nextOrder = 99999999
+                local nextItemGuid ---@type string?
+                for _, it in pairs(Client.items) do
+                    if it.order ~= item.order and it.order < nextOrder and not it.awardedTo then
+                        nextOrder = it.order
+                        nextItemGuid = it.guid
+                    end
+                end
+                if nextItemGuid then
+                    selectedItemGuid = nextItemGuid
+                    UpdateItemSelect()
+                    UpdateShownItem()
+                end
             end
         end)
     end

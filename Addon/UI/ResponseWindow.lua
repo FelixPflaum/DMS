@@ -4,6 +4,8 @@ local Env = select(2, ...)
 local LibDialog = LibStub("LibDialog-1.1")
 local L = Env:GetLocalization()
 
+local GetImagePath = Env.UI.GetImagePath
+
 local Client = Env.SessionClient
 local frame ---@type ResponseFrame
 local rollItemFrames = {} ---@type RollItemFrame[]
@@ -86,11 +88,16 @@ local ITEM_ROLL_FRAME_BUTTON_MARGIN = 5
 ---@param reponseText string
 ---@param itemGuid string
 ---@param responseId integer
-local function RollFrameButtonSetResponse(self, reponseText, itemGuid, responseId)
+---@param isPointRoll boolean
+local function RollFrameButtonSetResponse(self, reponseText, itemGuid, responseId, isPointRoll)
     self.itemGuid = itemGuid
     self.responseId = responseId
     self:SetText(reponseText)
     self:SetWidth(self:GetTextWidth() + 18)
+    local texture = isPointRoll and GetImagePath("btn_sanity.png") or [[Interface\Buttons\UI-Panel-Button-Up]]
+    self.Left:SetTexture(texture)
+    self.Middle:SetTexture(texture)
+    self.Right:SetTexture(texture)
 end
 
 ---Get response button for position.
@@ -102,6 +109,9 @@ local function RollFrameGetResponseButton(self, btnIndex)
         ---@class RollItemFrameResponseButton : WoWFrameButton
         ---@field itemGuid string|nil
         ---@field responseId integer|nil
+        ---@field Left Texture
+        ---@field Right Texture
+        ---@field Middle Texture
         local button = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
         button:SetSize(50, ITEM_ROLL_FRAME_BUTTON_HIGHT)
         button:SetScript("OnClick", Script_ResponseClicked)
@@ -234,9 +244,10 @@ local function SetitemAtPosition(posIndex, item)
     for _, response in ipairs(responsesOrdered) do
         if not response.noButton then
             local button = rif:GetResponseButton(nextBtnIndex)
-            button:SetResponse(response.displayString, item.guid, response.id)
+            button:SetResponse(response.displayString, item.guid, response.id, response.isPointsRoll)
             nextBtnIndex = nextBtnIndex + 1
             buttonWidth = buttonWidth + button:GetWidth() + ITEM_ROLL_FRAME_BUTTON_MARGIN
+            button:Show()
         end
     end
 

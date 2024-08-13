@@ -74,8 +74,8 @@ Client.OnEnd = Env:NewEventEmitter()
 Client.OnCandidateUpdate = Env:NewEventEmitter()
 
 ---@class (exact) LSClientItemUpdateEvent
----@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:SessionClient_Item))
----@field Trigger fun(self:LSClientItemUpdateEvent, item:SessionClient_Item)
+---@field RegisterCallback fun(self:LSClientItemUpdateEvent, cb:fun(item:SessionClient_Item, isAwardEvent:boolean))
+---@field Trigger fun(self:LSClientItemUpdateEvent, item:SessionClient_Item, isAwardEvent:boolean)
 ---@diagnostic disable-next-line: inject-field
 Client.OnItemUpdate = Env:NewEventEmitter()
 
@@ -147,14 +147,14 @@ end)
 Comm.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
-    Client.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item, false)
 end)
 
 Comm.Events.HMSG_ITEM_UNVEIL:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
     item.veiled = false
-    Client.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item, false)
 end)
 
 ------------------------------------------------------------------------------------
@@ -236,12 +236,12 @@ Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, 
         UpdateResponseFromPacket(item, packedClient)
     end
     LogDebug("item updated HMSG_ITEM_RESPONSE_UPDATE", itemGuid)
-    Client.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item, false)
     if item.childGuids and #item.childGuids > 0 then
         for _, childGuid in ipairs(item.childGuids) do
             local childItem = Client.items[childGuid]
             if childItem then
-                Client.OnItemUpdate:Trigger(childItem)
+                Client.OnItemUpdate:Trigger(childItem, false)
             end
         end
     end
@@ -260,7 +260,7 @@ Comm.Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:RegisterCallback(function(sender, data
         end
         itemResponse.currentItem = data.currentItems
         LogDebug("Added current items for candidate.", item.guid, sender, unpack(data.currentItems))
-        Client.OnItemUpdate:Trigger(item)
+        Client.OnItemUpdate:Trigger(item, false)
         return
     end
     LogDebug("Adding current items to buffer because we did not yet get item data.", item.guid, sender)
@@ -301,7 +301,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     Client.items[data.guid] = newItem
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
-    Client.OnItemUpdate:Trigger(newItem)
+    Client.OnItemUpdate:Trigger(newItem, false)
 
     local itemEquipLoc = select(9, C_Item.GetItemInfo(newItem.itemId))
     local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
@@ -341,7 +341,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
     Client.items[data.guid] = newItem
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Child item added", newItem.guid, "parent", newItem.parentGuid)
-    Client.OnItemUpdate:Trigger(newItem)
+    Client.OnItemUpdate:Trigger(newItem, false)
 end)
 
 ---Send reponse for an item roll.
@@ -364,7 +364,7 @@ function Client:RespondToItem(itemGuid, responseId)
     end
     Comm.Send.CMSG_ITEM_RESPONSE(itemGuid, responseId)
     item.responseSent = true
-    self.OnItemUpdate:Trigger(item)
+    self.OnItemUpdate:Trigger(item, false)
 end
 
 Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(itemGuid, candidateName, sender)
@@ -375,7 +375,7 @@ Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(itemGuid, candidate
     end
     item.awardedTo = candidateName
     LogDebug("item awardedTo updated", itemGuid, candidateName)
-    Client.OnItemUpdate:Trigger(item)
+    Client.OnItemUpdate:Trigger(item, candidateName ~= nil)
 end)
 
 ---@return integer

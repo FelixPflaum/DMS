@@ -508,8 +508,8 @@ do
     end
 
     ---@class CommEvent_HMSG_ITEM_AWARD_UPDATE
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, cb:fun(itemGuid:string, candidateName:string, sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, itemGuid:string, candidateName:string, sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, cb:fun(itemGuid:string, candidateName:string?, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_AWARD_UPDATE, itemGuid:string, candidateName:string?, sender:string)
     Events.HMSG_ITEM_AWARD_UPDATE = Env:NewEventEmitter()
 
     messageFilter[OPCODES.HMSG_ITEM_AWARD_UPDATE] = FilterReceivedOnClient

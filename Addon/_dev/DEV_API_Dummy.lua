@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------------------------------------------
---- A noncomprehensive list of typings for the WoW lua environment
+--- A noncomprehensive and in may ways not correct list of Lua LS typings for the WoW lua environment.
 ---------------------------------------------------------------------------------------------------------------------------------------
 
 ---@diagnostic disable: lowercase-global, missing-return
@@ -206,82 +206,82 @@ function ScriptRegionResizing:GetPoint(index) end
 
 ---@class Font : FontInstance -- https://warcraft.wiki.gg/wiki/UIOBJECT_Font
 ---@field CopyFontObject fun(self:Font, sourceFont) -- https://warcraft.wiki.gg/wiki/API_Font_CopyFontObject
----@field GetAlpha fun(self:Font):alpha -- https://warcraft.wiki.gg/wiki/API_Font_GetAlpha
+---@field GetAlpha fun(self:Font):number -- https://warcraft.wiki.gg/wiki/API_Font_GetAlpha
 ---@field SetAlpha fun(self:Font, alpha) -- https://warcraft.wiki.gg/wiki/API_Font_SetAlpha
 
 ---@class FontInstance : FrameScriptObject
----@field GetFont fun(self:FontInstance):fontFile, height, flags  -- Returns the font path, height, and flags. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetFont
----@field GetFontObject fun(self:FontInstance):font  -- Returns the "parent" font object. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetFontObject
----@field GetIndentedWordWrap fun(self:FontInstance):wordWrap  -- Returns the indentation when text wraps beyond the first line. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetIndentedWordWrap
----@field GetJustifyH fun(self:FontInstance):justifyH  -- Returns the horizontal text justification. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetJustifyH
----@field GetJustifyV fun(self:FontInstance):justifyV  -- Returns the vertical text justification. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetJustifyV
----@field GetShadowColor fun(self:FontInstance):colorR, colorG, colorB, colorA  -- Sets the text shadow color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetShadowColor
----@field GetShadowOffset fun(self:FontInstance):offsetX, offsetY  -- Returns the text shadow offset. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetShadowOffset
----@field GetSpacing fun(self:FontInstance):spacing  -- Returns the line spacing. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetSpacing
----@field GetTextColor fun(self:FontInstance):colorR, colorG, colorB, colorA  -- Returns the default text color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetTextColor
+---@field GetFont fun(self:FontInstance):string, number, string  -- Returns the font path, height, and flags. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetFont
+---@field GetFontObject fun(self:FontInstance):Font?  -- Returns the "parent" font object. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetFontObject
+---@field GetIndentedWordWrap fun(self:FontInstance):boolean  -- Returns the indentation when text wraps beyond the first line. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetIndentedWordWrap
+---@field GetJustifyH fun(self:FontInstance):string  -- Returns the horizontal text justification. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetJustifyH
+---@field GetJustifyV fun(self:FontInstance):string  -- Returns the vertical text justification. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetJustifyV
+---@field GetShadowColor fun(self:FontInstance):number, number, number, number RGBA -- Sets the text shadow color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetShadowColor
+---@field GetShadowOffset fun(self:FontInstance):number, number  -- Returns the text shadow offset. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetShadowOffset
+---@field GetSpacing fun(self:FontInstance):number  -- Returns the line spacing. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetSpacing
+---@field GetTextColor fun(self:FontInstance):number, number, number, number RGBA -- Returns the default text color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_GetTextColor
 ---@field SetFont fun(self:FontInstance, fontFile, height, flags) -- Sets the basic font properties. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetFont
 ---@field SetFontObject fun(self:FontInstance, font) -- Sets the "parent" font object from which this object inherits properties. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetFontObject
 ---@field SetIndentedWordWrap fun(self:FontInstance, wordWrap) -- Sets the indentation when text wraps beyond the first line. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetIndentedWordWrap
 ---@field SetJustifyH fun(self:FontInstance, justifyH) -- Sets the horizontal text justification -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetJustifyH
 ---@field SetJustifyV fun(self:FontInstance, justifyV) -- Sets the vertical text justification. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetJustifyV
----@field SetShadowColor fun(self:FontInstance, colorR, colorG, colorB [, a]) -- Returns the color of text shadow. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetShadowColor
+---@field SetShadowColor fun(self:FontInstance, colorR:number, colorG:number, colorB:number, a:number?) -- Returns the color of text shadow. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetShadowColor
 ---@field SetShadowOffset fun(self:FontInstance, offsetX, offsetY) -- Sets the text shadow offset. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetShadowOffset
 ---@field SetSpacing fun(self:FontInstance, spacing) -- Sets the spacing between lines of text in the object. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetSpacing
----@field SetTextColor fun(self:FontInstance, colorR, colorG, colorB [, a]) -- Sets the default text color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetTextColor
+---@field SetTextColor fun(self:FontInstance, colorR:number, colorG:number, colorB:number, a:number?) -- Sets the default text color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetTextColor
 
 ---@class FrameScriptObject
----@field GetName fun(self:FrameScriptObject):name  -- Returns the object's global name. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetName
----@field GetObjectType fun(self:FrameScriptObject):objectType  -- Returns the object's widget type. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetObjectType
----@field IsForbidden fun(self:FrameScriptObject):isForbidden  -- Returns true if insecure interaction with the object is forbidden. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_IsForbidden
----@field IsObjectType fun(self:FrameScriptObject, objectType):isType  -- Returns true if the object belongs to a given widget type or its subtypes. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_IsObjectType
+---@field GetName fun(self:FrameScriptObject):string  -- Returns the object's global name. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetName
+---@field GetObjectType fun(self:FrameScriptObject):string  -- Returns the object's widget type. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetObjectType
+---@field IsForbidden fun(self:FrameScriptObject):boolean  -- Returns true if insecure interaction with the object is forbidden. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_IsForbidden
+---@field IsObjectType fun(self:FrameScriptObject, objectType):boolean  -- Returns true if the object belongs to a given widget type or its subtypes. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_IsObjectType
 ---@field SetForbidden fun(self:FrameScriptObject) -- #protected  Sets the object to be forbidden from an insecure execution path. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_SetForbidden
 
 ---@class Region
----@field GetAlpha fun(self:Region):alpha  -- Returns the region's opacity. -- https://warcraft.wiki.gg/wiki/API_Region_GetAlpha
----@field GetDrawLayer fun(self:Region):layer, sublayer  -- Returns the layer in which the region is drawn. -- https://warcraft.wiki.gg/wiki/API_Region_GetDrawLayer
+---@field GetAlpha fun(self:Region):number  -- Returns the region's opacity. -- https://warcraft.wiki.gg/wiki/API_Region_GetAlpha
+---@field GetDrawLayer fun(self:Region):DrawLayer, integer  -- Returns the layer in which the region is drawn. -- https://warcraft.wiki.gg/wiki/API_Region_GetDrawLayer
 ---@field GetEffectiveScale fun(self:Region):number  -- Returns the scale of the region after propagating from its parents. -- https://warcraft.wiki.gg/wiki/API_Region_GetEffectiveScale
----@field GetScale fun(self:Region):scale  -- Returns the scale of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetScale
----@field GetVertexColor fun(self:Region):colorR, colorG, colorB, colorA  -- Returns the vertex color shading of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetVertexColor
----@field IsIgnoringParentAlpha fun(self:Region):isIgnoring  -- Returns true if the region is ignoring parent alpha. -- https://warcraft.wiki.gg/wiki/API_Region_IsIgnoringParentAlpha
----@field IsIgnoringParentScale fun(self:Region):isIgnoring  -- Returns true if the region is ignoring parent scale. -- https://warcraft.wiki.gg/wiki/API_Region_IsIgnoringParentScale
----@field IsObjectLoaded fun(self:Region):isLoaded  -- Returns true if the region is fully loaded. -- https://warcraft.wiki.gg/wiki/API_Region_IsObjectLoaded
+---@field GetScale fun(self:Region):number  -- Returns the scale of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetScale
+---@field GetVertexColor fun(self:Region):number, number, number, number RGBA -- Returns the vertex color shading of the region. -- https://warcraft.wiki.gg/wiki/API_Region_GetVertexColor
+---@field IsIgnoringParentAlpha fun(self:Region):boolean  -- Returns true if the region is ignoring parent alpha. -- https://warcraft.wiki.gg/wiki/API_Region_IsIgnoringParentAlpha
+---@field IsIgnoringParentScale fun(self:Region):boolean  -- Returns true if the region is ignoring parent scale. -- https://warcraft.wiki.gg/wiki/API_Region_IsIgnoringParentScale
+---@field IsObjectLoaded fun(self:Region):boolean  -- Returns true if the region is fully loaded. -- https://warcraft.wiki.gg/wiki/API_Region_IsObjectLoaded
 ---@field SetAlpha fun(self:Region, alpha) -- Sets the opacity of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetAlpha
----@field SetDrawLayer fun(self:Region, layer [, sublevel]) -- Sets the layer in which the region is drawn. -- https://warcraft.wiki.gg/wiki/API_Region_SetDrawLayer
+---@field SetDrawLayer fun(self:Region, layer:DrawLayer, sublevel:integer?) -- Sets the layer in which the region is drawn. -- https://warcraft.wiki.gg/wiki/API_Region_SetDrawLayer
 ---@field SetIgnoreParentAlpha fun(self:Region, ignore) -- Sets whether the region should ignore its parent's alpha. -- https://warcraft.wiki.gg/wiki/API_Region_SetIgnoreParentAlpha
 ---@field SetIgnoreParentScale fun(self:Region, ignore) -- Sets whether the region should ignore its parent's scale. -- https://warcraft.wiki.gg/wiki/API_Region_SetIgnoreParentScale
 ---@field SetScale fun(self:Region, scale) -- Sets the size scaling of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetScale
----@field SetVertexColor fun(self:Region, colorR, colorG, colorB [, a]) -- Sets the vertex shading color of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetVertexColor
+---@field SetVertexColor fun(self:Region, colorR:number, colorG:number, colorB:number, a:number?) -- Sets the vertex shading color of the region. -- https://warcraft.wiki.gg/wiki/API_Region_SetVertexColor
 
 ---@class TextureBase : ScriptRegionResizing
 ---@field ClearTextureSlice fun(self:TextureBase) -- https://warcraft.wiki.gg/wiki/API_TextureBase_ClearTextureSlice
----@field GetAtlas fun(self:TextureBase):atlas  -- Returns the atlas for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetAtlas
----@field GetBlendMode fun(self:TextureBase):blendMode  -- Returns the blend mode of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetBlendMode
----@field GetDesaturation fun(self:TextureBase):desaturation  -- Returns the desaturation level of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetDesaturation
----@field GetHorizTile fun(self:TextureBase):tiling  -- Returns true if the texture is tiling horizontally. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetHorizTile
----@field GetRotation fun(self:TextureBase):radians, normalizedRotationPoint  -- Returns the rotation of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetRotation
----@field GetTexCoord fun(self:TextureBase):ULx, ULy, LLx, LLy, URx, URy, LRx, LRy  -- Returns the texture space coordinates of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexCoord
----@field GetTexelSnappingBias fun(self:TextureBase):bias  -- Returns the texel snapping bias for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexelSnappingBias
----@field GetTexture fun(self:TextureBase):textureFile  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexture
----@field GetTextureFileID fun(self:TextureBase):textureFile  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureFileID
----@field GetTextureFilePath fun(self:TextureBase):textureFile  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureFilePath
----@field GetTextureSliceMargins fun(self:TextureBase):left, top, right, bottom -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureSliceMargins
----@field GetTextureSliceMode fun(self:TextureBase):sliceMode -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureSliceMode
----@field GetVertTile fun(self:TextureBase):tiling  -- Returns true if the texture is tiling vertically. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetVertTile
----@field GetVertexOffset fun(self:TextureBase, vertexIndex):offsetX, offsetY  -- Returns a vertex offset for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetVertexOffset
----@field IsBlockingLoadRequested fun(self:TextureBase):blocking -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsBlockingLoadRequested
----@field IsDesaturated fun(self:TextureBase):desaturated  -- Returns true if the texture is desaturated. -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsDesaturated
----@field IsSnappingToPixelGrid fun(self:TextureBase):snap  -- Returns true if the texture is snapping to the pixel grid. -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsSnappingToPixelGrid
----@field SetAtlas fun(self:TextureBase, atlas [, useAtlasSize, filterMode, resetTexCoords]) -- Sets the texture to an atlas. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetAtlas
+---@field GetAtlas fun(self:TextureBase):string  -- Returns the atlas for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetAtlas
+---@field GetBlendMode fun(self:TextureBase):BlendMode  -- Returns the blend mode of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetBlendMode
+---@field GetDesaturation fun(self:TextureBase):number  -- Returns the desaturation level of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetDesaturation
+---@field GetHorizTile fun(self:TextureBase):boolean  -- Returns true if the texture is tiling horizontally. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetHorizTile
+---@field GetRotation fun(self:TextureBase):number, any  -- Returns the rotation of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetRotation
+---@field GetTexCoord fun(self:TextureBase):number, number, number, number, number, number, number, number  -- Returns the texture space coordinates of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexCoord
+---@field GetTexelSnappingBias fun(self:TextureBase):number  -- Returns the texel snapping bias for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexelSnappingBias
+---@field GetTexture fun(self:TextureBase):number  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTexture
+---@field GetTextureFileID fun(self:TextureBase):number  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureFileID
+---@field GetTextureFilePath fun(self:TextureBase):number  -- Returns the FileID for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureFilePath
+---@field GetTextureSliceMargins fun(self:TextureBase):number, number, number, number -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureSliceMargins
+---@field GetTextureSliceMode fun(self:TextureBase):0|1 -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetTextureSliceMode
+---@field GetVertTile fun(self:TextureBase):boolean  -- Returns true if the texture is tiling vertically. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetVertTile
+---@field GetVertexOffset fun(self:TextureBase, vertexIndex):number, number  -- Returns a vertex offset for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_GetVertexOffset
+---@field IsBlockingLoadRequested fun(self:TextureBase):boolean -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsBlockingLoadRequested
+---@field IsDesaturated fun(self:TextureBase):boolean  -- Returns true if the texture is desaturated. -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsDesaturated
+---@field IsSnappingToPixelGrid fun(self:TextureBase):boolean  -- Returns true if the texture is snapping to the pixel grid. -- https://warcraft.wiki.gg/wiki/API_TextureBase_IsSnappingToPixelGrid
+---@field SetAtlas fun(self:TextureBase, atlas:string, useAtlasSize:boolean?, filterMode:string?, resetTexCoords:boolean?) -- Sets the texture to an atlas. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetAtlas
 ---@field SetBlendMode fun(self:TextureBase, blendMode) -- Sets the blend mode of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetBlendMode
----@field SetBlockingLoadsRequested fun(self:TextureBase, [blocking]) -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetBlockingLoadsRequested
----@field SetColorTexture fun(self:TextureBase, colorR, colorG, colorB [, a]) -- Sets the texture to a solid color. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetColorTexture
+---@field SetBlockingLoadsRequested fun(self:TextureBase, blocking:boolean?) -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetBlockingLoadsRequested
+---@field SetColorTexture fun(self:TextureBase, colorR:number, colorG:number, colorB:number, a:number?) -- Sets the texture to a solid color. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetColorTexture
 ---@field SetDesaturated fun(self:TextureBase, desaturated:boolean) -- Sets the texture to be desaturated. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetDesaturated
 ---@field SetDesaturation fun(self:TextureBase, desaturation) -- Sets the desaturation level of the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetDesaturation
 ---@field SetGradient fun(self:TextureBase, orientation, minColor, maxColor) -- Sets a gradient color shading for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetGradient
----@field SetHorizTile fun(self:TextureBase, [tiling]) -- Sets whether the texture should tile horizontally. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetHorizTile
+---@field SetHorizTile fun(self:TextureBase, tiling:boolean?) -- Sets whether the texture should tile horizontally. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetHorizTile
 ---@field SetMask fun(self:TextureBase, file) -- Applies a mask to the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetMask
----@field SetRotation fun(self:TextureBase, radians [, normalizedRotationPoint]) -- Applies a rotation to the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetRotation
----@field SetSnapToPixelGrid fun(self:TextureBase, [snap]) -- Sets the texture to snap to the pixel grid. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetSnapToPixelGrid
+---@field SetRotation fun(self:TextureBase, radians:number, normalizedRotationPoint:any) -- Applies a rotation to the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetRotation
+---@field SetSnapToPixelGrid fun(self:TextureBase, snap:boolean?) -- Sets the texture to snap to the pixel grid. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetSnapToPixelGrid
 ---@field SetTexCoord fun(self:TextureBase, left, right, top, bottom) -- Sets the coordinates for cropping or transforming the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexCoord
 ---@field SetTexelSnappingBias fun(self:TextureBase, bias) -- Returns the texel snapping bias for the texture. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexelSnappingBias
 ---@field SetTexture fun(self:TextureBase, textureAsset, wrapModeHorizontal, wrapModeVertical, filterMode) -- Sets the texture to an image. -- https://warcraft.wiki.gg/wiki/API_TextureBase_SetTexture
@@ -292,7 +292,7 @@ function ScriptRegionResizing:GetPoint(index) end
 
 ---@class Texture : TextureBase https://warcraft.wiki.gg/wiki/UIOBJECT_Texture
 ---@field AddMaskTexture fun(self:Texture, mask) -- https://warcraft.wiki.gg/wiki/API_Texture_AddMaskTexture
----@field GetMaskTexture fun(self:Texture, index):mask -- https://warcraft.wiki.gg/wiki/API_Texture_GetMaskTexture
+---@field GetMaskTexture fun(self:Texture, index):any -- https://warcraft.wiki.gg/wiki/API_Texture_GetMaskTexture
 ---@field GetNumMaskTextures fun(self:Texture):number -- https://warcraft.wiki.gg/wiki/API_Texture_GetNumMaskTextures
 ---@field RemoveMaskTexture fun(self:Texture, mask) -- https://warcraft.wiki.gg/wiki/API_Texture_RemoveMaskTexture
 
@@ -885,7 +885,7 @@ function C_Timer.NewTicker(interval, callback, interations) end
 ---@param duration number duration in seconds.
 ---@param callback fun(t:TimerHandle)
 ---@return TimerHandle
-function C_Timer.NewTImer(duration, callback) end
+function C_Timer.NewTimer(duration, callback) end
 
 ---Returns the system uptime of your computer in seconds, with millisecond precision.
 ---@return number
