@@ -5,7 +5,6 @@ local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
-local TEST_MODE = true          -- Generate test candidates and test responses for them.
 local RESPONSE_GRACE_PERIOD = 2 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
 
 local function LogDebug(...)
@@ -99,7 +98,7 @@ local function InitHost(target)
     Host:UpdateCandidateList()
     timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", Host)
 
-    if TEST_MODE then
+    if Env.settings.testMode then
         Env:PrintError("TEST MODE: Generating fake candidate entries!")
         Env.Session.FillFakeCandidateList(candidates, 20)
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
@@ -629,7 +628,7 @@ function Host:ItemAdd(itemId)
                 candidate = candidate,
                 status = LootStatus.sent,
             }
-            if TEST_MODE and candidate.isFake then
+            if candidate.isFake and Env.settings.testMode then
                 local ir = item.responses[name]
                 Env.Session.FillTestResponse(ir, responses.responses, item.roller)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)

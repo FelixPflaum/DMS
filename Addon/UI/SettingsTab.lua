@@ -71,7 +71,8 @@ local function CreateOptionTable()
                     maxRangeForPointRoll = {
                         order = 2,
                         name = L["Max sanity roll range"],
-                        desc = L["Which range to consider for sanity behind the highest sanity value when ordering results with roll values."],
+                        desc = L
+                        ["Which range to consider for sanity behind the highest sanity value when ordering results with roll values."],
                         type = "range",
                         width = "full",
                         min = 1,
@@ -115,6 +116,11 @@ local function CreateOptionTable()
                             [3] = L["Verbose Data"],
                         }
                     },
+                    testMode = {
+                        order = 2,
+                        type = "toggle",
+                        name = L["Test mode"],
+                    }
                 }
             },
         }

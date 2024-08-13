@@ -2,14 +2,18 @@
 local Env = select(2, ...)
 
 local function TriggerRosterUpdate()
+    Env:PrintDebug("Trigger GUILD_ROSTER_UPDATE")
     if GuildRoster then
         GuildRoster()
     else
         C_GuildInfo.GuildRoster()
     end
+    --C_Timer.After(600, function()
+    --    TriggerRosterUpdate()
+    --end)
 end
 
-Env:OnAddonLoaded(function()
+Env:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     TriggerRosterUpdate()
 end)
 

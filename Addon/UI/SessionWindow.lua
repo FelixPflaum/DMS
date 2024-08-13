@@ -563,7 +563,6 @@ do
                 valueString = "|cFF70acc0" .. valueString .. "|r"
             elseif column == TABLE_INDECES.SANITY and row > 1 then
                 local pointsAbove = data[st.filtered[row-1]][column]
-                print(row, value, pointsAbove)
                 if pointsAbove - value > Env.settings.lootSession.maxRangeForPointRoll then
                     cellFrame:SetNormalTexture(GetImagePath("downmarker.png"))
                     local tex = cellFrame:GetNormalTexture()
