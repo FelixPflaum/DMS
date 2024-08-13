@@ -536,18 +536,41 @@ do
         end
     end
 
-    ---Update function for roll, points and total cells.
+    ---Update function for roll cell.
     ---@type ST_CellUpdateFunc
     local function CellUpdateShowIfNotZero(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, st)
         ---@cast st SessionWindowScrollingTable
         if not fShow then return end
         local value = data[realrow][column] ---@type number|nil
         if value and value ~= 0 then
+            cellFrame.text:SetText(tostring(value))
+        else
+            cellFrame.text:SetText("")
+        end
+    end
+
+    ---Update function for points and total cells. Will color "frozen" if point snapshot exists.
+    ---@type ST_CellUpdateFunc
+    local function CellUpdatePointsAndTotal(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, st)
+        ---@cast st SessionWindowScrollingTable
+        if not fShow then return end
+        local value = data[realrow][column] ---@type number|nil
+        if value and value ~= 0 then
             local valueString = tostring(value)
-            if column == TABLE_INDECES.SANITY then
-                local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
-                if pointsAreSnapshotted then
-                    valueString = "|cFF70acc0" .. valueString .. "|r"
+            local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
+            if pointsAreSnapshotted then
+                valueString = "|cFF70acc0" .. valueString .. "|r"
+            elseif column == TABLE_INDECES.SANITY and row > 1 then
+                local pointsAbove = data[st.filtered[row-1]][column]
+                print(row, value, pointsAbove)
+                if pointsAbove - value > Env.settings.lootSession.maxRangeForPointRoll then
+                    cellFrame:SetNormalTexture(GetImagePath("downmarker.png"))
+                    local tex = cellFrame:GetNormalTexture()
+                    tex:ClearAllPoints()
+                    tex:SetSize(32, 8)
+                    tex:SetPoint("TOPRIGHT", 0, -5)
+                else
+                    cellFrame:ClearNormalTexture()
                 end
             end
             cellFrame.text:SetText(valueString)
@@ -650,15 +673,49 @@ do
         end
     end
 
+    ---Sort function for points values. Will sort next if points are within max allowed range.
+    ---@param st ST_ScrollingTable
+    ---@param rowa integer
+    ---@param rowb integer
+    ---@param sortbycol integer
+    local function SortPointsIfNotInRange(st, rowa, rowb, sortbycol)
+        local column = st.cols[sortbycol]
+        local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol] ---@type integer, integer
+        local maxDist = Env.settings.lootSession.maxRangeForPointRoll
+        if math.abs(a - b) <= maxDist then
+            if column.sortnext then
+                local nextcol = st.cols[column.sortnext]
+                if not (nextcol.sort) then
+                    if nextcol.comparesort then
+                        return nextcol.comparesort(st, rowa, rowb, column.sortnext)
+                    else
+                        return st:CompareSort(rowa, rowb, column.sortnext)
+                    end
+                else
+                    return false
+                end
+            else
+                return false
+            end
+        else
+            local direction = column.sort or column.defaultsort or ScrollingTable.SORT_DSC
+            if direction == ScrollingTable.SORT_ASC then
+                return a < b
+            else
+                return a > b
+            end
+        end
+    end
+
     ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer,string?,string?]
 
     TABLE_DEF = {
         [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
         [TABLE_INDECES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
-        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = TABLE_INDECES.TOTAL },
+        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = TABLE_INDECES.SANITY },
         [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.NAME },
-        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero },
-        [TABLE_INDECES.TOTAL] = { name = L["Total"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.ROLL },
+        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, comparesort = SortPointsIfNotInRange, sortnext = TABLE_INDECES.TOTAL },
+        [TABLE_INDECES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDECES.ROLL },
         [TABLE_INDECES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
         [TABLE_INDECES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
     }

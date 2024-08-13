@@ -41,6 +41,7 @@ function LibST:CreateST(cols, numRows, rowHeight, highlight, parent, multiselect
 ---@field cols ST_ColDef[]
 ---@field data ST_DataMinimal[]|ST_Data[]
 ---@field CompareSort fun(self:ST_ScrollingTable,rowa:integer,rowb:integer,col:integer)
+---@field filtered table<integer,integer> Maps visible row index to real/data row index.
 local ST_ScrollingTable = {}
 
 ---@class ST_DataColCell

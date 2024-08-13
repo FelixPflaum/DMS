@@ -138,7 +138,6 @@ end
 ---@field SetClipsChildren fun(self:WoWFrame, enable:boolean):nil
 ---@field ScrollBar WoWFrame
 ---@field SetScrollChild fun(self:WoWFrame, child:WoWFrame):nil
----@field ClearAllPoints fun(self:WoWFrame):nil
 ---@field CreateFontString fun(self:WoWFrame, name:string|nil, layer:any, inherits: any):FontString
 ---@field CreateTexture fun(self:WoWFrame, name:string|nil, drawLayer:DrawLayer|nil, templateName:string|nil, subLevel:number|nil):Texture -- https://warcraft.wiki.gg/wiki/API_Frame_CreateTexture
 ---@field SetFrameStrata fun(self:WoWFrame, strata:string) [Wiki](https://warcraft.wiki.gg/wiki/Frame_Strata)
@@ -188,6 +187,7 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field GetWidth fun(self:ScriptRegionResizing):number
 ---@field GetHeight fun(self:ScriptRegionResizing):number
 ---@field SetSize fun(self:ScriptRegionResizing, w:number, h:number):nil
+---@field ClearAllPoints fun(self:ScriptRegionResizing):nil
 ---@field Show fun(self:ScriptRegionResizing)
 ---@field Hide fun(self:ScriptRegionResizing)
 ---@field GetTop fun(self:ScriptRegionResizing):number Bottom side of the screen to the top edge of the region.

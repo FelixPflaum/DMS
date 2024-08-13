@@ -68,18 +68,28 @@ local function CreateOptionTable()
                         max = 300,
                         step = 1,
                     },
-                    headerResponses = {
+                    maxRangeForPointRoll = {
                         order = 2,
+                        name = L["Max sanity roll range"],
+                        desc = L["Which range to consider for sanity behind the highest sanity value when ordering results with roll values."],
+                        type = "range",
+                        width = "full",
+                        min = 1,
+                        max = 100,
+                        step = 1,
+                    },
+                    headerResponses = {
+                        order = 97,
                         type = "header",
                         name = L["Responses"]
                     },
                     descCound = {
-                        order = 3,
+                        order = 98,
                         type = "description",
                         name = L["Configure the available responses if you are the host. A pass button is always shown."]
                     },
                     responseCount = {
-                        order = 4,
+                        order = 99,
                         name = L["Number of Buttons"],
                         desc = L["How many buttons to show as options."],
                         type = "range",

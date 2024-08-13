@@ -29,6 +29,7 @@ local defaultSettings = {
         timeout = 90,
         responseCount = 0,
         responseButtons = {}, ---@type {response:string, color:[number,number,number], pointRoll:boolean}[]
+        maxRangeForPointRoll = 50,
     },
 }
 
