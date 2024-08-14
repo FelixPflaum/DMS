@@ -5,7 +5,6 @@ import { join } from "path";
 const addonFolderName = "DamagedMindsSanity";
 const base = join(__dirname, "../../Addon");
 const version = fs.readFileSync(join(base, "/DamagedMindsSanity_Vanilla.toc"), "utf8").match(/## Version: (.*)/)![1];
-const build = parseInt(fs.readFileSync(join(__dirname, "build.build"), "utf8"));
 
 function shouldIgnore(file: string, isDir: boolean) {
     if (isDir) {
@@ -17,13 +16,6 @@ function shouldIgnore(file: string, isDir: boolean) {
 
 interface FileList {
     [index: string]: FileList | string
-}
-
-function bpad(b: number) {
-    let bs = b.toString();
-    const pl = 4 - bs.length;
-    for (let i = 0; i < pl; i++) bs = "0" + bs;
-    return bs;
 }
 
 function getFileList(dir: string) {
@@ -72,7 +64,7 @@ function copyToFolder(path: string, list: FileList) {
 
 const releaseDir = join(__dirname, "releases");
 const tempDir = join(__dirname, addonFolderName);
-const zipFileName = addonFolderName + "-" + version + "-" + build.toString().padStart(4, "0") + "-sod.zip";
+const zipFileName = addonFolderName + "-" + version + "-sod.zip";
 
 console.log("Creating temp folder...");
 fs.mkdirSync(tempDir);
@@ -81,7 +73,6 @@ console.log("Zipping...");
 if (!fs.existsSync(releaseDir)) fs.mkdirSync(releaseDir);
 _7z.pack(tempDir, join(releaseDir, zipFileName), err => {
     console.log("File written!");
-    fs.writeFileSync(join(__dirname, "build.build"), (build + 1).toString());
     console.log("Remove temp folder...");
     rmFolder(tempDir);
     console.log("Done!");

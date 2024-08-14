@@ -43,6 +43,8 @@ Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/LootSessionClient.lua
 Modules/LootSession/LootList.lua
 
+Modules/Meow.lua
+
 UI/UIFunctions.lua
 UI/Components/IconButton.lua
 UI/Components/ButtonWindow.lua

@@ -920,7 +920,7 @@ Enum.ItemQuality = {
 }
 
 ---@class ContainerItemInfo
----@field iconFileID number 	
+---@field iconFileID number
 ---@field stackCount number 	
 ---@field isLocked boolean 	
 ---@field quality ItemQuality|nil
@@ -976,3 +976,74 @@ function Ambiguate(fullName, context) end
 ---@return number x
 ---@return number y
 function GetCursorPosition() end
+
+---@param key string
+---@return string
+function GetCVar(key) end
+
+---@enum ItemClass
+Enum.ItemClass = {
+    Consumable = 0,             -- Consumable Enum.ItemConsumableSubclass
+    Container = 1,              -- Container
+    Weapon = 2,                 -- Weapon Enum.ItemWeaponSubclass
+    Gem = 3,                    -- Gem Enum.ItemGemSubclass
+    Armor = 4,                  -- Armor Enum.ItemArmorSubclass
+    Reagent = 5,                -- Reagent Enum.ItemReagentSubclass
+    Projectile = 6,             -- Projectile Obsolete
+    Tradegoods = 7,             -- Tradeskill
+    ItemEnhancement = 8,        -- Item Enhancement
+    Recipe = 9,                 -- Recipe Enum.ItemRecipeSubclass
+    CurrencyTokenObsolete = 10, -- Money(OBSOLETE) Obsolete
+    Quiver = 11,                -- Quiver Obsolete
+    Questitem = 12,             -- Quest
+    Key = 13,                   -- Key
+    PermanentObsolete = 14,     -- Permanent(OBSOLETE) Obsolete
+    Miscellaneous = 15,         -- Miscellaneous Enum.ItemMiscellaneousSubclass
+    Glyph = 16,                 -- Glyph
+    Battlepet = 17,             -- Battle Pets Enum.BattlePetTypes
+    WoWToken = 18,              -- WoW Token
+    Profession = 19,            -- Profession Enum.ItemProfessionSubclass Added in 10.0.0
+}
+
+---@enum ItemWeaponSubclass
+Enum.ItemWeaponSubclass = {
+    Axe1H = 0,        -- One-Handed Axes
+    Axe2H = 1,        -- Two-Handed Axes
+    Bows = 2,         -- Bows
+    Guns = 3,         -- Guns
+    Mace1H = 4,       -- One-Handed Maces
+    Mace2H = 5,       -- Two-Handed Maces
+    Polearm = 6,      -- Polearms
+    Sword1H = 7,      -- One-Handed Swords
+    Sword2H = 8,      -- Two-Handed Swords
+    Warglaive = 9,    -- Warglaives
+    Staff = 10,       -- Staves
+    Bearclaw = 11,    -- Bear Claws
+    Catclaw = 12,     -- CatClaws
+    Unarmed = 13,     -- Fist Weapons
+    Generic = 14,     -- Miscellaneous
+    Dagger = 15,      -- Daggers
+    Thrown = 16,      -- Thrown Classic
+    Obsolete3 = 17,   -- Spears
+    Crossbow = 18,    -- Crossbows
+    Wand = 19,        -- Wands
+    Fishingpole = 20, -- Fishing Poles
+}
+
+---@enum ItemArmorSubclass
+Enum.ItemArmorSubclass = {
+    Generic = 0, -- Miscellaneous  Includes Spellstones, Firestones, Trinkets, Rings and Necks
+    Cloth = 1, -- Cloth
+    Leather = 2, -- Leather
+    Mail = 3, -- Mail
+    Plate = 4, -- Plate
+    Cosmetic = 5, -- Cosmetic
+    Shield = 6, -- Shields
+    Libram = 7, -- Librams  Classic
+    Idol = 8, -- Idols  Classic
+    Totem = 9, -- Totems  Classic
+    Sigil = 10, -- Sigils  Classic
+    Relic = 11, -- Relic
+}
+
+ITEM_CLASSES_ALLOWED = "Classes: %s"
