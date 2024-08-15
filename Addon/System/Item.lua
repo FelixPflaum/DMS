@@ -183,3 +183,23 @@ function Env.Item.GetCurrentlyEquippedItem(invType)
     local link2 = GetInventoryItemLink("player", slotOrSloty[2])
     return link1, link2
 end
+
+---Get the class restriction string on an item, if it has one.
+---@param itemLink string
+---@return string? #The localized "Classes: ClassA, ClassB" string, nil if the item has no class restriction.
+function Env.Item.GetItemClassRestrictionString(itemLink)
+    local classRestrictionPattern = ITEM_CLASSES_ALLOWED:gsub("%%s", "(.+)") -- Classes: %s -> Classes: (.+)
+    scanTip:ClearLines()
+    scanTip:SetHyperlink(itemLink)
+    for i = scanTip:NumLines(), 1, -1 do
+        ---@type FontString|nil
+        local left = _G[TOOLTIP_NAME .. "TextLeft" .. i]
+        if left then
+            local text = left:GetText() or ""
+            local classListString = text:match(classRestrictionPattern)
+            if classListString then
+                return classListString
+            end
+        end
+    end
+end

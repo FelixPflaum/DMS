@@ -4,6 +4,7 @@ local Env = select(2, ...)
 local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
+local ShouldAutopass = Env.Session.ShouldAutopass
 
 local function LogDebug(...)
     Env:PrintDebug("Client:", ...)
@@ -319,6 +320,11 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     Client.items[data.guid] = newItem
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
+
+    local _, itemLink, _, _, _, _, _, _, _, _, _, classId, subclassId = C_Item.GetItemInfo(newItem.itemId)
+    if ShouldAutopass(itemLink, classId, subclassId) then
+        Client:RespondToItem(newItem.guid, Client.responses:GetAutoPass().id)
+    end
     Client.OnItemUpdate:Trigger(newItem, false)
 
     local itemEquipLoc = select(4, C_Item.GetItemInfoInstant(newItem.itemId))

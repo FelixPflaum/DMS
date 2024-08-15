@@ -40,6 +40,7 @@ Database/Database.lua
 Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionComm.lua
 Modules/LootSession/LootSessionHost.lua
+Modules/LootSession/Autopass.lua
 Modules/LootSession/LootSessionClient.lua
 Modules/LootSession/LootList.lua
 
