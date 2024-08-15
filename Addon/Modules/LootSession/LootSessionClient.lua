@@ -373,10 +373,11 @@ end)
 ---@param responseId integer
 function Client:RespondToItem(itemGuid, responseId)
     local item = self.items[itemGuid]
+    local response = self.responses:GetResponse(responseId)
     if not item then
         Env:PrintError(L["Tried to respond to item %s but distribution with that GUID doesn't exist!"]:format(itemGuid))
         return
-    elseif not self.responses:GetResponse(responseId) then
+    elseif not response then
         Env:PrintError(L["Tried to respond with response Id %d but response doesn't exist!"]:format(responseId))
         return
     elseif item.parentGuid then
@@ -388,6 +389,10 @@ function Client:RespondToItem(itemGuid, responseId)
     end
     Comm.Send.CMSG_ITEM_RESPONSE(itemGuid, responseId)
     item.responseSent = true
+    local myName = UnitName("player")
+    if item.responses[myName] then
+        item.responses[myName].response = response
+    end
     self.OnItemUpdate:Trigger(item, false)
 end
 
