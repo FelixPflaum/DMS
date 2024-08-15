@@ -562,13 +562,17 @@ do
             if pointsAreSnapshotted then
                 valueString = "|cFF70acc0" .. valueString .. "|r"
             elseif column == TABLE_INDECES.SANITY and row > 1 then
-                local pointsAbove = data[st.filtered[row-1]][column]
-                if pointsAbove - value > Env.settings.lootSession.maxRangeForPointRoll then
-                    cellFrame:SetNormalTexture(GetImagePath("downmarker.png"))
-                    local tex = cellFrame:GetNormalTexture()
-                    tex:ClearAllPoints()
-                    tex:SetSize(32, 8)
-                    tex:SetPoint("TOPRIGHT", 0, -5)
+                local maxRange = Env.settings.lootSession.pointsMaxRange
+                -- No need to show or do anything if rolls can't influence the result anyways.
+                if maxRange < 100 then
+                    local pointsAbove = data[st.filtered[row - 1]][column]
+                    if pointsAbove - value > maxRange then
+                        cellFrame:SetNormalTexture(GetImagePath("downmarker.png"))
+                        local tex = cellFrame:GetNormalTexture()
+                        tex:ClearAllPoints()
+                        tex:SetSize(32, 8)
+                        tex:SetPoint("TOPRIGHT", 0, -5)
+                    end
                 end
             end
             cellFrame.text:SetText(valueString)
@@ -679,8 +683,9 @@ do
     local function SortPointsIfNotInRange(st, rowa, rowb, sortbycol)
         local column = st.cols[sortbycol]
         local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol] ---@type integer, integer
-        local maxDist = Env.settings.lootSession.maxRangeForPointRoll
-        if math.abs(a - b) <= maxDist then
+        local maxDist = Env.settings.lootSession.pointsMaxRange
+        -- Always set equal if range is higher than max roll diff (99)
+        if maxDist > 99 or math.abs(a - b) <= maxDist then
             if column.sortnext then
                 local nextcol = st.cols[column.sortnext]
                 if not (nextcol.sort) then

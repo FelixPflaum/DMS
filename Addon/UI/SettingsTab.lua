@@ -143,6 +143,7 @@ local function CreateOptionTable()
             name = L["Button %d"]:format(i),
             desc = L["Set the response for button %d."]:format(i),
             type = "input",
+            width = 0.85,
             get = function() return Env.settings.lootSession.responseButtons[i].response end,
             set = function(info, value)
                 if value == "" then return end
@@ -152,20 +153,32 @@ local function CreateOptionTable()
         }
         responseArgs["color" .. i] = {
             order = orderLast - i * perRow + 2,
-            name = L["Color"],
+            name = "", -- L["Color"],
             desc = L["Color used for response."],
-            width = 0.4,
+            width = 0.25,
             type = "color",
             get = function() return unpack(Env.settings.lootSession.responseButtons[i].color) end,
             set = function(info, r, g, b, a) Env.settings.lootSession.responseButtons[i].color = { r, g, b } end,
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
-        responseArgs["sanity" .. i] = {
+        responseArgs["isNeed" .. i] = {
             order = orderLast - i * perRow + 3,
+            type = "toggle",
+            name = L["Need Roll"],
+            desc = L["Whether this response counts as a need roll for sanity point deduction."],
+            width = 0.6,
+            get = function() return Env.settings.lootSession.responseButtons[i].isNeed end,
+            set = function(info, val)
+                Env.settings.lootSession.responseButtons[i].isNeed = val
+            end,
+            hidden = function() return Env.settings.lootSession.responseCount < i end,
+        }
+        responseArgs["sanity" .. i] = {
+            order = orderLast - i * perRow + 4,
             type = "toggle",
             name = L["Sanity Roll"],
             desc = L["Whether this response uses sanity."],
-            width = 0.7,
+            width = 0.6,
             get = function() return Env.settings.lootSession.responseButtons[i].pointRoll end,
             set = function(info, val)
                 if val then
@@ -178,7 +191,7 @@ local function CreateOptionTable()
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["up" .. i] = {
-            order = orderLast - i * perRow + 4,
+            order = orderLast - i * perRow + 5,
             name = "",
             type = "execute",
             width = 0.1,
@@ -196,7 +209,7 @@ local function CreateOptionTable()
             end,
         }
         responseArgs["down" .. i] = {
-            order = orderLast - i * perRow + 5,
+            order = orderLast - i * perRow + 6,
             name = "",
             type = "execute",
             width = 0.1,
