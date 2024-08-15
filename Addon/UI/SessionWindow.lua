@@ -13,6 +13,7 @@ local GetImagePath = Env.UI.GetImagePath
 local ColorByClassId = Env.UI.ColorByClassId
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 local ColorStringFromArray = Env.UI.ColorStringFromArray
+local DoesRollCountAsPointRoll = Env.PointLogic.DoesRollCountAsPointRoll
 
 local Host = Env.SessionHost
 local Client = Env.SessionClient
@@ -205,17 +206,17 @@ local function Script_AwardClick(self, candidateName, arg2)
     local item = Client.items[selectedItemGuid]
     local itemResp = Client.items[selectedItemGuid].responses[candidateName]
     if not item or not itemResp then return end
-    local errMsg, pointsUsed = Host:AwardItem(item.guid, candidateName)
+    local errMsg, responseUsed, pointsUsed, pointUsageReason = Host:AwardItem(item.guid, candidateName)
     MSA_CloseDropDownMenus()
     if errMsg then
         Env:PrintError(L["Awarding item failed!"])
         Env:PrintError(errMsg)
     else
-        local reasonStr = itemResp.response and itemResp.response.displayString or itemResp.status.displayString
+        local reasonStr = responseUsed and responseUsed.displayString or itemResp.status.displayString
         DoWhenItemInfoReady(item.itemId, function(_, itemLink)
             if pointsUsed then
                 Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s! Removed %d sanity."]:format(itemLink, candidateName,
-                    reasonStr, pointsUsed))
+                    reasonStr, pointsUsed) .. " " .. pointUsageReason)
             else
                 Host:SendMessageToTargetChannel(L["Awarded %s to %s for %s!"]:format(itemLink, candidateName, reasonStr))
             end
@@ -530,6 +531,17 @@ do
         end
         -- Set response or status as text
         if itemResponse.response then
+            -- Set different display if point roll is treated as another roll.
+            if item and itemResponse.response.isPointsRoll then
+                local points = data[realrow][TABLE_INDECES.SANITY] ---@type integer
+                local doesCount, respReplace = DoesRollCountAsPointRoll(points, itemResponse.response, Client.responses.responses)
+                if not doesCount then
+                    cellFrame.text:SetText(L["%s (Counts as %s)"]:format(
+                        ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString),
+                        ColorStringFromArray(respReplace.color, respReplace.displayString)))
+                    return
+                end
+            end
             cellFrame.text:SetText(ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString))
         else
             cellFrame.text:SetText(ColorStringFromArray(itemResponse.status.color, itemResponse.status.displayString))
@@ -615,18 +627,19 @@ do
     end
 
     ---Returns a weight depending on status and selected response.
-    ---@param resp SessionClient_ItemResponse
+    ---@param status LootCandidateStatus
+    ---@param response LootResponse|nil
     ---@param item SessionClient_Item
-    local function GetResponseWeight(resp, item)
+    local function GetResponseWeight(status, response, item)
         local REPSONSE_ID_FIRST_CUSTOM = Env.Session.REPSONSE_ID_FIRST_CUSTOM
-        local weight = resp.status.id
-        if resp.response then
-            if resp.response.id < REPSONSE_ID_FIRST_CUSTOM then
+        local weight = status.id
+        if response then
+            if response.id < REPSONSE_ID_FIRST_CUSTOM then
                 -- Show pass and autopass below everything
-                weight = -100 + resp.response.id
+                weight = -100 + response.id
             else
                 -- Show other actual responses above any non-response status
-                weight = 100 + resp.response.id
+                weight = 100 + response.id
             end
         end
         --[[ Client:DoForEachRelatedItem(item, true, function(relatedItem)
@@ -639,7 +652,10 @@ do
         return weight
     end
 
-    ---Sort function for the response/status column.
+    ---Sort function for responses.
+    ---Cares for ordering point rolls correctly if they are not valid.
+    ---Checks max point range and forwards to total column if equal.
+    ---Forwards normal roll responses directly to the roll column for sortig equal responses.
     ---@param st SessionWindowScrollingTable
     ---@param rowa any
     ---@param rowb any
@@ -647,55 +663,54 @@ do
     local function SortResponse(st, rowa, rowb, sortbycol)
         local column = st.cols[sortbycol]
         ---@type SessionClient_ItemResponse, SessionClient_ItemResponse
-        local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol]
-        local aWeight = GetResponseWeight(a, st.item)
-        local bWeight = GetResponseWeight(b, st.item)
-        if aWeight == bWeight then
-            if column.sortnext then
-                local nextcol = st.cols[column.sortnext]
-                if not (nextcol.sort) then
-                    if nextcol.comparesort then
-                        return nextcol.comparesort(st, rowa, rowb, column.sortnext)
-                    else
-                        return st:CompareSort(rowa, rowb, column.sortnext)
-                    end
-                else
-                    return false
-                end
-            else
-                return false
-            end
-        else
-            local direction = column.sort or column.defaultsort or ScrollingTable.SORT_DSC
-            if direction == ScrollingTable.SORT_ASC then
-                return aWeight < bWeight
-            else
-                return aWeight > bWeight
-            end
-        end
-    end
+        local itemResA, itemResB = st.data[rowa][sortbycol], st.data[rowb][sortbycol]
+        local resA = itemResA.response
+        local resB = itemResB.response
 
-    ---Sort function for points values. Will sort next if points are within max allowed range.
-    ---@param st ST_ScrollingTable
-    ---@param rowa integer
-    ---@param rowb integer
-    ---@param sortbycol integer
-    local function SortPointsIfNotInRange(st, rowa, rowb, sortbycol)
-        local column = st.cols[sortbycol]
-        local a, b = st.data[rowa][sortbycol], st.data[rowb][sortbycol] ---@type integer, integer
-        local maxDist = Env.settings.lootSession.pointsMaxRange
-        -- Always set equal if range is higher than max roll diff (99)
-        if maxDist > 99 or math.abs(a - b) <= maxDist then
-            if column.sortnext then
-                local nextcol = st.cols[column.sortnext]
-                if not (nextcol.sort) then
-                    if nextcol.comparesort then
-                        return nextcol.comparesort(st, rowa, rowb, column.sortnext)
-                    else
-                        return st:CompareSort(rowa, rowb, column.sortnext)
-                    end
+        if resA and resA.isPointsRoll then
+            local aPoints = st.data[rowa][TABLE_INDECES.SANITY] ---@type integer
+            local _, respToUse = DoesRollCountAsPointRoll(aPoints, resA, Client.responses.responses)
+            resA = respToUse
+        end
+
+        if resB and resB.isPointsRoll then
+            local bPoints = st.data[rowb][TABLE_INDECES.SANITY] ---@type integer
+            local _, respToUse = DoesRollCountAsPointRoll(bPoints, resB, Client.responses.responses)
+            resB = respToUse
+        end
+
+        local weightA = GetResponseWeight(itemResA.status, resA, st.item)
+        local weightB = GetResponseWeight(itemResB.status, resB, st.item)
+
+        if weightA == weightB then
+            local nextcolIndex ---@type integer
+
+            if resA and resA.isPointsRoll then
+                local colIdxSanity = TABLE_INDECES.SANITY
+                local columnSanity = st.cols[colIdxSanity]
+                local pointsA, pointsB = st.data[rowa][colIdxSanity], st.data[rowb][colIdxSanity] ---@type integer, integer
+                local maxDist = Env.settings.lootSession.pointsMaxRange
+                -- Always treat equal if max range is higher than max roll diff (99)
+                if maxDist > 99 or math.abs(pointsA - pointsB) <= maxDist then
+                    nextcolIndex = TABLE_INDECES.TOTAL
                 else
-                    return false
+                    local direction = columnSanity.sort or columnSanity.defaultsort or ScrollingTable.SORT_DSC
+                    if direction == ScrollingTable.SORT_ASC then
+                        return pointsA < pointsB
+                    else
+                        return pointsA > pointsB
+                    end
+                end
+            else
+                nextcolIndex = TABLE_INDECES.ROLL
+            end
+
+            local nextcol = st.cols[nextcolIndex]
+            if not (nextcol.sort) then
+                if nextcol.comparesort then
+                    return nextcol.comparesort(st, rowa, rowb, nextcolIndex)
+                else
+                    return st:CompareSort(rowa, rowb, nextcolIndex)
                 end
             else
                 return false
@@ -703,9 +718,9 @@ do
         else
             local direction = column.sort or column.defaultsort or ScrollingTable.SORT_DSC
             if direction == ScrollingTable.SORT_ASC then
-                return a < b
+                return weightA < weightB
             else
-                return a > b
+                return weightA > weightB
             end
         end
     end
@@ -715,9 +730,9 @@ do
     TABLE_DEF = {
         [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
         [TABLE_INDECES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
-        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse, sortnext = TABLE_INDECES.SANITY },
+        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse },
         [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.NAME },
-        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, comparesort = SortPointsIfNotInRange, sortnext = TABLE_INDECES.TOTAL },
+        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDECES.TOTAL },
         [TABLE_INDECES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDECES.ROLL },
         [TABLE_INDECES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
         [TABLE_INDECES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },

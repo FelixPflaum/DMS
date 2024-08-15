@@ -40,6 +40,7 @@ end
 ---@class (exact) SessionHost_ItemAwardData
 ---@field candidateName string The name of the player the item was awarded to.
 ---@field usedResponse LootResponse
+---@field usedPoints integer?
 ---@field awardTime integer
 ---@field pointsSnapshot? table<string,integer> Snapshot of point count the award was based on.
 
@@ -405,42 +406,64 @@ end
 ---@param itemGuid string
 ---@param candidateName string
 ---@return string? error If arguments are not valid will return an error message.
----@return integer? pointsUsed
+---@return LootResponse? responseUsed The response used to award item for. Can be different from chosen response if e.g. points were too low on a point roll.
+---@return integer? pointsUsed The points used if awarded for a point roll.
+---@return string? pointUsageReason Reason for using points if points were used.
 function Host:AwardItem(itemGuid, candidateName)
     local item = items[itemGuid]
     local itemResponse = item.responses[candidateName]
+    local chosenResponse = itemResponse.response
+
     if not item then return L["Invalid item guid!"] end
     if not itemResponse then return L["Invalid candidate name!"] end
-    if not itemResponse.response or itemResponse.response.id < Env.Session.REPSONSE_ID_FIRST_CUSTOM then
+    if not chosenResponse or chosenResponse.id < Env.Session.REPSONSE_ID_FIRST_CUSTOM then
         return L["Candidate has no response set or passed!"]
     end
     if item.awarded then return L["Item already awarded to %s!"]:format(item.awarded.candidateName) end
 
     self:ItemStopRoll(itemGuid)
 
+    local responseUsed = chosenResponse
     local pointsUsed ---@type integer?
+    local pointUsageReason ---@type string?
+
+    if chosenResponse.isPointsRoll then
+        local candidate = itemResponse.candidate
+        local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints, chosenResponse, responses.responses)
+        if doesCount then
+            local pointsToRemove, reason = Env.PointLogic.ShouldDeductPoints(item, itemResponse, candidate.currentPoints)
+            if pointsToRemove then
+                if reason == "contested" then
+                    pointUsageReason = L["Contested item won with sanity."]
+                elseif reason == "uncontested" then
+                    pointUsageReason = L["Uncontested item won with sanity."]
+                end
+
+                -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
+                --Fake DB op
+                pointsUsed = pointsToRemove
+                candidate.currentPoints = candidate.currentPoints - pointsUsed
+                Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
+            end
+        else
+            responseUsed = useResponse
+            Env:PrintDebug("Awarding for", useResponse.displayString, "because", useReason)
+        end
+    end
 
     item.awarded = {
         candidateName = candidateName,
-        usedResponse = itemResponse.response,
+        usedResponse = responseUsed,
+        usedPoints = pointsUsed,
         awardTime = time(),
-        pointsSnapshot = itemResponse.response.isPointsRoll and MakePointsSnapshot(item) or nil
+        pointsSnapshot = responseUsed.isPointsRoll and MakePointsSnapshot(item) or nil
     }
-
-    if itemResponse.response.isPointsRoll then
-        -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
-        --Fake DB op
-        local candidate = itemResponse.candidate
-        pointsUsed = math.ceil(candidate.currentPoints / 2)
-        candidate.currentPoints = candidate.currentPoints - pointsUsed
-        Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
-    end
 
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, item.awarded.pointsSnapshot)
 
     UnveilNextItem()
 
-    return nil, pointsUsed
+    return nil, responseUsed, pointsUsed, pointUsageReason
 end
 
 ---Revoke awarded item from a candidate.
@@ -478,7 +501,7 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
         --       that's to too much of a hassle, just have the host do it manually if needed.
         -- Fake DB op
         local candidate = itemResponse.candidate
-        pointsReturned = math.ceil(item.awarded.pointsSnapshot[candidateName] / 2)
+        pointsReturned = item.awarded.usedPoints or 0
         candidate.currentPoints = candidate.currentPoints + pointsReturned
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
     end

@@ -582,6 +582,28 @@ function GetTalentInfo(tree, talent) end
 ---@return number timeMod The scaling factor used for displaying time left.
 function UnitAura(unit, index, filter) end
 
+AuraUtil = {}
+
+---@param name string
+---@param unit string
+---@param filter string|nil What auras to iterate (HELPFUL, HARMFUL), defaults to HELPFUL.
+---@return string? name The localized name of the aura, otherwise nil if there is no aura for the index.
+---@return integer icon FileID - The icon texture.
+---@return integer count The amount of stacks, otherwise 0.
+---@return string|nil dispelType The locale-independent magic type of the aura: Curse, Disease, Magic, Poison, otherwise nil.
+---@return number duration The full duration of the aura in seconds.
+---@return number expirationTime Time the aura expires compared to GetTime(), e.g. to get the remaining duration: expirationtime - GetTime()
+---@return string source The unit that applied the aura.
+---@return boolean isStealable If the aura may be stolen.
+---@return boolean nameplateShowPersonal If the aura should be shown on the player/pet/vehicle nameplate.
+---@return integer spellId The spell ID for e.g. GetSpellInfo()
+---@return boolean canApplyAura If the player can apply the aura.
+---@return boolean isBossDebuff If the aura was cast by a boss.
+---@return boolean castByPlayer If the aura was applied by a player.
+---@return boolean nameplateShowAll If the aura should be shown on nameplates.
+---@return number timeMod The scaling factor used for displaying time left.
+function AuraUtil.FindAuraByName(name, unit, filter) end
+
 --- name, _, count, _, _, _, _, _, _, spellId
 function UnitBuff(unit, i)
     return "name", "_", 1, "_", "_", "_", "_", "_", "_", 123;
@@ -1047,3 +1069,8 @@ Enum.ItemArmorSubclass = {
 }
 
 ITEM_CLASSES_ALLOWED = "Classes: %s"
+
+---Plays the specified audio file once. Unlike PlayMusic, you cannot stop the playback.
+---@param path string
+---@param channel string Either "Master" (this will play the sound also with disabled sounds like before 4.0.1), "SFX", "Ambience", "Music".
+function PlaySoundFile(path, channel) end

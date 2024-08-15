@@ -8,10 +8,12 @@ Env.LogLevel = {
     VERBOSE = 3,
 }
 
+---@alias FlatAndPctVal {flat:integer,pct:integer}
+
 ---@class SettingsTable
 local defaultSettings = {
     firstStart = true,
-    version = 3,
+    version = 5,
     logLevel = 1, ---@type LogLevel
     testMode = false,
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
@@ -31,6 +33,9 @@ local defaultSettings = {
         responseCount = 0,
         responseButtons = {}, ---@type {response:string, color:[number,number,number], pointRoll:boolean, isNeed:boolean}[]
         pointsMaxRange = 50,
+        pointsMinForRoll = 30,
+        pointsRemoveIfCompetition = { flat = 0, pct = 50 }, ---@type FlatAndPctVal
+        pointsRemoveIfSoloRoll = { flat = 0, pct = 0 }, ---@type FlatAndPctVal
     },
 }
 

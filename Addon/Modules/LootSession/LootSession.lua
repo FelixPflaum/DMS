@@ -98,6 +98,7 @@ end
 ---@field displayString string
 ---@field color [number, number, number]
 ---@field isPointsRoll boolean|nil
+---@field isNeedRoll boolean|nil
 ---@field noButton boolean|nil
 
 local RESPONSE_ID_AUTOPASS = 1
@@ -181,6 +182,7 @@ function Env.Session.CreateLootResponses()
             displayString = buttons[i].response,
             color = buttons[i].color,
             isPointsRoll = buttons[i].pointRoll,
+            isNeedRoll = buttons[i].isNeed,
         }
         count = count + 1
     end
@@ -237,7 +239,7 @@ local function CreateTestCandidateEntryGenerator()
             leftGroup = false,
             isResponding = true,
             lastMessage = time(),
-            currentPoints = math.random(300),
+            currentPoints = math.random(111),
             isFake = true,
         }
         return candidate

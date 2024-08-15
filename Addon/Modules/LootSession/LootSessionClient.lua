@@ -142,6 +142,10 @@ Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender
         return
     end
 
+    if Client.isRunning then
+        EndSession()
+    end
+
     InitClient(sender, guid, responses)
 end)
 

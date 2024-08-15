@@ -8,7 +8,8 @@ local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
 local function CreateOptionTable()
-    local maxResponseButtons = 8
+    local MAX_RESPONSE_BUTTONS = 8
+    local ORDER_LAST_RESPONSE_BUTTON = 100
 
     local optionTable = {
         type = "group",
@@ -68,17 +69,6 @@ local function CreateOptionTable()
                         max = 300,
                         step = 1,
                     },
-                    maxRangeForPointRoll = {
-                        order = 2,
-                        name = L["Max sanity roll range"],
-                        desc = L
-                        ["Which range to consider for sanity behind the highest sanity value when ordering results with roll values."],
-                        type = "range",
-                        width = "full",
-                        min = 1,
-                        max = 100,
-                        step = 1,
-                    },
                     headerResponses = {
                         order = 10,
                         type = "header",
@@ -96,8 +86,116 @@ local function CreateOptionTable()
                         type = "range",
                         width = "full",
                         min = 0,
-                        max = maxResponseButtons,
+                        max = MAX_RESPONSE_BUTTONS,
                         step = 1,
+                    },
+                    pointsHeader = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 1,
+                        type = "header",
+                        name = L["Sanity Settings"]
+                    },
+                    pointsDesc = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 2,
+                        type = "description",
+                        name = L["Configure settings for how sanity is handled and used."]
+                    },
+                    pointsMaxRange = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 3,
+                        name = L["Max sanity roll range"],
+                        desc = L
+                            ["Which range to consider for sanity behind the highest sanity value when ordering results with roll values. 100 = disabled"],
+                        type = "range",
+                        width = "full",
+                        min = 1,
+                        max = 100,
+                        step = 1,
+                    },
+                    pointsMinForRoll = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 4,
+                        name = L["Min sanity for roll"],
+                        desc = L
+                            ["How much sanity is needed to use a sanity button and for a sanity roll to count as a sanity roll."],
+                        type = "range",
+                        width = "full",
+                        min = 1,
+                        max = 100,
+                        step = 1,
+                    },
+                    descSanityRemoveCompetetion = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 5,
+                        type = "description",
+                        name = L
+                            ["How much sanity to remove if a sanity roll is won with competition, i.e. another sanity or need roll exists."]
+                    },
+                    pointsRemoveIfCompetitionFlat = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 6,
+                        name = L["Flat Value"],
+                        desc = L["Flat value to remove."],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 100,
+                        step = 1,
+                        get = function(info)
+                            return Env.settings.lootSession.pointsRemoveIfCompetition.flat
+                        end,
+                        set = function(info, val)
+                            Env.settings.lootSession.pointsRemoveIfCompetition.flat = val
+                        end,
+                    },
+                    pointsRemoveIfCompetitionPct = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 7,
+                        name = L["Percent"],
+                        desc = L["Percentage to remove."],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 100,
+                        step = 1,
+                        get = function(info)
+                            return Env.settings.lootSession.pointsRemoveIfCompetition.pct
+                        end,
+                        set = function(info, val)
+                            Env.settings.lootSession.pointsRemoveIfCompetition.pct = val
+                        end,
+                    },
+                    descSanityRemoveUncontested = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 8,
+                        type = "description",
+                        name = L
+                            ["How much sanity to remove if a sanity roll is won with competition, i.e. another sanity or need roll exists."]
+                    },
+                    pointsRemoveUncontestedFlat = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 9,
+                        name = L["Flat Value"],
+                        desc = L["Flat value to remove."],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 100,
+                        step = 1,
+                        get = function(info)
+                            return Env.settings.lootSession.pointsRemoveIfSoloRoll.flat
+                        end,
+                        set = function(info, val)
+                            Env.settings.lootSession.pointsRemoveIfSoloRoll.flat = val
+                        end,
+                    },
+                    pointsRemoveUncontestedPct = {
+                        order = ORDER_LAST_RESPONSE_BUTTON + 10,
+                        name = L["Percent"],
+                        desc = L["Percentage to remove."],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 100,
+                        step = 1,
+                        get = function(info)
+                            return Env.settings.lootSession.pointsRemoveIfSoloRoll.pct
+                        end,
+                        set = function(info, val)
+                            Env.settings.lootSession.pointsRemoveIfSoloRoll.pct = val
+                        end,
                     },
                 }
             },
@@ -127,10 +225,9 @@ local function CreateOptionTable()
     }
 
     local responseArgs = optionTable.args.hostGroup.args
-    local orderLast = 100
-    local perRow = 5
+    local perRow = 6
 
-    for i = 1, maxResponseButtons do
+    for i = 1, MAX_RESPONSE_BUTTONS do
         if not Env.settings.lootSession.responseButtons[i] then
             Env.settings.lootSession.responseButtons[i] = {
                 response = "Button" .. i,
@@ -139,7 +236,7 @@ local function CreateOptionTable()
         end
 
         responseArgs["button" .. i] = {
-            order = orderLast - i * perRow + 1,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 1,
             name = L["Button %d"]:format(i),
             desc = L["Set the response for button %d."]:format(i),
             type = "input",
@@ -152,7 +249,7 @@ local function CreateOptionTable()
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["color" .. i] = {
-            order = orderLast - i * perRow + 2,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 2,
             name = "", -- L["Color"],
             desc = L["Color used for response."],
             width = 0.25,
@@ -162,7 +259,7 @@ local function CreateOptionTable()
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["isNeed" .. i] = {
-            order = orderLast - i * perRow + 3,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 3,
             type = "toggle",
             name = L["Need Roll"],
             desc = L["Whether this response counts as a need roll for sanity point deduction."],
@@ -174,7 +271,7 @@ local function CreateOptionTable()
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["sanity" .. i] = {
-            order = orderLast - i * perRow + 4,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 4,
             type = "toggle",
             name = L["Sanity Roll"],
             desc = L["Whether this response uses sanity."],
@@ -191,7 +288,7 @@ local function CreateOptionTable()
             hidden = function() return Env.settings.lootSession.responseCount < i end,
         }
         responseArgs["up" .. i] = {
-            order = orderLast - i * perRow + 5,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 5,
             name = "",
             type = "execute",
             width = 0.1,
@@ -209,7 +306,7 @@ local function CreateOptionTable()
             end,
         }
         responseArgs["down" .. i] = {
-            order = orderLast - i * perRow + 6,
+            order = ORDER_LAST_RESPONSE_BUTTON - i * perRow + 6,
             name = "",
             type = "execute",
             width = 0.1,
