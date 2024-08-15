@@ -710,6 +710,10 @@ function Host:Start(target)
         return nil, L["A host session is already running."]
     end
 
+    if Env.SessionClient.isRunning then
+        return nil, L["A client session is already running."]
+    end
+
     if target == "group" then
         if not IsInRaid() and not IsInGroup() then
             return nil, L["Host target group does not work outside of a group!"]
