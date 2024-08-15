@@ -321,7 +321,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     LogDebug("Item added", newItem.guid)
     Client.OnItemUpdate:Trigger(newItem, false)
 
-    local itemEquipLoc = select(9, C_Item.GetItemInfo(newItem.itemId))
+    local itemEquipLoc = select(4, C_Item.GetItemInfoInstant(newItem.itemId))
     local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
     Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1, current2 })
     LogDebug("Gear sent", newItem.guid, current1, current2)
