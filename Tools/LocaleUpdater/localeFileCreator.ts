@@ -11,10 +11,11 @@ const ignoredDirs: { [dirName: string]: boolean } = {
 
 function scanForLtags(filePath: string, list: { [str: string]: boolean }) {
     const content = readFileSync(filePath, "utf-8");
-    const matches = content.match(/L\["(.*?)"\]/g);
+    const matches = content.match(/L\s*\[".*?"\]/g);
     if (matches) {
         for (const match of matches) {
-            let str = match.substring(3, match.length - 2);
+            let str = match.replace(/^L\s*\["/, "");
+            str = str.substring(0, str.length - 2);
             list[str] = true;
         }
     }
