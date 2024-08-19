@@ -498,15 +498,18 @@ do
     ---@class (exact) Packet_HMSG_ITEM_AWARD_UPDATE
     ---@field itemGuid string
     ---@field candidateName? string
+    ---@field responseId? integer
     ---@field pointSnapshot? table<string,integer>
 
     ---@param itemGuid string
     ---@param candidateName? string
+    ---@param responseId? integer
     ---@param pointSnapshot? table<string,integer>
-    function Sender.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, pointSnapshot)
+    function Sender.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseId, pointSnapshot)
         local packet = { ---@type Packet_HMSG_ITEM_AWARD_UPDATE
             itemGuid = itemGuid,
             candidateName = candidateName,
+            responseId = responseId,
             pointSnapshot = pointSnapshot,
         }
         SendToClients(OPCODES.HMSG_ITEM_AWARD_UPDATE, packet)

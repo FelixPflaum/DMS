@@ -31,6 +31,7 @@ end
 
 ---@class (exact) SessionClient_ItemAwardData
 ---@field candidateName string The name of the player the item was awarded to.
+---@field usedResponse LootResponse
 ---@field pointsSnapshot? table<string,integer> Snapshot of point count the award was based on.
 
 ---@class (exact) SessionClient_Item
@@ -407,9 +408,15 @@ Comm.Events.HMSG_ITEM_AWARD_UPDATE:RegisterCallback(function(data, sender)
         return
     end
     if data.candidateName then
+        local response = Client.responses:GetResponse(data.responseId)
+        if not response then
+            LogDebug("got HMSG_ITEM_AWARD_UPDATE for unknown response", data.responseId)
+            return
+        end
         item.awarded = {
             candidateName = data.candidateName,
             pointsSnapshot = data.pointSnapshot,
+            usedResponse = response,
         }
     else
         item.awarded = nil

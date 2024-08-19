@@ -501,19 +501,26 @@ do
             local awardCountThisPlayer = 0
             local awardCountAll = 0
             local awardedThis = false
+            local awardResponse = nil ---@type LootResponse|nil
             Client:DoForEachRelatedItem(item, true, function(relatedItem, isThis)
                 if relatedItem.awarded then
                     awardCountAll = awardCountAll + 1
                     if relatedItem.awarded.candidateName == candidateName then
                         awardCountThisPlayer = awardCountThisPlayer + 1
-                        if isThis then awardedThis = true end
+                        awardResponse = awardResponse or relatedItem.awarded.usedResponse
+                        if isThis then
+                            awardedThis = true
+                            awardResponse = relatedItem.awarded.usedResponse -- Prioritize reason for this item. TODO: This sucks
+                        end
                     end
                 end
             end)
             -- Item was awarded to this player at least one time.
             if awardCountThisPlayer > 0 then
                 local respString = "???"
-                if itemResponse.response then
+                if awardResponse then
+                    respString = ColorStringFromArray(awardResponse.color, awardResponse.displayString)
+                elseif itemResponse.response then
                     respString = ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString)
                 end
                 local txt ---@type string

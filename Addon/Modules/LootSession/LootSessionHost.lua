@@ -459,7 +459,7 @@ function Host:AwardItem(itemGuid, candidateName)
         pointsSnapshot = responseUsed.isPointsRoll and MakePointsSnapshot(item) or nil
     }
 
-    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, item.awarded.pointsSnapshot)
+    Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
 
     UnveilNextItem()
 
