@@ -426,11 +426,13 @@ function Host:AwardItem(itemGuid, candidateName)
     local responseUsed = chosenResponse
     local pointsUsed ---@type integer?
     local pointUsageReason ---@type string?
+    local pointSnapshop ---@type table<string, integer>?
 
     if chosenResponse.isPointsRoll then
         local candidate = itemResponse.candidate
         local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints, chosenResponse, responses.responses)
         if doesCount then
+            pointSnapshop = MakePointsSnapshot(item)
             local pointsToRemove, reason = Env.PointLogic.ShouldDeductPoints(item, itemResponse, candidate.currentPoints)
             if pointsToRemove then
                 if reason == "contested" then
@@ -456,7 +458,7 @@ function Host:AwardItem(itemGuid, candidateName)
         usedResponse = responseUsed,
         usedPoints = pointsUsed,
         awardTime = time(),
-        pointsSnapshot = responseUsed.isPointsRoll and MakePointsSnapshot(item) or nil
+        pointsSnapshot = pointSnapshop,
     }
 
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
