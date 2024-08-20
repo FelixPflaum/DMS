@@ -17,6 +17,7 @@ local OPCODES = {
     HMSG_ITEM_UNVEIL = 6,
     HMSG_ITEM_ROLL_END = 7,
     HMSG_ITEM_AWARD_UPDATE = 8,
+    HMSG_KEEPALIVE = 9,
 
     MAX_HMSG = 99,
 
@@ -43,6 +44,7 @@ local messageFilter = {} ---@type table<Opcode,fun(sender:string, opcode:Opcode,
 local batchTimers = Env:NewUniqueTimers()
 local hostCommTarget = "group" ---@type CommTarget
 local clientHostName = ""
+local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
 
 Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
     if not messageHandler[opcode] then
@@ -51,6 +53,14 @@ Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
     end
     Env:PrintDebug("Comm received:", LookupOpcodeName(opcode))
     Env:PrintVerbose(data)
+
+    local now = GetTime()
+    lastReceived[sender] = now
+    for k, v in pairs(lastReceived) do
+        if now - v > 600 then
+            lastReceived[k] = nil
+        end
+    end
 
     -- Stop all but session start opcodes here if session is no from sending host
     if opcode ~= OPCODES.HMSG_SESSION_START and opcode < OPCODES.MAX_HMSG and sender ~= clientHostName then
@@ -93,17 +103,35 @@ function Comm:ClientSetAllowedHost(name)
     clientHostName = name
 end
 
+---Get how many seconds ago the sender sent us the last message.
+---@param senderName string
+---@return number? secondsAgo How many seconds ago the last message was received, nil if no message received.
+function Comm.GetLastReceivedAgo(senderName)
+    if lastReceived[senderName] then
+        return GetTime() - lastReceived[senderName]
+    end
+end
+
 --------------------------------------------------------------------------
 --- Host To Client
 --------------------------------------------------------------------------
+
+local lastHostBroadcastSent = 0 -- GetTime()
 
 local function LogDebugHtC(...)
     Env:PrintDebug("Comm Host:", ...)
 end
 
+---Get GetTime() stamp of the last broadcast sent to clients.
+function Comm.GetLastHostBroadcastSent()
+    return lastHostBroadcastSent
+end
+
 ---@param opcode Opcode
 ---@param data any
 local function SendToClients(opcode, data)
+    lastHostBroadcastSent = GetTime()
+
     if hostCommTarget == "self" then
         LogDebugHtC("Sending whisper", LookupOpcodeName(opcode))
         Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, data)
@@ -524,6 +552,23 @@ do
     messageHandler[OPCODES.HMSG_ITEM_AWARD_UPDATE] = function(data, sender)
         ---@cast data Packet_HMSG_ITEM_AWARD_UPDATE
         Events.HMSG_ITEM_AWARD_UPDATE:Trigger(data, sender)
+    end
+end
+
+-- HMSG_KEEPALIVE
+do
+    function Sender.HMSG_KEEPALIVE()
+        SendToClients(OPCODES.HMSG_KEEPALIVE)
+    end
+
+    ---@class CommEvent_HMSG_KEEPALIVE
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_KEEPALIVE, cb:fun(sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_KEEPALIVE, sender:string)
+    Events.HMSG_KEEPALIVE = Env:NewEventEmitter()
+
+    messageFilter[OPCODES.HMSG_KEEPALIVE] = FilterReceivedOnClient
+    messageHandler[OPCODES.HMSG_KEEPALIVE] = function(data, sender)
+        Events.HMSG_KEEPALIVE:Trigger(sender)
     end
 end
 

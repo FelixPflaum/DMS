@@ -140,6 +140,11 @@ function Host:TimerUpdate()
         Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 
+    local lastBoradcastTime = Comm.GetLastHostBroadcastSent()
+    if nowgt - lastBoradcastTime >= 10 then
+        Comm.Send.HMSG_KEEPALIVE()
+    end
+
     -- Restart timer
     timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", self)
 end

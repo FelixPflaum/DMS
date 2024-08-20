@@ -134,8 +134,13 @@ end
 
 Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
     if Client.isRunning and Client.hostName ~= sender then
-        LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
-        return
+        local lastMsgAgeCurrentHost = Comm.GetLastReceivedAgo(Client.hostName)
+        if not lastMsgAgeCurrentHost or lastMsgAgeCurrentHost > 30 then
+            Env:PrintWarn(L["New session start from %s and current host %s stopped sending data, starting new session."]:format(sender, Client.hostName))
+        else
+            LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
+            return
+        end
     end
 
     if sender ~= UnitName("player") and not Env.Session.CanUnitStartSession(sender) then
