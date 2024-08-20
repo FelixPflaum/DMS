@@ -18,6 +18,11 @@ function UniqueRoller:GetRoll()
     return table.remove(self._rolls, math.random(count))
 end
 
+---Get the remaining roll count.
+function UniqueRoller:Remaining()
+    return #self._rolls
+end
+
 ---Get table with numbers from 1 to 100.
 ---@param max integer
 ---@return integer[]

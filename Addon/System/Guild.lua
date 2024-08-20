@@ -72,11 +72,13 @@ function Env:GetRandomGuildNameGenerator()
     local picker = Env:NewUniqueRoller(numMembers)
     local backupPicker = Env:NewUniqueRoller(#catNameList)
     return function()
-        local pick = picker:GetRoll()
-        local name, _, _, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(pick)
-        if name then
-            name = Ambiguate(name, "short")
-            return name, classFile, GetClassIdFromName(classFile)
+        if picker:Remaining() > 0 then
+            local pick = picker:GetRoll()
+            local name, _, _, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(pick)
+            if name then
+                name = Ambiguate(name, "short")
+                return name, classFile, GetClassIdFromName(classFile)
+            end
         end
         local classPick = classNameAndId[math.random(#classNameAndId)]
         return catNameList[backupPicker:GetRoll()], classPick[1], classPick[2]
