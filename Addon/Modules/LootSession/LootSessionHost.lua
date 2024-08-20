@@ -489,7 +489,8 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
         -- Host should manually go back the chain and revert awards if needed.
         for _, otherItem in pairs(items) do
             if otherItem.awarded and otherItem.awarded.awardTime > item.awarded.awardTime
-                and otherItem.awarded.candidateName == candidateName then
+                and otherItem.awarded.candidateName == candidateName
+                and otherItem.awarded.usedResponse.isPointsRoll then
                 local itemLink = select(2, C_Item.GetItemInfo(otherItem.itemId))
                 return L
                     ["Candidate was awarded another item (%s) using sanity after this! Manually revoke awards in order if needed."]
