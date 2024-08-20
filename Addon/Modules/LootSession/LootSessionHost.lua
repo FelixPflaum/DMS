@@ -76,6 +76,8 @@ local items = {} ---@type table<string, SessionHost_Item>
 local itemCount = 0
 local candidates = {} ---@type table<string, SessionHost_Candidate>
 local responses ---@type LootResponses
+local pointsMinForRoll = 0
+local pointsMaxRange = 0
 
 ---@param target CommTarget
 local function InitHost(target)
@@ -86,6 +88,8 @@ local function InitHost(target)
     Host.isRunning = true
     itemCount = 0
     items = {}
+    pointsMinForRoll = Env.settings.lootSession.pointsMinForRoll
+    pointsMaxRange = Env.settings.lootSession.pointsMaxRange
 
     Env:RegisterEvent("GROUP_ROSTER_UPDATE", Host)
     Env:RegisterEvent("GROUP_LEFT", Host)
@@ -94,7 +98,7 @@ local function InitHost(target)
     LogDebug("Session GUID", Host.guid)
 
     Comm:HostSetCurrentTarget(targetChannelType)
-    Comm.Send.HMSG_SESSION_START(Host.guid, responses.responses)
+    Comm.Send.HMSG_SESSION_START(Host.guid, responses.responses, pointsMinForRoll, pointsMaxRange)
 
     Host:UpdateCandidateList()
     timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", Host)
@@ -435,7 +439,7 @@ function Host:AwardItem(itemGuid, candidateName)
 
     if chosenResponse.isPointsRoll then
         local candidate = itemResponse.candidate
-        local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints, chosenResponse, responses.responses)
+        local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints, chosenResponse, responses.responses, pointsMinForRoll)
         if doesCount then
             pointSnapshop = MakePointsSnapshot(item)
             local pointsToRemove, reason = Env.PointLogic.ShouldDeductPoints(item, itemResponse, candidate.currentPoints)

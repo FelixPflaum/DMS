@@ -545,7 +545,7 @@ do
             -- Set different display if point roll is treated as another roll.
             if item and itemResponse.response.isPointsRoll then
                 local points = data[realrow][TABLE_INDECES.SANITY] ---@type integer
-                local doesCount, respReplace = DoesRollCountAsPointRoll(points, itemResponse.response, Client.responses.responses)
+                local doesCount, respReplace = DoesRollCountAsPointRoll(points, itemResponse.response, Client.responses.responses, Client.pointsMinForRoll)
                 if not doesCount then
                     cellFrame.text:SetText(L["%s (Counts as %s)"]:format(
                         ColorStringFromArray(itemResponse.response.color, itemResponse.response.displayString),
@@ -680,13 +680,13 @@ do
 
         if resA and resA.isPointsRoll then
             local aPoints = st.data[rowa][TABLE_INDECES.SANITY] ---@type integer
-            local _, respToUse = DoesRollCountAsPointRoll(aPoints, resA, Client.responses.responses)
+            local _, respToUse = DoesRollCountAsPointRoll(aPoints, resA, Client.responses.responses, Client.pointsMinForRoll)
             resA = respToUse
         end
 
         if resB and resB.isPointsRoll then
             local bPoints = st.data[rowb][TABLE_INDECES.SANITY] ---@type integer
-            local _, respToUse = DoesRollCountAsPointRoll(bPoints, resB, Client.responses.responses)
+            local _, respToUse = DoesRollCountAsPointRoll(bPoints, resB, Client.responses.responses, Client.pointsMinForRoll)
             resB = respToUse
         end
 

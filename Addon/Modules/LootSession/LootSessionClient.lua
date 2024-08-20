@@ -51,6 +51,8 @@ end
 ---@field guid string
 ---@field hostName string The name of the hosting player.
 ---@field responses LootResponses|nil
+---@field pointsMinForRoll integer
+---@field pointsMaxRange integer
 ---@field candidates table<string, SessionClient_Candidate>
 ---@field isRunning boolean
 ---@field items table<string, SessionClient_Item>
@@ -101,12 +103,14 @@ end
 ---@param hostName string
 ---@param guid string
 ---@param responses LootResponses
-function InitClient(hostName, guid, responses)
+function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange)
     Client.guid = guid
     Client.hostName = hostName
     Client.responses = responses
     Client.candidates = {}
     Client.isRunning = true
+    Client.pointsMinForRoll = pointsMinForRoll
+    Client.pointsMaxRange = pointsMaxRange
     Client.items = {}
     Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
@@ -132,7 +136,7 @@ function Client:GROUP_LEFT()
     EndSession()
 end
 
-Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender)
+Comm.Events.HMSG_SESSION_START:RegisterCallback(function(data, responses, sender)
     if Client.isRunning and Client.hostName ~= sender then
         local lastMsgAgeCurrentHost = Comm.GetLastReceivedAgo(Client.hostName)
         if not lastMsgAgeCurrentHost or lastMsgAgeCurrentHost > 30 then
@@ -152,7 +156,7 @@ Comm.Events.HMSG_SESSION_START:RegisterCallback(function(guid, responses, sender
         EndSession()
     end
 
-    InitClient(sender, guid, responses)
+    InitClient(sender, data.guid, responses, data.pointsMinForRoll, data.pointsMaxRange)
 end)
 
 Comm.Events.HMSG_SESSION_END:RegisterCallback(function(sender)

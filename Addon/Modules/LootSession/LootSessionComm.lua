@@ -173,24 +173,30 @@ end
 do
     ---@class (exact) Packet_HMSG_SESSION_START
     ---@field guid string
-    ---@field responses LootResponse[]
     ---@field commVersion integer
+    ---@field responses LootResponse[]
+    ---@field pointsMinForRoll integer
+    ---@field pointsMaxRange integer
 
     ---@param guid string
     ---@param responses LootResponse[]
-    function Sender.HMSG_SESSION_START(guid, responses)
+    ---@param pointsMinRoll integer
+    ---@param pointsMaxRange integer
+    function Sender.HMSG_SESSION_START(guid, responses, pointsMinRoll, pointsMaxRange)
         local p = { ---@type Packet_HMSG_SESSION_START
             guid = guid,
-            responses = responses,
             commVersion = COMM_VERSION,
+            responses = responses,
+            pointsMinForRoll = pointsMinRoll,
+            pointsMaxRange = pointsMaxRange,
         }
         SendToClients(OPCODES.HMSG_SESSION_START, p)
     end
 
     ---This event will always fire regardless of who sends it!
     ---@class CommEvent_HMSG_SESSION_START
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_SESSION_START, cb:fun(guid:string, responses:LootResponses, sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_SESSION_START, guid:string, responses:LootResponses, sender:string)
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_SESSION_START, cb:fun(data:Packet_HMSG_SESSION_START, responses:LootResponses, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_SESSION_START, data:Packet_HMSG_SESSION_START, responses:LootResponses, sender:string)
     Events.HMSG_SESSION_START = Env:NewEventEmitter()
 
     messageHandler[OPCODES.HMSG_SESSION_START] = function(data, sender)
@@ -205,7 +211,7 @@ do
             return
         end
         local rebuiltResponses = Env.Session.CreateLootClientResponsesFromComm(data.responses)
-        Events.HMSG_SESSION_START:Trigger(data.guid, rebuiltResponses, sender)
+        Events.HMSG_SESSION_START:Trigger(data, rebuiltResponses, sender)
     end
 end
 

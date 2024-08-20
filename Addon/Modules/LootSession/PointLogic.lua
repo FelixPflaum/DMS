@@ -8,14 +8,14 @@ Env.PointLogic = PointLogic
 ---@param pointCount integer
 ---@param response LootResponse
 ---@param responseList LootResponse[]
+---@param minPoints integer The minimum point value to use point rolls.
 ---@return boolean doesCount True if roll can be treated as a point roll.
 ---@return LootResponse countsAs Response the roll should be treated as. Can be input resoponse if not point roll or valid points roll.
 ---@return "sanityToLow"|nil reason Reason for why it doesn't count as a point roll.
-function PointLogic.DoesRollCountAsPointRoll(pointCount, response, responseList)
+function PointLogic.DoesRollCountAsPointRoll(pointCount, response, responseList, minPoints)
     if not response.isPointsRoll then
         return false, response, nil
     end
-    local minPoints = Env.settings.lootSession.pointsMinForRoll
     if pointCount < minPoints then
         -- Just use the next highest response.
         local replacement = responseList[response.id - 1]

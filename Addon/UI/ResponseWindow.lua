@@ -89,14 +89,14 @@ local ITEM_ROLL_FRAME_BUTTON_MARGIN = 5
 ---@param itemGuid string
 ---@param responseId integer
 ---@param isPointRoll boolean
----@param haveSanity boolean
-local function RollFrameButtonSetResponse(self, reponseText, itemGuid, responseId, isPointRoll, haveSanity)
+---@param canUsePoints boolean
+local function RollFrameButtonSetResponse(self, reponseText, itemGuid, responseId, isPointRoll, canUsePoints)
     self.itemGuid = itemGuid
     self.responseId = responseId
     self:SetText(reponseText)
     self:SetWidth(self:GetTextWidth() + 18)
     local texture = isPointRoll and GetImagePath("btn_sanity.png") or [[Interface\Buttons\UI-Panel-Button-Up]]
-    if isPointRoll and not haveSanity then
+    if isPointRoll and not canUsePoints then
         self:Disable()
     else
         self:Enable()
@@ -233,8 +233,8 @@ local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 ---Show item at given position.
 ---@param posIndex integer
 ---@param item SessionClient_Item|nil Set nil to hide frame.
----@param haveSanity boolean
-local function SetitemAtPosition(posIndex, item, haveSanity)
+---@param canUsePoints boolean
+local function SetitemAtPosition(posIndex, item, canUsePoints)
     local rif = GetOrCreateRollItemFrame(posIndex)
     if not item then
         rif:Hide()
@@ -254,7 +254,7 @@ local function SetitemAtPosition(posIndex, item, haveSanity)
     for _, response in ipairs(responsesOrdered) do
         if not response.noButton then
             local button = rif:GetResponseButton(nextBtnIndex)
-            button:SetResponse(response.displayString, item.guid, response.id, response.isPointsRoll, haveSanity)
+            button:SetResponse(response.displayString, item.guid, response.id, response.isPointsRoll, canUsePoints)
             nextBtnIndex = nextBtnIndex + 1
             buttonWidth = buttonWidth + button:GetWidth() + ITEM_ROLL_FRAME_BUTTON_MARGIN
             button:Show()
@@ -299,11 +299,11 @@ Client.OnItemUpdate:RegisterCallback(function()
     frame.TopRightText:SetText(L["Items to roll: %d"]:format(#itemsOrdered))
 
     local selfCandidate = Client.candidates[UnitName("player")]
-    local haveSanity = selfCandidate and selfCandidate.currentPoints > 0 or false
+    local canUsePoints = (selfCandidate.currentPoints or 0) >= Client.pointsMinForRoll
 
     for i = 1, MAX_ITEMS_SHOWN do
         local itemToShow = itemsOrdered[i]
-        SetitemAtPosition(i, itemToShow, haveSanity)
+        SetitemAtPosition(i, itemToShow, canUsePoints)
         if itemToShow then
             shown = shown + 1
         end
@@ -326,7 +326,9 @@ end)
 Client.OnCandidateUpdate:RegisterCallback(function()
     local selfCandidate = Client.candidates[UnitName("player")]
     local currentPoints = selfCandidate and selfCandidate.currentPoints or 0
-    frame.TopLeftText:SetText(L["Sanity: %d"]:format(currentPoints))
+    local canUsePoints = selfCandidate.currentPoints >= Client.pointsMinForRoll
+    local color = canUsePoints and "88FF88" or "FF8888"
+    frame.TopLeftText:SetText(L["Sanity: |cFF%s%d|r"]:format(color, currentPoints))
 end)
 
 Client.OnEnd:RegisterCallback(function()
