@@ -108,8 +108,6 @@ local function InitHost(target)
         Env.Session.FillFakeCandidateList(candidates, 20)
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
     end
-
-    -- TODO: Update responses if player db changes (points)
 end
 
 function Host:Destroy()
@@ -213,13 +211,14 @@ function Host:UpdateCandidateList()
 
     if prefix == "" or prefix == "party" then
         local myName = UnitName("player")
+        local dbEntry = Env.Database:GetPlayer(myName)
         newList[myName] = {
             name = myName,
             classId = select(3, UnitClass("player")),
             leftGroup = false,
             isResponding = false,
             lastMessage = 0,
-            currentPoints = 999, -- TODO: get from DB
+            currentPoints = dbEntry and dbEntry.points or 0,
         }
     end
 
@@ -228,13 +227,14 @@ function Host:UpdateCandidateList()
         local unit = prefix .. i
         local name = UnitName(unit)
         if name then
+            local dbEntry = Env.Database:GetPlayer(name)
             newList[name] = {
                 name = name,
                 classId = select(3, UnitClass(unit)),
                 leftGroup = false,
                 isResponding = false,
                 lastMessage = 0,
-                currentPoints = 999, -- TODO: get from DB
+                currentPoints = dbEntry and dbEntry.points or 0,
             }
         end
     end
@@ -449,11 +449,16 @@ function Host:AwardItem(itemGuid, candidateName)
                 elseif reason == "uncontested" then
                     pointUsageReason = L["Uncontested item won with sanity."]
                 end
-
-                -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
-                --Fake DB op
                 pointsUsed = pointsToRemove
                 candidate.currentPoints = candidate.currentPoints - pointsUsed
+                if not candidate.isFake and pointsUsed > 0 then
+                    if Env.Database:GetPlayer(candidate.name) then
+                        Env.Database:UpdatePlayer(candidate.name, candidate.currentPoints)
+                    else
+                        Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints)
+                    end
+                    Env.Database:AddPlayerPointHistory(candidate.name, -pointsUsed, candidate.currentPoints, "ITEM_AWARD", item.guid)
+                end
                 Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
             end
         else
@@ -470,6 +475,13 @@ function Host:AwardItem(itemGuid, candidateName)
         pointsSnapshot = pointSnapshop,
     }
 
+    if not itemResponse.candidate.isFake then
+        if Env.Database:GetLootHistoryEntry(item.guid) then
+            Env.Database:UpdateLootHistoryEntry(item.guid, candidateName, responseUsed, false)
+        else
+            Env.Database:AddLootHistoryEntry(item.guid, item.endTime, candidateName, item.itemId, responseUsed, false)
+        end
+    end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
 
     UnveilNextItem()
@@ -507,18 +519,26 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
             end
         end
 
-        -- TODO: DB stuff, update point value for player (do not update db for fake candidates)
-        -- TODO: Prevent revocation if another item was awarded to this player using points after this!
-        --       Items after this would need to update their points used in a chain,
-        --       that's to too much of a hassle, just have the host do it manually if needed.
-        -- Fake DB op
         local candidate = itemResponse.candidate
         pointsReturned = item.awarded.usedPoints or 0
         candidate.currentPoints = candidate.currentPoints + pointsReturned
+        if not candidate.isFake and pointsReturned > 0 then
+            if Env.Database:GetPlayer(candidate.name) then
+                Env.Database:UpdatePlayer(candidate.name, candidate.currentPoints)
+            else
+                Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints)
+            end
+            Env.Database:AddPlayerPointHistory(candidate.name, pointsReturned, candidate.currentPoints, "ITEM_AWARD_REVERTED", item.guid)
+        end
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
     end
 
     item.awarded = nil
+    if not itemResponse.candidate.isFake then
+        if Env.Database:GetLootHistoryEntry(item.guid) then
+            Env.Database:UpdateLootHistoryEntry(item.guid, nil, nil, true)
+        end
+    end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid)
 
     return nil, pointsReturned

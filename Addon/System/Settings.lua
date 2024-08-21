@@ -27,6 +27,7 @@ local defaultSettings = {
         SessionWindow = {},
         LootWindow = {},
         ResponseWindow = {},
+        DatabaseWindow = {},
     },
     lootSession = {
         timeout = 90,

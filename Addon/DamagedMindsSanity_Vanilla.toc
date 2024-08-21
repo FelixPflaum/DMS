@@ -54,3 +54,4 @@ UI/SettingsTab.lua
 UI/SessionWindow.lua
 UI/LootWindow.lua
 UI/ResponseWindow.lua
+UI/DatabaseWindow.lua

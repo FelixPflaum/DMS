@@ -1054,18 +1054,18 @@ Enum.ItemWeaponSubclass = {
 
 ---@enum ItemArmorSubclass
 Enum.ItemArmorSubclass = {
-    Generic = 0, -- Miscellaneous  Includes Spellstones, Firestones, Trinkets, Rings and Necks
-    Cloth = 1, -- Cloth
-    Leather = 2, -- Leather
-    Mail = 3, -- Mail
-    Plate = 4, -- Plate
+    Generic = 0,  -- Miscellaneous  Includes Spellstones, Firestones, Trinkets, Rings and Necks
+    Cloth = 1,    -- Cloth
+    Leather = 2,  -- Leather
+    Mail = 3,     -- Mail
+    Plate = 4,    -- Plate
     Cosmetic = 5, -- Cosmetic
-    Shield = 6, -- Shields
-    Libram = 7, -- Librams  Classic
-    Idol = 8, -- Idols  Classic
-    Totem = 9, -- Totems  Classic
-    Sigil = 10, -- Sigils  Classic
-    Relic = 11, -- Relic
+    Shield = 6,   -- Shields
+    Libram = 7,   -- Librams  Classic
+    Idol = 8,     -- Idols  Classic
+    Totem = 9,    -- Totems  Classic
+    Sigil = 10,   -- Sigils  Classic
+    Relic = 11,   -- Relic
 }
 
 ITEM_CLASSES_ALLOWED = "Classes: %s"
@@ -1074,3 +1074,8 @@ ITEM_CLASSES_ALLOWED = "Classes: %s"
 ---@param path string
 ---@param channel string Either "Master" (this will play the sound also with disabled sounds like before 4.0.1), "SFX", "Ambience", "Music".
 function PlaySoundFile(path, channel) end
+
+---@param format string
+---@param time number
+---@return string
+function date(format, time) end
