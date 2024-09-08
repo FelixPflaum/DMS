@@ -452,12 +452,10 @@ function Host:AwardItem(itemGuid, candidateName)
                 pointsUsed = pointsToRemove
                 candidate.currentPoints = candidate.currentPoints - pointsUsed
                 if not candidate.isFake and pointsUsed > 0 then
-                    if Env.Database:GetPlayer(candidate.name) then
-                        Env.Database:UpdatePlayer(candidate.name, candidate.currentPoints)
-                    else
-                        Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints)
+                    if not Env.Database:GetPlayer(candidate.name) then
+                        Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints + pointsUsed)
                     end
-                    Env.Database:AddPlayerPointHistory(candidate.name, -pointsUsed, candidate.currentPoints, "ITEM_AWARD", item.guid)
+                    Env.Database:UpdatePlayerPoints(candidate.name, candidate.currentPoints, "ITEM_AWARD", item.guid)
                 end
                 Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
             end
@@ -523,12 +521,10 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
         pointsReturned = item.awarded.usedPoints or 0
         candidate.currentPoints = candidate.currentPoints + pointsReturned
         if not candidate.isFake and pointsReturned > 0 then
-            if Env.Database:GetPlayer(candidate.name) then
-                Env.Database:UpdatePlayer(candidate.name, candidate.currentPoints)
-            else
-                Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints)
+            if not Env.Database:GetPlayer(candidate.name) then
+                Env.Database:AddPlayer(candidate.name, candidate.classId, candidate.currentPoints - pointsReturned)
             end
-            Env.Database:AddPlayerPointHistory(candidate.name, pointsReturned, candidate.currentPoints, "ITEM_AWARD_REVERTED", item.guid)
+            Env.Database:UpdatePlayerPoints(candidate.name, candidate.currentPoints, "ITEM_AWARD_REVERTED", item.guid)
         end
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
     end

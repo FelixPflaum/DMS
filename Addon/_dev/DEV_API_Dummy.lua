@@ -376,13 +376,32 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetStatusBarTexture fun(self:StatusBar, asset) - Sets the texture of the statusbar.
 ---@field SetValue fun(self:StatusBar, value) - Set the value of the statusbar.
 
+---@class EditBox : WoWFrame
+---@field SetAutoFocus fun(self:EditBox, autofocus:boolean) Sets whether the cursor should automatically focus on the edit box when it is shown. 
+---@field SetFontObject fun(self:EditBox, fo)
+---@field SetTextInsets fun(self:EditBox, left, right, top, bottom)
+---@field SetMaxLetters fun(self:EditBox, maxLetters:integer)
+---@field SetText fun(self:EditBox, text:string)
+---@field GetText fun(self:EditBox):string
+
+ChatFontNormal = {}
+
 ---Creates a Frame object.
 ---@return WoWFrame
 ---@overload fun(frameType:"Frame", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrame
 ---@overload fun(frameType:"Button", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): WoWFrameButton
 ---@overload fun(frameType:"GameTooltip", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): GameTooltip
 ---@overload fun(frameType:"StatusBar", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): StatusBar
+---@overload fun(frameType:"EditBox", frameName: string|nil, parentFrame: any, inheritsFrame: string|nil): EditBox
 function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
+
+---@class UIDropDownMenu : WoWFrame
+---@field Left Texture
+---@field Middle Texture
+---@field Right Texture
+---@field Button WoWFrameButton
+---@field Icon Texture
+---@field Text FontString
 
 --- name, rank, icon, castTime, minRange, maxRange
 function GetSpellInfo(spellId_spellName_spellLink)
@@ -763,7 +782,7 @@ function OptionsListButtonToggle_OnClick() end
 
 function ChatConfigFrame_PlayCheckboxSound() end
 
-function EditBox_ClearFocus() end
+function EditBox_ClearFocus(frame) end
 
 function GameTooltip_Hide() end
 

@@ -5,23 +5,9 @@ local function LogDebug(...)
     Env:PrintDebug("DB:", ...)
 end
 
----Make a shallow copy of a table.
----@generic T : table
----@param inTable T
----@return T
-local function CopyTable(inTable)
-    local outTable = {}
-    ---@diagnostic disable-next-line: no-unknown
-    for k, v in pairs(inTable) do
-        ---@diagnostic disable-next-line: no-unknown
-        outTable[k] = v
-    end
-    return outTable
-end
-
 Env.Database = {}
 
----@alias PointChangeType "ITEM_AWARD"|"ITEM_AWARD_REVERTED"|"RAID"|"PREP"|"CUSTOM"
+---@alias PointChangeType "ITEM_AWARD"|"ITEM_AWARD_REVERTED"|"PLAYER_ADDED"|"CUSTOM"
 
 ---@class (exact) PointHistoryEntry
 ---@field timeStamp integer -- Unix timestamp.
@@ -90,10 +76,10 @@ Env.Database.OnLootHistoryEntryChanged = Env:NewEventEmitter()
 
 ---Get player entry.
 ---@param name string
----@return PlayerEntry|nil playerEntry Will be a copy of the data.
+---@return PlayerEntry|nil playerEntry
 function Env.Database:GetPlayer(name)
     if self.players[name] then
-        return CopyTable(self.players[name])
+        return self.players[name]
     end
 end
 
@@ -110,19 +96,62 @@ function Env.Database:AddPlayer(playerName, classId, points)
         classId = classId,
         points = points,
     }
+    if points ~= 0 then
+        Env.Database:AddPlayerPointHistory(playerName, points, points, "PLAYER_ADDED")
+    end
     LogDebug("Added player to db", playerName, classId, points)
     self.OnPlayerChanged:Trigger(playerName)
 end
 
----Update a player entry.
+---Update a player.
 ---@param playerName string
----@param points integer
-function Env.Database:UpdatePlayer(playerName, points)
+---@param classId integer
+function Env.Database:UpdatePlayerEntry(playerName, classId)
     if not self.players[playerName] then
         error("Tried to update non-existant player entry in database! " .. playerName)
     end
-    self.players[playerName].points = points
-    LogDebug("Updated player", playerName, points)
+    self.players[playerName].classId = classId
+    LogDebug("Updated player", playerName, classId)
+    self.OnPlayerChanged:Trigger(playerName)
+end
+
+---Add a new entry to the player's point history.
+---@param playerName string
+---@param change integer
+---@param newPoints integer
+---@param type PointChangeType
+---@param reason string?
+local function AddPlayerPointHistory(playerName, change, newPoints, type, reason)
+    Env.Database.pointHistory[playerName] = Env.Database.pointHistory[playerName] or {}
+    local newEntry = { ---@type PointHistoryEntry
+        timeStamp = time(),
+        playerName = playerName,
+        change = change,
+        newPoints = newPoints,
+        type = type,
+        reason = reason,
+    }
+    LogDebug("Added player point history entry", playerName, change, newPoints, type, reason)
+    table.insert(Env.Database.pointHistory, newEntry)
+    Env.Database.OnPlayerPointHistoryUpdate:Trigger(playerName)
+end
+
+---Update player points.
+---@param playerName string
+---@param points integer
+---@param type PointChangeType
+---@param reason string?
+function Env.Database:UpdatePlayerPoints(playerName, points, type, reason)
+    if not self.players[playerName] then
+        error("Tried to update non-existant player entry in database! " .. playerName)
+    end
+    local old = self.players[playerName].points
+    if old ~= points then
+        self.players[playerName].points = points
+        local change = points - old
+        AddPlayerPointHistory(playerName, change, points, type, reason)
+    end
+    LogDebug("Updated player points", playerName, old, "->", points)
     self.OnPlayerChanged:Trigger(playerName)
 end
 
@@ -160,9 +189,9 @@ function Env.Database:GetPlayerPointHistory(filter, maxResults)
     ---@type LootHistoryEntry[]
     local filtered = {}
 
-    for _, v in ipairs(self.pointHistory) do
-        if not filter or FilterPointEntry(v, filter) then
-            table.insert(CopyTable(v))
+    for _, entry in ipairs(self.pointHistory) do
+        if not filter or FilterPointEntry(entry, filter) then
+            table.insert(entry)
             toGo = toGo - 1
             if toGo <= 0 then
                 break
@@ -171,27 +200,6 @@ function Env.Database:GetPlayerPointHistory(filter, maxResults)
     end
 
     return filtered
-end
-
----Add a new entry to the player's point history.
----@param playerName string
----@param change integer
----@param newPoints integer
----@param type PointChangeType
----@param reason string?
-function Env.Database:AddPlayerPointHistory(playerName, change, newPoints, type, reason)
-    self.pointHistory[playerName] = self.pointHistory[playerName] or {}
-    local newEntry = { ---@type PointHistoryEntry
-        timeStamp = time(),
-        playerName = playerName,
-        change = change,
-        newPoints = newPoints,
-        type = type,
-        reason = reason,
-    }
-    LogDebug("Added player point history entry", playerName, change, newPoints, type, reason)
-    table.insert(self.pointHistory, newEntry)
-    self.OnPlayerPointHistoryUpdate:Trigger(playerName)
 end
 
 ------------------------------------------------------------------
@@ -236,9 +244,9 @@ function Env.Database:GetLootHistory(filter, maxResults)
     ---@type LootHistoryEntry[]
     local filtered = {}
 
-    for _, v in ipairs(self.lootHistory) do
-        if FilterLootEntry(v, filter) then
-            table.insert(CopyTable(v))
+    for _, entry in ipairs(self.lootHistory) do
+        if FilterLootEntry(entry, filter) then
+            table.insert(entry)
             toGo = toGo - 1
             if toGo <= 0 then
                 break
@@ -254,11 +262,11 @@ end
 ---@return LootHistoryEntry|nil entry Will be a copy of the data.
 function Env.Database:GetLootHistoryEntry(indexOrGUID)
     if type(indexOrGUID) == "number" then
-        return CopyTable(self.lootHistory[indexOrGUID])
+        return self.lootHistory[indexOrGUID]
     end
-    for _, v in ipairs(self.lootHistory) do
-        if v.guid == indexOrGUID then
-            return CopyTable(v)
+    for _, entry in ipairs(self.lootHistory) do
+        if entry.guid == indexOrGUID then
+            return entry
         end
     end
 end

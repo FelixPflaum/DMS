@@ -112,7 +112,7 @@ do
     ---@param onReady ItemInfoRdyFunc
     Env.Item.DoWhenItemInfoReady = function(itemId, onReady)
         if not C_Item.DoesItemExistByID(itemId) then
-            Env:PrintError(L["Invalid item Id given to DoWhenItemInfoReady!"])
+            Env:PrintError(L["Invalid item Id given to DoWhenItemInfoReady! %d"]:format(itemId))
             ---@diagnostic disable-next-line: missing-parameter
             onReady()
             return
