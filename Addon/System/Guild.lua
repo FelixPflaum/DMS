@@ -1,6 +1,32 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
+local classNameAndId = {
+    { "DRUID",       11 },
+    { "HUNTER",      3 },
+    { "MAGE",        8 },
+    { "PALADIN",     2 },
+    { "PRIEST",      5 },
+    { "ROGUE",       4 },
+    { "SHAMAN",      7 },
+    { "WARLOCK",     9 },
+    { "WARRIOR",     1 },
+    { "DEATHKNIGHT", 6 },
+    { "MONK",        10 },
+    { "DEMONHUNTER", 12 },
+    { "EVOKER",      13 },
+}
+
+---@param n string
+local function GetClassIdFromName(n)
+    for _, v in ipairs(classNameAndId) do
+        if v[1] == n then
+            return v[2]
+        end
+    end
+    return 1 -- fall back to warrior
+end
+
 local function TriggerRosterUpdate()
     Env:PrintDebug("Trigger GUILD_ROSTER_UPDATE")
     if GuildRoster then
@@ -17,7 +43,34 @@ Env:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     TriggerRosterUpdate()
 end)
 
-function Env:GetGuildInfoData()
+local Guild = {
+    rankCache = {}, ---@type {id:integer, name:string}[]
+    memberCache = {}, ---@type table<integer, {name:string, classId:integer}[]>
+}
+Env.Guild = Guild
+
+---@class (exact) GuildRosterDataEvent
+---@field RegisterCallback fun(self:GuildRosterDataEvent, cb:fun())
+---@field Trigger fun(self:GuildRosterDataEvent)
+---@diagnostic disable-next-line: inject-field
+Guild.OnRosterDataUpdate = Env:NewEventEmitter()
+
+Env:RegisterEvent("GUILD_ROSTER_UPDATE", function()
+    local memberCount = GetNumGuildMembers()
+    wipe(Guild.rankCache)
+    wipe(Guild.memberCache)
+    for i = 1, memberCount do
+        local name, rankName, rankIndex, _, _, _, _, _, _, _, class = GetGuildRosterInfo(i)
+        if not Guild.rankCache[rankIndex] then
+            Guild.rankCache[rankIndex] = { id = rankIndex, name = rankName }
+            Guild.memberCache[rankIndex] = {}
+        end
+        table.insert(Guild.memberCache[rankIndex], { name = Ambiguate(name, "short"), classId = GetClassIdFromName(class) })
+    end
+    Guild.OnRosterDataUpdate:Trigger()
+end)
+
+function Guild:GetGuildInfoData()
     ---@class GuildInfoData
     ---@field allowedNames table<string,boolean>
     local data = { ---@type GuildInfoData
@@ -44,30 +97,9 @@ local catNameList = { "Socks", "Elvis", "Phoebe", "Twiggy", "Milo", "Tigger", "T
     "Marley", "Jake", "Lily", "Sox", "Leo", "Luna", "Mittens", "Lola", "BatMan", "Coco", "Rocky", "Pepper", "Houdini", "Princess",
     "Jasmine", "Samantha" }
 
-local classNameAndId = {
-    { "DRUID",   11 },
-    { "HUNTER",  3 },
-    { "MAGE",    8 },
-    { "PALADIN", 2 },
-    { "PRIEST",  5 },
-    { "ROGUE",   4 },
-    { "SHAMAN",  7 },
-    { "WARLOCK", 9 },
-    { "WARRIOR", 1 },
-}
----@param n string
-local function GetClassIdFromName(n)
-    for _, v in ipairs(classNameAndId) do
-        if v[1] == n then
-            return v[2]
-        end
-    end
-    return 1 -- fall back to warrior
-end
-
 ---Get random name, class combos from guild or a backup list of cat names.
 ---@return fun():string,string,integer generatorFunction Returns name, classFile, classId on call.
-function Env:GetRandomGuildNameGenerator()
+function Guild:GetRandomGuildNameGenerator()
     local numMembers = GetNumGuildMembers()
     local picker = Env:NewUniqueRoller(numMembers)
     local backupPicker = Env:NewUniqueRoller(#catNameList)

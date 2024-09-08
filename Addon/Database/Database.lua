@@ -78,9 +78,7 @@ Env.Database.OnLootHistoryEntryChanged = Env:NewEventEmitter()
 ---@param name string
 ---@return PlayerEntry|nil playerEntry
 function Env.Database:GetPlayer(name)
-    if self.players[name] then
-        return self.players[name]
-    end
+    return self.players[name]
 end
 
 ---Add or update a player entry.

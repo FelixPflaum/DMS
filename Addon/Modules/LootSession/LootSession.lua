@@ -215,7 +215,7 @@ function Env.Session.CanUnitStartSession(unitName)
         canStart = true
         Env:PrintDebug("Sender is master looter and can start.")
     else
-        local guildPerms = Env:GetGuildInfoData()
+        local guildPerms = Env.Guild:GetGuildInfoData()
         if guildPerms.allowedNames[unitName] then
             canStart = true
             Env:PrintDebug("Sender has permission from guild info.")
@@ -229,7 +229,7 @@ end
 ----------------------------------------------------------------------------
 
 local function CreateTestCandidateEntryGenerator()
-    local namesClassGen = Env:GetRandomGuildNameGenerator()
+    local namesClassGen = Env.Guild:GetRandomGuildNameGenerator()
     return function()
         local name, _, classId = namesClassGen()
         local candidate = { ---@type SessionHost_Candidate

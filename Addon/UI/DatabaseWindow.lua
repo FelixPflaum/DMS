@@ -91,6 +91,20 @@ local function Script_AddNewPlayerClicked(name, classId)
     Env.Database:AddPlayer(name, classId, 0)
 end
 
+---@param rankIndex integer
+local function Script_AddRankPlayersClicked(rankIndex)
+    local members = Env.Guild.memberCache[rankIndex]
+    if not members then return end
+    local addCount = 0
+    for _, memberData in ipairs(members) do
+        if not Env.Database:GetPlayer(memberData.name) then
+            Env.Database:AddPlayer(memberData.name, memberData.classId, 0)
+            addCount = addCount + 1
+        end
+    end
+    Env:PrintSuccess(L["Added %d new players from guild rank %s."]:format(addCount, Env.Guild.rankCache[rankIndex].name))
+end
+
 ---------------------------------------------------------------------------
 --- Create Frames
 ---------------------------------------------------------------------------
@@ -223,83 +237,140 @@ end
 ---@param parent WoWFrame
 local function CreateAddPlayerForm(parent)
     local addForm = CreateFrame("Frame", nil, parent)
+    do
+        local heading = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        heading:SetText(L["Add Player"])
+        heading:SetPoint("TOPLEFT", 0, 0)
 
-    local heading = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    heading:SetText(L["Add Player"])
-    heading:SetPoint("TOPLEFT", 0, 0)
+        local labelName = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        labelName:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
+        labelName:SetText(L["Name"])
 
-    local labelName = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    labelName:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
-    labelName:SetText(L["Name"])
+        local nameBox = CreateFrame("EditBox", nil, addForm, "InputBoxTemplate")
+        nameBox:SetAutoFocus(false)
+        nameBox:SetFontObject(ChatFontNormal)
+        nameBox:SetScript("OnEscapePressed", EditBox_ClearFocus)
+        nameBox:SetScript("OnEnterPressed", EditBox_ClearFocus)
+        nameBox:SetTextInsets(0, 0, 3, 3)
+        nameBox:SetMaxLetters(12)
+        nameBox:SetPoint("LEFT", labelName, "RIGHT", -labelName:GetWidth() + 60, 0)
+        nameBox:SetHeight(19)
+        nameBox:SetWidth(120)
 
-    local nameBox = CreateFrame("EditBox", nil, addForm, "InputBoxTemplate")
-    nameBox:SetAutoFocus(false)
-    nameBox:SetFontObject(ChatFontNormal)
-    nameBox:SetScript("OnEscapePressed", EditBox_ClearFocus)
-    nameBox:SetScript("OnEnterPressed", EditBox_ClearFocus)
-    nameBox:SetTextInsets(0, 0, 3, 3)
-    nameBox:SetMaxLetters(12)
-    nameBox:SetPoint("LEFT", labelName, "RIGHT", -labelName:GetWidth() + 60, 0)
-    nameBox:SetHeight(19)
-    nameBox:SetWidth(120)
+        local labelClass = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        labelClass:SetPoint("TOPLEFT", labelName, "BOTTOMLEFT", 0, -20)
+        labelClass:SetText(L["Class"])
 
-    local labelClass = addForm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    labelClass:SetPoint("TOPLEFT", labelName, "BOTTOMLEFT", 0, -20)
-    labelClass:SetText(L["Class"])
+        local selectedClass = 1
+        local dropdown = CreateFrame("Frame", nil, addForm, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
+        dropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
+        dropdown:SetSize(60, 19)
 
-    local selectedClass = 1
-    local dropdown = CreateFrame("Frame", nil, addForm, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
-    dropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
-    dropdown:SetSize(60, 19)
+        ---@param classId integer
+        local function SelectClassClick(btn, classId)
+            selectedClass = classId
+            local className = GetClassInfo(classId)
+            dropdown.Text:SetText(ColorByClassId(className, classId))
+        end
+        SelectClassClick(nil, 1)
 
-    ---@param classId integer
-    local function SelectClassClick(btn, classId)
-        selectedClass = classId
-        local className = GetClassInfo(classId)
-        dropdown.Text:SetText(ColorByClassId(className, classId))
-    end
-    SelectClassClick(nil, 1)
-
-    local dropdownMenuClass = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
-    local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
-    local function FillContextMenu()
-        for i = 1, 99 do
-            local className, _, classId = GetClassInfo(i)
-            -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
-            -- or nil if classId is higher then the highest valid class Id.
-            if classId == i then
-                wipe(ddinfo)
-                ddinfo.text = ColorByClassId(className, classId)
-                ddinfo.isNotRadio = true
-                ddinfo.checked = classId == selectedClass
-                ddinfo.func = SelectClassClick
-                ddinfo.arg1 = classId
-                MSA_DropDownMenu_AddButton(ddinfo, 1)
-            elseif not className then
-                break
+        local dropdownMenuClass = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
+        local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
+        local function FillContextMenu()
+            for i = 1, 99 do
+                local className, _, classId = GetClassInfo(i)
+                -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
+                -- or nil if classId is higher then the highest valid class Id.
+                if classId == i then
+                    wipe(ddinfo)
+                    ddinfo.text = ColorByClassId(className, classId)
+                    ddinfo.isNotRadio = true
+                    ddinfo.checked = classId == selectedClass
+                    ddinfo.func = SelectClassClick
+                    ddinfo.arg1 = classId
+                    MSA_DropDownMenu_AddButton(ddinfo, 1)
+                elseif not className then
+                    break
+                end
             end
         end
+        MSA_DropDownMenu_Initialize(dropdownMenuClass, FillContextMenu, "")
+        dropdown.Button:SetScript("OnClick", function()
+            MSA_DropDownMenu_SetAnchor(dropdownMenuClass, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
+            MSA_ToggleDropDownMenu(1, nil, dropdownMenuClass)
+        end)
+
+        local buttonAddPlayer = CreateFrame("Button", nil, addForm, "UIPanelButtonTemplate")
+        buttonAddPlayer:SetText(L["Add"])
+        buttonAddPlayer:SetWidth(buttonAddPlayer:GetTextWidth() + 30)
+        buttonAddPlayer:SetPoint("TOPLEFT", labelClass, "BOTTOMLEFT", 0, -13)
+        buttonAddPlayer:SetScript("OnClick", function()
+            EditBox_ClearFocus(nameBox)
+            Script_AddNewPlayerClicked(nameBox:GetText(), selectedClass)
+        end)
+
+        addForm:SetHeight(111)
+        addForm:SetWidth(nameBox:GetWidth() + 60)
+        addForm:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 10, 10)
     end
-    MSA_DropDownMenu_Initialize(dropdownMenuClass, FillContextMenu, "")
-    dropdown.Button:SetScript("OnClick", function()
-        MSA_DropDownMenu_SetAnchor(dropdownMenuClass, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
-        MSA_ToggleDropDownMenu(1, nil, dropdownMenuClass)
-    end)
 
-    local buttonAddPlayer = CreateFrame("Button", nil, addForm, "UIPanelButtonTemplate")
-    buttonAddPlayer:SetText(L["Add"])
-    buttonAddPlayer:SetWidth(buttonAddPlayer:GetTextWidth() + 30)
-    buttonAddPlayer:SetPoint("TOPLEFT", labelClass, "BOTTOMLEFT", 0, -13)
-    buttonAddPlayer:SetScript("OnClick", function()
-        EditBox_ClearFocus(nameBox)
-        Script_AddNewPlayerClicked(nameBox:GetText(), selectedClass)
-    end)
+    local addAllRankForm = CreateFrame("Frame", nil, parent)
+    do
+        local heading = addAllRankForm:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        heading:SetText(L["Add Guild Rank"])
+        heading:SetPoint("TOPLEFT", 0, 0)
 
-    -- TODO: add all players for rank
+        local labelRank = addAllRankForm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        labelRank:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
+        labelRank:SetText(L["Rank"])
 
-    addForm:SetHeight(105)
-    addForm:SetWidth(100)
-    addForm:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 10, 10)
+        local selectedRank = 0
+        local dropdown = CreateFrame("Frame", nil, addForm, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
+        dropdown:SetPoint("LEFT", labelRank, "RIGHT", -labelRank:GetWidth() + 36, 4)
+        dropdown:SetSize(60, 19)
+
+        ---@param rankIndex integer
+        local function SelectRankClick(btn, rankIndex)
+            selectedRank = rankIndex
+            dropdown.Text:SetText(Env.Guild.rankCache[rankIndex] and Env.Guild.rankCache[rankIndex].name or "?")
+        end
+        SelectRankClick(nil, -1)
+
+        local dropdownMenuRanks = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
+        local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
+        local function FillContextMenu()
+            local ranks = Env.Guild.rankCache
+            for rankIndex = 0, #ranks do
+                if ranks[rankIndex] then
+                    wipe(ddinfo)
+                    ddinfo.text = ranks[rankIndex].name
+                    ddinfo.isNotRadio = true
+                    ddinfo.checked = rankIndex == selectedRank
+                    ddinfo.func = SelectRankClick
+                    ddinfo.arg1 = rankIndex
+                    MSA_DropDownMenu_AddButton(ddinfo, 1)
+                end
+            end
+        end
+        MSA_DropDownMenu_Initialize(dropdownMenuRanks, FillContextMenu, "")
+        dropdown.Button:SetScript("OnClick", function()
+            MSA_DropDownMenu_SetAnchor(dropdownMenuRanks, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
+            MSA_ToggleDropDownMenu(1, nil, dropdownMenuRanks)
+        end)
+
+        local buttonAddRankPlayers = CreateFrame("Button", nil, addAllRankForm, "UIPanelButtonTemplate")
+        buttonAddRankPlayers:SetText(L["Add All Missing"])
+        buttonAddRankPlayers:SetWidth(buttonAddRankPlayers:GetTextWidth() + 30)
+        buttonAddRankPlayers:SetPoint("TOPLEFT", labelRank, "BOTTOMLEFT", 0, -13)
+        buttonAddRankPlayers:SetScript("OnClick", function()
+            MSA_CloseDropDownMenus()
+            Script_AddRankPlayersClicked(selectedRank)
+        end)
+
+        addAllRankForm:SetHeight(77)
+        addAllRankForm:SetWidth(100)
+        addAllRankForm:SetPoint("TOPLEFT", addForm, "TOPRIGHT", 30, 0)
+    end
 end
 
 local function CreateWindow()
@@ -312,25 +383,22 @@ local function CreateWindow()
     buttonPlayers:SetWidth(buttonPlayers:GetTextWidth() + 15)
     buttonPlayers:SetPoint("TOPLEFT", frame, "TOPLEFT", 13, -30)
     buttonPlayers:SetScript("OnClick", SwitchToPlayers)
-    frame.buttonPlayers = buttonPlayers
 
     local buttonPoints = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     buttonPoints:SetText(L["Sanity History"])
     buttonPoints:SetWidth(buttonPoints:GetTextWidth() + 15)
     buttonPoints:SetPoint("LEFT", buttonPlayers, "RIGHT", 5, 0)
     buttonPoints:SetScript("OnClick", SwitchToPoints)
-    frame.buttonPoints = buttonPoints
 
     local buttonLoot = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     buttonLoot:SetText(L["Loot History"])
     buttonLoot:SetWidth(buttonLoot:GetTextWidth() + 15)
     buttonLoot:SetPoint("LEFT", buttonPoints, "RIGHT", 5, 0)
     buttonLoot:SetScript("OnClick", SwitchToLoot)
-    frame.buttonLoot = buttonLoot
 
     playerTable = ScrollingTable:CreateST({
         { name = "",          width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon }, -- Icon
-        { name = L["Name"],   width = 90,               DoCellUpdate = CellUpdateName },
+        { name = L["Name"],   width = 90,               DoCellUpdate = CellUpdateName,     sort = ScrollingTable.SORT_ASC },
         { name = L["Sanity"], width = 50 },
     }, 20, TABLE_ROW_HEIGHT, nil, frame)
     playerTable.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -playerTable.head:GetHeight() - 4)
