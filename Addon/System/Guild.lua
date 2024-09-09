@@ -2,20 +2,26 @@
 local Env = select(2, ...)
 
 local classNameAndId = {
-    { "DRUID",       11 },
-    { "HUNTER",      3 },
-    { "MAGE",        8 },
-    { "PALADIN",     2 },
-    { "PRIEST",      5 },
-    { "ROGUE",       4 },
-    { "SHAMAN",      7 },
-    { "WARLOCK",     9 },
-    { "WARRIOR",     1 },
-    { "DEATHKNIGHT", 6 },
-    { "MONK",        10 },
-    { "DEMONHUNTER", 12 },
-    { "EVOKER",      13 },
+    { "DRUID",   11 },
+    { "HUNTER",  3 },
+    { "MAGE",    8 },
+    { "PALADIN", 2 },
+    { "PRIEST",  5 },
+    { "ROGUE",   4 },
+    { "SHAMAN",  7 },
+    { "WARLOCK", 9 },
+    { "WARRIOR", 1 },
 }
+
+if Env.IS_CATA or Env.IS_RETAIL then
+    table.insert(classNameAndId, { "DEATHKNIGHT", 6 })
+end
+
+if Env.IS_RETAIL then
+    table.insert(classNameAndId, { "MONK", 10 })
+    table.insert(classNameAndId, { "DEMONHUNTER", 12 })
+    table.insert(classNameAndId, { "EVOKER", 13 })
+end
 
 ---@param n string
 local function GetClassIdFromName(n)

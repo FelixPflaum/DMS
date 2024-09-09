@@ -843,6 +843,8 @@ function strsplittable(delim, str) end
 WOW_PROJECT_ID = ""
 WOW_PROJECT_CLASSIC = "CLASSIC";
 WOW_PROJECT_WRATH_CLASSIC = "WRATH";
+WOW_PROJECT_CATACLYSM_CLASSIC = "WOW_PROJECT_CATACLYSM_CLASSIC"
+WOW_PROJECT_MAINLINE = "WOW_PROJECT_MAINLINE"
 
 ---@param spellID integer
 ---@param isPetSpell boolean|nil if true, will check if the currently active pet knows the spell; if false or omitted, will check if the player knows the spell

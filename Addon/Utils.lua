@@ -6,6 +6,8 @@ local Env = select(2, ...)
 Env.IS_CLASSIC = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 Env.IS_CLASSIC_SOD = Env.IS_CLASSIC and C_Engraving and C_Engraving.IsEngravingEnabled()
 Env.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
+Env.IS_CATA = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
+Env.IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 ---Print msg to chat, replacing default color.
 ---@param msg string The message to print.
