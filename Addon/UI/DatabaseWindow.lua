@@ -200,44 +200,21 @@ local function CreateAddPlayerForm(parent)
         labelClass:SetPoint("TOPLEFT", labelName, "BOTTOMLEFT", 0, -20)
         labelClass:SetText(L["Class"])
 
-        local selectedClass = 1
-        local dropdown = CreateFrame("Frame", nil, addForm, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
-        dropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
-        dropdown:SetSize(60, 19)
-
-        ---@param classId integer
-        local function SelectClassClick(btn, classId)
-            selectedClass = classId
-            local className = GetClassInfo(classId)
-            dropdown.Text:SetText(ColorByClassId(className, classId))
-        end
-        SelectClassClick(nil, 1)
-
-        local dropdownMenuClass = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
-        local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
-        local function FillContextMenu()
-            for i = 1, 99 do
-                local className, _, classId = GetClassInfo(i)
-                -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
-                -- or nil if classId is higher then the highest valid class Id.
-                if classId == i then
-                    wipe(ddinfo)
-                    ddinfo.text = ColorByClassId(className, classId)
-                    ddinfo.isNotRadio = true
-                    ddinfo.checked = classId == selectedClass
-                    ddinfo.func = SelectClassClick
-                    ddinfo.arg1 = classId
-                    MSA_DropDownMenu_AddButton(ddinfo, 1)
-                elseif not className then
-                    break
-                end
+        local classDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownAddPlayerClass", addForm)
+        classDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
+        classDropdown:SetSize(60, 19)
+        local entries = {} ---@type { displayText: string, value: any }[]
+        for i = 1, 99 do
+            local className, _, classId = GetClassInfo(i)
+            -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
+            -- or nil if classId is higher then the highest valid class Id.
+            if classId == i then
+                table.insert(entries, { displayText = ColorByClassId(className, classId), value = classId })
+            elseif not className then
+                break
             end
         end
-        MSA_DropDownMenu_Initialize(dropdownMenuClass, FillContextMenu, "")
-        dropdown.Button:SetScript("OnClick", function()
-            MSA_DropDownMenu_SetAnchor(dropdownMenuClass, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
-            MSA_ToggleDropDownMenu(1, nil, dropdownMenuClass)
-        end)
+        classDropdown:SetEntries(entries)
 
         local buttonAddPlayer = CreateFrame("Button", nil, addForm, "UIPanelButtonTemplate")
         buttonAddPlayer:SetText(L["Add"])
@@ -245,7 +222,7 @@ local function CreateAddPlayerForm(parent)
         buttonAddPlayer:SetPoint("TOPLEFT", labelClass, "BOTTOMLEFT", 0, -13)
         buttonAddPlayer:SetScript("OnClick", function()
             EditBox_ClearFocus(nameBox)
-            AddNewPlayer(nameBox:GetText(), selectedClass)
+            AddNewPlayer(nameBox:GetText(), classDropdown.selectedValue)
         end)
 
         addForm:SetHeight(111)
@@ -263,39 +240,17 @@ local function CreateAddPlayerForm(parent)
         labelRank:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
         labelRank:SetText(L["Rank"])
 
-        local selectedRank = 0
-        local dropdown = CreateFrame("Frame", nil, addForm, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
-        dropdown:SetPoint("LEFT", labelRank, "RIGHT", -labelRank:GetWidth() + 36, 4)
-        dropdown:SetSize(60, 19)
-
-        ---@param rankIndex integer
-        local function SelectRankClick(btn, rankIndex)
-            selectedRank = rankIndex
-            dropdown.Text:SetText(Env.Guild.rankCache[rankIndex] and Env.Guild.rankCache[rankIndex].name or "?")
-        end
-        SelectRankClick(nil, -1)
-
-        local dropdownMenuRanks = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
-        local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
-        local function FillContextMenu()
+        local rankDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownAddPlayerClass", addAllRankForm, function(entries)
             local ranks = Env.Guild.rankCache
             for rankIndex = 0, #ranks do
                 if ranks[rankIndex] then
-                    wipe(ddinfo)
-                    ddinfo.text = ranks[rankIndex].name
-                    ddinfo.isNotRadio = true
-                    ddinfo.checked = rankIndex == selectedRank
-                    ddinfo.func = SelectRankClick
-                    ddinfo.arg1 = rankIndex
-                    MSA_DropDownMenu_AddButton(ddinfo, 1)
+                    table.insert(entries, { displayText = ranks[rankIndex].name, value = rankIndex })
                 end
             end
-        end
-        MSA_DropDownMenu_Initialize(dropdownMenuRanks, FillContextMenu, "")
-        dropdown.Button:SetScript("OnClick", function()
-            MSA_DropDownMenu_SetAnchor(dropdownMenuRanks, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
-            MSA_ToggleDropDownMenu(1, nil, dropdownMenuRanks)
         end)
+        rankDropdown:SetPoint("LEFT", labelRank, "RIGHT", -labelRank:GetWidth() + 36, 4)
+        rankDropdown:SetSize(60, 19)
+        rankDropdown:SetSelected(-1, "???")
 
         local buttonAddRankPlayers = CreateFrame("Button", nil, addAllRankForm, "UIPanelButtonTemplate")
         buttonAddRankPlayers:SetText(L["Add All Missing"])
@@ -303,7 +258,7 @@ local function CreateAddPlayerForm(parent)
         buttonAddRankPlayers:SetPoint("TOPLEFT", labelRank, "BOTTOMLEFT", 0, -13)
         buttonAddRankPlayers:SetScript("OnClick", function()
             MSA_CloseDropDownMenus()
-            AddPlayersFromRankIndex(selectedRank)
+            AddPlayersFromRankIndex(rankDropdown.selectedValue)
         end)
 
         addAllRankForm:SetHeight(77)
@@ -328,50 +283,25 @@ local function CreatePlayerEditForm(parent)
     labelClass:SetText(L["Class"])
 
     local currentPlayerName = nil ---@type string|nil
-    local selectedClass = 1
-    -- TODO: Dropdown creation is redundant code
-    local dropdown = CreateFrame("Frame", nil, peframe, "UIDropDownMenuTemplate") ---@cast dropdown UIDropDownMenu
-    dropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
-    dropdown:SetSize(60, 19)
 
-    ---@param classId integer
-    ---@param onlyVisual boolean? If true only set visual state and do not handle class change.
-    local function SetSelectedClass(btn, classId, onlyVisual)
+    local editClassDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownEditPlayerClass", peframe, nil, function(value)
         if not currentPlayerName then return end
-        local changed = not onlyVisual and selectedClass ~= classId
-        selectedClass = classId
-        local className = GetClassInfo(classId)
-        dropdown.Text:SetText(ColorByClassId(className, classId))
-        if changed then
-            Env.Database:UpdatePlayerEntry(currentPlayerName, selectedClass)
-        end
-    end
-
-    local dropdownMenuClass = MSA_DropDownMenu_Create("DMSDatabaseDropdownMenu", UIParent)
-    local ddinfo = { text = "text not set" } ---@type MSA_InfoTable
-    local function FillContextMenu()
-        for i = 1, 99 do
-            local className, _, classId = GetClassInfo(i)
-            -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
-            -- or nil if classId is higher then the highest valid class Id.
-            if classId == i then
-                wipe(ddinfo)
-                ddinfo.text = ColorByClassId(className, classId)
-                ddinfo.isNotRadio = true
-                ddinfo.checked = classId == selectedClass
-                ddinfo.func = SetSelectedClass
-                ddinfo.arg1 = classId
-                MSA_DropDownMenu_AddButton(ddinfo, 1)
-            elseif not className then
-                break
-            end
-        end
-    end
-    MSA_DropDownMenu_Initialize(dropdownMenuClass, FillContextMenu, "")
-    dropdown.Button:SetScript("OnClick", function()
-        MSA_DropDownMenu_SetAnchor(dropdownMenuClass, 0, 0, "TOPRIGHT", dropdown.Button, "BOTTOMRIGHT")
-        MSA_ToggleDropDownMenu(1, nil, dropdownMenuClass)
+        Env.Database:UpdatePlayerEntry(currentPlayerName, value)
     end)
+    editClassDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
+    editClassDropdown:SetSize(60, 19)
+    local entries = {} ---@type { displayText: string, value: any }[]
+    for i = 1, 99 do
+        local className, _, classId = GetClassInfo(i)
+        -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
+        -- or nil if classId is higher then the highest valid class Id.
+        if classId == i then
+            table.insert(entries, { displayText = ColorByClassId(className, classId), value = classId })
+        elseif not className then
+            break
+        end
+    end
+    editClassDropdown:SetEntries(entries)
 
     local pointHeading = peframe:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pointHeading:SetText(L["Add Or Remove Sanity"])
@@ -444,7 +374,7 @@ local function CreatePlayerEditForm(parent)
         if name and classId then
             heading:SetText(ColorByClassId(name, classId))
             currentPlayerName = name
-            SetSelectedClass(nil, classId, true)
+            editClassDropdown:SetSelected(classId)
             peframe:Show()
         else
             peframe:Hide()
@@ -603,7 +533,7 @@ end
 Env:OnAddonLoaded(function()
     pointHistoryTable = ScrollingTable:CreateST({
         { name = L["Time"],   width = 125, DoCellUpdate = CellUpdateTimeStamp },
-        { name = L["Name"],   width = 90,  DoCellUpdate = CellUpdateName, defaultsort = ScrollingTable.SORT_ASC },
+        { name = L["Name"],   width = 90,  DoCellUpdate = CellUpdateName,             defaultsort = ScrollingTable.SORT_ASC },
         { name = L["Change"], width = 40,  DoCellUpdate = CellUpdatePointChangeValue },
         { name = L["New"],    width = 40 },
         { name = L["Type"],   width = 150 },
@@ -691,7 +621,7 @@ end
 Env:OnAddonLoaded(function()
     lootHistoryTable = ScrollingTable:CreateST({
         { name = L["Time"],     width = 125,              DoCellUpdate = CellUpdateTimeStamp },
-        { name = L["Player"],   width = 90,               DoCellUpdate = CellUpdateName, defaultsort = ScrollingTable.SORT_ASC },
+        { name = L["Player"],   width = 90,               DoCellUpdate = CellUpdateName,        defaultsort = ScrollingTable.SORT_ASC },
         { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateItemIcon },
         { name = L["Item"],     width = 150,              DoCellUpdate = CellUpdateItemId },
         { name = L["Response"], width = 100,              DoCellUpdate = CellUpdateLootResponse },
