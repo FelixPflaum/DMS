@@ -31,7 +31,7 @@ local selectedItemGuid ---@type string|nil
 ---@field selectedItemResponse SessionClient_ItemResponse? The selected item response the context menu is open for.
 local contextMenuFrame = MSA_DropDownMenu_Create("DMSSessionTableContextMenu", UIParent)
 
-local TABLE_INDECES = {
+local TABLE_INDICES = {
     ICON = 1,
     NAME = 2,
     RESPONSES = 3,
@@ -145,7 +145,7 @@ local function Script_TableRightClick(rowFrame, cellFrame, data, cols, row, real
             MSA_ToggleDropDownMenu(1, nil, contextMenuFrame)
         end
 
-        local itemResponse = data[realrow][TABLE_INDECES.RESPONSES] ---@type SessionClient_ItemResponse
+        local itemResponse = data[realrow][TABLE_INDICES.RESPONSES] ---@type SessionClient_ItemResponse
         if itemResponse.status == LootCandidateStatus.veiled then return false end
         contextMenuFrame.selectedItemResponse = itemResponse
 
@@ -464,6 +464,9 @@ do
         if classId then
             cellFrame:SetNormalTexture([[Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]])
             local texCoords = CLASS_ICON_TCOORDS[select(2, GetClassInfo(classId))]
+            if not texCoords then
+                print(data[realrow][TABLE_INDICES.NAME].name, classId)
+            end
             cellFrame:GetNormalTexture():SetTexCoord(unpack(texCoords))
         end
     end
@@ -544,7 +547,7 @@ do
         if itemResponse.response then
             -- Set different display if point roll is treated as another roll.
             if item and itemResponse.response.isPointsRoll then
-                local points = data[realrow][TABLE_INDECES.SANITY] ---@type integer
+                local points = data[realrow][TABLE_INDICES.SANITY] ---@type integer
                 local doesCount, respReplace = DoesRollCountAsPointRoll(points, itemResponse.response, Client.responses.responses, Client.pointsMinForRoll)
                 if not doesCount then
                     cellFrame.text:SetText(L["%s (Counts as %s)"]:format(
@@ -584,7 +587,7 @@ do
             local pointsAreSnapshotted = st.item and st.item.awarded and st.item.awarded.pointsSnapshot
             if pointsAreSnapshotted then
                 valueString = "|cFF70acc0" .. valueString .. "|r"
-            elseif column == TABLE_INDECES.SANITY and row > 1 then
+            elseif column == TABLE_INDICES.SANITY and row > 1 then
                 local maxRange = Env.settings.lootSession.pointsMaxRange
                 -- No need to show or do anything if rolls can't influence the result anyways.
                 if maxRange < 100 then
@@ -679,13 +682,13 @@ do
         local resB = itemResB.response
 
         if resA and resA.isPointsRoll then
-            local aPoints = st.data[rowa][TABLE_INDECES.SANITY] ---@type integer
+            local aPoints = st.data[rowa][TABLE_INDICES.SANITY] ---@type integer
             local _, respToUse = DoesRollCountAsPointRoll(aPoints, resA, Client.responses.responses, Client.pointsMinForRoll)
             resA = respToUse
         end
 
         if resB and resB.isPointsRoll then
-            local bPoints = st.data[rowb][TABLE_INDECES.SANITY] ---@type integer
+            local bPoints = st.data[rowb][TABLE_INDICES.SANITY] ---@type integer
             local _, respToUse = DoesRollCountAsPointRoll(bPoints, resB, Client.responses.responses, Client.pointsMinForRoll)
             resB = respToUse
         end
@@ -697,13 +700,13 @@ do
             local nextcolIndex ---@type integer
 
             if resA and resA.isPointsRoll then
-                local colIdxSanity = TABLE_INDECES.SANITY
+                local colIdxSanity = TABLE_INDICES.SANITY
                 local columnSanity = st.cols[colIdxSanity]
                 local pointsA, pointsB = st.data[rowa][colIdxSanity], st.data[rowb][colIdxSanity] ---@type integer, integer
                 local maxDist = Env.settings.lootSession.pointsMaxRange
                 -- Always treat equal if max range is higher than max roll diff (99)
                 if maxDist > 99 or math.abs(pointsA - pointsB) <= maxDist then
-                    nextcolIndex = TABLE_INDECES.TOTAL
+                    nextcolIndex = TABLE_INDICES.TOTAL
                 else
                     local direction = columnSanity.sort or columnSanity.defaultsort or ScrollingTable.SORT_DSC
                     if direction == ScrollingTable.SORT_ASC then
@@ -713,7 +716,7 @@ do
                     end
                 end
             else
-                nextcolIndex = TABLE_INDECES.ROLL
+                nextcolIndex = TABLE_INDICES.ROLL
             end
 
             local nextcol = st.cols[nextcolIndex]
@@ -739,14 +742,14 @@ do
     ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer,string?,string?]
 
     TABLE_DEF = {
-        [TABLE_INDECES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
-        [TABLE_INDECES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
-        [TABLE_INDECES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse },
-        [TABLE_INDECES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDECES.NAME },
-        [TABLE_INDECES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDECES.TOTAL },
-        [TABLE_INDECES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDECES.ROLL },
-        [TABLE_INDECES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
-        [TABLE_INDECES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
+        [TABLE_INDICES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },
+        [TABLE_INDICES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
+        [TABLE_INDICES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse },
+        [TABLE_INDICES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDICES.NAME },
+        [TABLE_INDICES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.TOTAL },
+        [TABLE_INDICES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.ROLL },
+        [TABLE_INDICES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
+        [TABLE_INDICES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
     }
 end
 

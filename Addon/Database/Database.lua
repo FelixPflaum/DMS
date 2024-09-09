@@ -153,6 +153,14 @@ function Env.Database:UpdatePlayerPoints(playerName, points, type, reason)
     self.OnPlayerChanged:Trigger(playerName)
 end
 
+---Remove player from addon database.
+---@param playerName string
+function Env.Database:RemovePlayer(playerName)
+    self.players[playerName] = nil
+    LogDebug("Removed player", playerName, "from DB")
+    self.OnPlayerChanged:Trigger(playerName)
+end
+
 ------------------------------------------------------------------
 --- Point History API
 ------------------------------------------------------------------
@@ -198,6 +206,20 @@ function Env.Database:GetPlayerPointHistory(filter, maxResults)
     end
 
     return filtered
+end
+
+---Remove player point history from addon database.
+---@param playerName string
+function Env.Database:RemovePlayerPointHistory(playerName)
+    local filter = { playerName = playerName } ---@type PointHistoryFilter
+    for idx = #self.pointHistory, 1, -1 do
+        local entry = self.pointHistory[idx]
+        if FilterPointEntry(entry, filter) then
+            table.remove(self.pointHistory, idx)
+        end
+    end
+    LogDebug("Removed player point hsitory entries for", playerName, "from DB")
+    Env.Database.OnPlayerPointHistoryUpdate:Trigger(playerName)
 end
 
 ------------------------------------------------------------------
@@ -339,4 +361,18 @@ function Env.Database:UpdateLootHistoryEntry(guid, playerName, response, reverte
         end
     end
     error("Tried to update non-existant entry in loot history! " .. guid)
+end
+
+---Remove player loot history from addon database.
+---@param playerName string
+function Env.Database:RemovePlayerLootHistory(playerName)
+    local filter = { playerName = playerName } ---@type HistoryFilter
+    for idx = #self.lootHistory, 1, -1 do
+        local entry = self.lootHistory[idx]
+        if FilterLootEntry(entry, filter) then
+            table.remove(self.lootHistory, idx)
+        end
+    end
+    LogDebug("Removed player loot history entries for", playerName, "from DB")
+    Env.Database.OnLootHistoryEntryChanged:Trigger("") -- TODO: remove GUID from this event?
 end
