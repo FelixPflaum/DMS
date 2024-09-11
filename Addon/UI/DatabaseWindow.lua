@@ -13,7 +13,7 @@ local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 --- Main Window Setup
 ---------------------------------------------------------------------------
 
-local TOP_INSET = 50
+local TOP_INSET = 112
 local TABLE_ROW_HEIGHT = 18
 local NON_CONTENT_WIDTH = 8
 local NON_CONTENT_HEIGHT = 28
@@ -61,7 +61,7 @@ local function AddTab(tabId, contentFrame, buttonText, updateFunc, extraYOffset)
     if lastTabButton then
         btn:SetPoint("LEFT", lastTabButton, "RIGHT", 5, 0)
     else
-        btn:SetPoint("TOPLEFT", mainWindow, "TOPLEFT", 13, -30)
+        btn:SetPoint("TOPLEFT", mainWindow, "TOPLEFT", 10, -27)
     end
     btn:SetScript("OnClick", function() SwitchTab(tabId) end)
     lastTabButton = btn
@@ -97,6 +97,426 @@ end)
 
 Env.UI:RegisterOnReset(function()
     mainWindow:Reset()
+end)
+
+---------------------------------------------------------------------------
+--- Filter
+---------------------------------------------------------------------------
+
+local FILTER_BTN_OFFSET = 25
+local DEFAULT_MAX_DATE_RANGE = 60 * 86400
+
+---@class (exact) DBFilterChangedEvent
+---@field RegisterCallback fun(self:DBFilterChangedEvent, cb:fun())
+---@field Trigger fun(self:DBFilterChangedEvent)
+
+---@class (exact) DBWindowFilter
+---@field frame WoWFrame
+---@field Date DBWindowDateFilter
+---@field Name DBWindowNameFilter
+---@field Loot DBWindowLootFilter
+---@field OnChanged DBFilterChangedEvent
+local Filter = {
+    OnChanged = Env:NewEventEmitter()
+}
+
+---Display readable datetime from unix timestamp.
+---@type ST_CellUpdateFunc
+local function CellUpdateTimeStampDate(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
+    if not fShow then return end
+    local timeStamp = data[realrow][column] ---@type integer
+    cellFrame.text:SetText(date("%Y-%m-%d", timeStamp) --[[@as string]])
+end
+
+---@param parent WoWFrame
+---@param onChange fun()
+local function CreateDateFilter(parent, onChange)
+    ---@class (exact) DBWindowDateFilter
+    ---@field frame WoWFrame
+    ---@field timestampFrom integer
+    ---@field timestampTo integer
+    local dateFilter = {
+        frame = CreateFrame("Frame", nil, parent),
+        timestampFrom = 0,
+        timestampTo = 0,
+    }
+
+    dateFilter.frame:SetHeight(parent:GetHeight())
+    dateFilter.frame:SetPoint("TOPLEFT", 0, 0)
+
+    local ROW_HEIGHT = 15
+    local rowCount = math.floor(dateFilter.frame:GetHeight() / ROW_HEIGHT)
+    local filterDateTable = ScrollingTable:CreateST({
+        { name = "", width = 70, DoCellUpdate = CellUpdateTimeStampDate, sort = ScrollingTable.SORT_DSC },
+    }, rowCount, ROW_HEIGHT, nil, dateFilter.frame)
+    filterDateTable.head:SetHeight(0)
+    filterDateTable.frame:SetPoint("TOPLEFT", dateFilter.frame, "TOPLEFT", 0, 0)
+
+    ---Set date table entries.
+    ---@param data ST_DataMinimal[]
+    function dateFilter:SetDateList(data)
+        filterDateTable:SetData(data, true)
+    end
+
+    local fromLabel = dateFilter.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fromLabel:SetText(L["From"])
+    fromLabel:SetPoint("TOPLEFT", filterDateTable.frame, "TOPRIGHT", 5, 0)
+    local datepickerFrom = Env.UI.CreateDatePicker(dateFilter.frame)
+    datepickerFrom.frame:SetPoint("TOPLEFT", fromLabel, "BOTTOMLEFT", 0, -4)
+
+    local toLabel = dateFilter.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    toLabel:SetText(L["To"])
+    toLabel:SetPoint("TOPLEFT", datepickerFrom.frame, "BOTTOMLEFT", 0, -8)
+    local datepickerTo = Env.UI.CreateDatePicker(dateFilter.frame)
+    datepickerTo.frame:SetPoint("TOPLEFT", toLabel, "BOTTOMLEFT", 0, -4)
+
+    ---@param year integer
+    ---@param month integer
+    ---@param day integer
+    local function TimeStampFromDate(year, month, day)
+        return time({ year = year, month = month, day = day, hour = 0, min = 0, sec = 0, isdst = false })
+    end
+
+    ---@param year integer
+    ---@param month integer
+    ---@param day integer
+    local function DateWeight(year, month, day)
+        return year * 1000 + month * 100 + day
+    end
+
+    ---@param picker DmsDatePicker
+    ---@param year integer
+    ---@param month integer
+    ---@param day integer
+    local function OnPickerChange(picker, year, month, day)
+        if picker == datepickerFrom then
+            if DateWeight(year, month, day) > DateWeight(datepickerTo:GetSelectedDate()) then
+                return datepickerFrom:SetSelectedDate(datepickerTo:GetSelectedDate())
+            end
+            dateFilter.timestampFrom = TimeStampFromDate(year, month, day)
+        else
+            if DateWeight(year, month, day) < DateWeight(datepickerFrom:GetSelectedDate()) then
+                return datepickerTo:SetSelectedDate(datepickerFrom:GetSelectedDate())
+            end
+            dateFilter.timestampTo = TimeStampFromDate(year, month, day)
+        end
+        onChange()
+    end
+
+    datepickerFrom:SetOnChange(OnPickerChange)
+    datepickerTo:SetOnChange(OnPickerChange)
+
+    ---@param ts integer
+    local function DateFromTimestamp(ts)
+        local td = date("*t", ts) ---@cast td ostimeInput
+        return td.year, td.month, td.day
+    end
+
+    ---@param timestamp  integer
+    local function SetBothTimestamps(timestamp)
+        if timestamp then
+            local y, m, d = DateFromTimestamp(timestamp)
+            if timestamp < dateFilter.timestampFrom then
+                datepickerFrom:SetSelectedDate(y, m, d, true)
+                dateFilter.timestampFrom = TimeStampFromDate(datepickerFrom:GetSelectedDate())
+                datepickerTo:SetSelectedDate(y, m, d)
+            else
+                datepickerTo:SetSelectedDate(y, m, d, true)
+                dateFilter.timestampTo = TimeStampFromDate(datepickerTo:GetSelectedDate())
+                datepickerFrom:SetSelectedDate(y, m, d)
+            end
+        end
+    end
+
+    filterDateTable:RegisterEvents({
+        OnClick = function(_, _, data, _, _, realrow)
+            local timestamp = data[realrow][1] ---@type integer?
+            if timestamp then
+                SetBothTimestamps(timestamp)
+            end
+        end
+    })
+
+    ---Set selected date range.
+    ---@param fromTs integer
+    ---@param toTs integer
+    function dateFilter:SetDateRange(fromTs, toTs)
+        SetBothTimestamps(fromTs)
+        datepickerTo:SetSelectedDate(DateFromTimestamp(toTs))
+    end
+
+    ---Check if timestamp is in filtered range.
+    ---@param timestamp integer
+    function dateFilter:IsTimestampInRange(timestamp)
+        local from = self.timestampFrom
+        local to = self.timestampTo + 86400 -- == Start of day + 24 hours
+        return timestamp >= from and timestamp <= to
+    end
+
+    ---Set filter date data from scrolling table instance.
+    ---@param stable ST_ScrollingTable
+    ---@param columnIndex integer The index of the column containing the timestamps.
+    function dateFilter:SetDatesFromTable(stable, columnIndex)
+        local dataTable = {} ---@type ST_DataMinimal[]
+        local haveDate = {} ---@type table<integer,boolean>
+        local ts ---@type integer
+        local td ---@type any
+        local tsdate ---@type integer
+        local high = 0
+        local low = 2524604400
+        for _, v in ipairs(stable.data) do
+            ts = v[columnIndex]
+            td = date("*t", ts) ---@cast td ostimeInput
+            td.hour = 0
+            td.min = 0
+            td.sec = 0
+            tsdate = time(td)
+            if not haveDate[tsdate] then
+                local rowData = { tsdate } ---@type any[]
+                table.insert(dataTable, rowData)
+                haveDate[tsdate] = true
+                if high < tsdate then high = tsdate end
+                if low > tsdate then low = tsdate end
+            end
+        end
+        self:SetDateList(dataTable)
+        low = math.max(low, high - DEFAULT_MAX_DATE_RANGE)
+        self:SetDateRange(low, high)
+    end
+
+    dateFilter.frame:SetWidth(filterDateTable.frame:GetWidth() + datepickerFrom.frame:GetWidth() + 5)
+    return dateFilter
+end
+
+---@param parent WoWFrame
+---@param onChange fun()
+local function CreateNameFilter(parent, onChange)
+    ---@class (exact) DBWindowNameFilter
+    ---@field frame WoWFrame
+    ---@field value string
+    local nameFilter = {
+        frame = CreateFrame("Frame", nil, parent),
+        value = "",
+    }
+
+    local nameLabel = nameFilter.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    nameLabel:SetText(L["Name"])
+    nameLabel:SetPoint("TOPLEFT", 0, 0)
+
+    local ebox = CreateFrame("EditBox", nil, nameFilter.frame, "InputBoxTemplate")
+    ebox:SetAutoFocus(false)
+    ebox:SetFontObject(ChatFontNormal)
+    ebox:SetScript("OnEscapePressed", EditBox_ClearFocus)
+    ebox:SetScript("OnEnterPressed", EditBox_ClearFocus)
+    ebox:SetScript("OnTextChanged", function()
+        nameFilter.value = ebox:GetText():gsub("%s+", ""):lower()
+        onChange()
+    end)
+    ebox:SetTextInsets(0, 0, 3, 3)
+    ebox:SetMaxLetters(12)
+    ebox:SetPoint("TOPLEFT", nameLabel, "BOTTOMLEFT", 0, -5)
+    ebox:SetHeight(19)
+    ebox:SetWidth(120)
+
+    ---Check if name is searched for.
+    ---@param name string
+    ---@return boolean isSearched True if name is matching search term or no search term set.
+    function nameFilter:IsMatching(name)
+        local pos = name:lower():find(Filter.Name.value)
+        return pos ~= nil
+    end
+
+    nameFilter.frame:SetWidth(ebox:GetWidth())
+    nameFilter.frame:SetHeight(nameLabel:GetHeight() + 5 + ebox:GetHeight())
+
+    return nameFilter
+end
+
+---@param parent WoWFrame
+---@param onChange fun()
+local function CreateLootFilter(parent, onChange)
+    ---@class (exact) DBWindowLootFilter
+    ---@field frame WoWFrame
+    ---@field showReverted boolean
+    ---@field classesSelected table<integer,boolean>
+    ---@field responsesSelected table<string,boolean>
+    local lootFilter = {
+        frame = CreateFrame("Frame", nil, parent),
+        showReverted = false,
+        classesSelected = {},
+        responsesSelected = {},
+    }
+
+    local responseList = {} ---@type {rawName:string, coloredName:string, id:integer}[]
+
+    local button = CreateFrame("Button", nil, lootFilter.frame, "UIPanelButtonTemplate")
+    button:SetText(L["More Filters"])
+    button:SetWidth(button:GetTextWidth() + 45)
+    button:SetPoint("TOPLEFT", 0, 0)
+
+    local arrowDownBtn = CreateFrame("Button", nil, lootFilter.frame, nil)
+    arrowDownBtn:SetSize(button:GetHeight(), button:GetHeight())
+    arrowDownBtn:SetPoint("RIGHT", button, "RIGHT", 0, 0)
+    arrowDownBtn:SetNormalTexture([[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up]])
+    arrowDownBtn:SetPushedTexture([[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Down]])
+    arrowDownBtn:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]])
+
+    button:SetScript("OnEnter", function(frame, ...)
+        arrowDownBtn:SetHighlightLocked(true)
+    end)
+    button:SetScript("OnLeave", function(frame, ...)
+        arrowDownBtn:SetHighlightLocked(false)
+    end)
+
+    local dropdownMenu = MSA_DropDownMenu_Create("DMSLootFilterDropdown", UIParent)
+    local info = { text = "text not set" } ---@type MSA_InfoTable
+
+    ---@param key string
+    local function ChangeOther(_, key)
+        if key == "showreverted" then
+            lootFilter.showReverted = not lootFilter.showReverted
+        end
+        onChange()
+    end
+
+    for _, v in ipairs(Env.classList) do
+        lootFilter.classesSelected[v.id] = true
+    end
+
+    ---@param classId integer
+    local function ToggleClass(_, classId)
+        lootFilter.classesSelected[classId] = not lootFilter.classesSelected[classId]
+        onChange()
+    end
+
+    ---@param responseName string
+    local function ToggleResponse(_, responseName)
+        lootFilter.responsesSelected[responseName] = not lootFilter.responsesSelected[responseName]
+        onChange()
+    end
+
+    ---@param level integer
+    local function FillContextMenu(menu, level)
+        if level == 1 then
+            info.text = L["Responses"]
+            info.isTitle = true
+            info.notCheckable = true
+            MSA_DropDownMenu_AddButton(info, 1)
+
+            for _, v in ipairs(responseList) do
+                wipe(info)
+                info.text = v.coloredName
+                info.func = ToggleResponse
+                info.checked = lootFilter.responsesSelected[v.rawName] == true
+                info.arg1 = v.rawName
+                MSA_DropDownMenu_AddButton(info, 1)
+            end
+
+            wipe(info)
+            info.text = L["Other"]
+            info.isTitle = true
+            info.notCheckable = true
+            MSA_DropDownMenu_AddButton(info, 1)
+
+            wipe(info)
+            info.text = L["Classes"]
+            info.notCheckable = true
+            info.hasArrow = true
+            info.value = "CLASS"
+            MSA_DropDownMenu_AddButton(info, 1)
+
+            wipe(info)
+            info.text = L["Show reverted"]
+            info.isNotRadio = true
+            info.checked = lootFilter.showReverted
+            info.func = ChangeOther
+            info.arg1 = "showreverted"
+            MSA_DropDownMenu_AddButton(info, 1)
+
+            wipe(info)
+            info.text = L["Close"]
+            info.notCheckable = true
+            info.func = function() MSA_CloseDropDownMenus() end
+            MSA_DropDownMenu_AddButton(info, 1)
+        elseif level == 2 then
+            for _, v in ipairs(Env.classList) do
+                wipe(info)
+                info.text = ColorByClassId(v.displayText, v.id)
+                info.func = ToggleClass
+                info.checked = lootFilter.classesSelected[v.id] == true
+                info.arg1 = v.id
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        end
+    end
+
+    MSA_DropDownMenu_Initialize(dropdownMenu, FillContextMenu, "MENU")
+
+    local function OnClicked()
+        MSA_DropDownMenu_SetAnchor(dropdownMenu, 0, 0, "TOPRIGHT", button, "BOTTOMRIGHT")
+        MSA_ToggleDropDownMenu(1, nil, dropdownMenu)
+    end
+
+    button:SetScript("OnClick", OnClicked)
+    arrowDownBtn:SetScript("OnClick", OnClicked)
+
+    ---Set response filter list.
+    ---@param stable ST_ScrollingTable
+    ---@param column any
+    function lootFilter:SetResponseFromTable(stable, column)
+        wipe(responseList)
+        wipe(lootFilter.responsesSelected)
+        for _, v in ipairs(stable.data) do
+            local responseDataStr = v[column] ---@type string
+            if responseDataStr and responseDataStr ~= "" then
+                local id, color, display = Env.Database.FormatResponseStringForUI(responseDataStr)
+                if not lootFilter.responsesSelected[display] then
+                    table.insert(responseList, { rawName = display, coloredName = ("|cFF%s%s|r"):format(color, display), id = id })
+                    lootFilter.responsesSelected[display] = true
+                end
+            end
+        end
+        table.sort(responseList, function(a, b)
+            return a.id > b.id
+        end)
+        onChange()
+    end
+
+    ---Check if response is selected.
+    ---@param response string
+    ---@param isDataString boolean If true then response is given as a DB response data string.
+    function lootFilter:IsResponseSelected(response, isDataString)
+        if isDataString then
+            local _, _, display = Env.Database.FormatResponseStringForUI(response)
+            return self.responsesSelected[display]
+        end
+        return self.responsesSelected[response]
+    end
+
+    lootFilter.frame:SetHeight(200) --btn:GetHeight())
+    lootFilter.frame:SetWidth(200)  --btn:GetWidth())
+    return lootFilter
+end
+
+Env:OnAddonLoaded(function()
+    Filter.frame = CreateFrame("Frame", nil, mainWindow)
+    Filter.frame:SetPoint("TOPLEFT", 10, -(27 + FILTER_BTN_OFFSET))
+    local height = TOP_INSET - 4 - FILTER_BTN_OFFSET
+    Filter.frame:SetSize(200, height)
+
+    Filter.Date = CreateDateFilter(Filter.frame, function()
+        Filter.OnChanged:Trigger()
+    end)
+
+    Filter.Name = CreateNameFilter(Filter.frame, function()
+        Filter.OnChanged:Trigger()
+    end)
+    Filter.Name.frame:SetPoint("TOPLEFT", Filter.Date.frame, "TOPRIGHT", 15, 0)
+
+    Filter.Loot = CreateLootFilter(Filter.frame, function()
+        Filter.OnChanged:Trigger()
+    end)
+    Filter.Loot.frame:SetPoint("TOPLEFT", Filter.Name.frame, "BOTTOMLEFT", 0, -10)
 end)
 
 ---------------------------------------------------------------------------
@@ -200,19 +620,12 @@ local function CreateAddPlayerForm(parent)
         labelClass:SetPoint("TOPLEFT", labelName, "BOTTOMLEFT", 0, -20)
         labelClass:SetText(L["Class"])
 
-        local classDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownAddPlayerClass", addForm)
-        classDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
-        classDropdown:SetSize(60, 19)
+        local classDropdown = Env.UI.CreateMSADropdown(addForm)
+        classDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 57, 0)
+        classDropdown:SetWidth(100)
         local entries = {} ---@type { displayText: string, value: any }[]
-        for i = 1, 99 do
-            local className, _, classId = GetClassInfo(i)
-            -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
-            -- or nil if classId is higher then the highest valid class Id.
-            if classId == i then
-                table.insert(entries, { displayText = ColorByClassId(className, classId), value = classId })
-            elseif not className then
-                break
-            end
+        for _, classData in ipairs(Env.classList) do
+            table.insert(entries, { displayText = ColorByClassId(classData.displayText, classData.id), value = classData.id })
         end
         classDropdown:SetEntries(entries)
 
@@ -240,7 +653,7 @@ local function CreateAddPlayerForm(parent)
         labelRank:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
         labelRank:SetText(L["Rank"])
 
-        local rankDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownAddPlayerClass", addAllRankForm, function(entries)
+        local rankDropdown = Env.UI.CreateMSADropdown(addAllRankForm, function(entries)
             local ranks = Env.Guild.rankCache
             for rankIndex = 0, #ranks do
                 if ranks[rankIndex] then
@@ -248,8 +661,8 @@ local function CreateAddPlayerForm(parent)
                 end
             end
         end)
-        rankDropdown:SetPoint("LEFT", labelRank, "RIGHT", -labelRank:GetWidth() + 36, 4)
-        rankDropdown:SetSize(60, 19)
+        rankDropdown:SetPoint("LEFT", labelRank, "RIGHT", -labelRank:GetWidth() + 50, 0)
+        rankDropdown:SetWidth(100)
         rankDropdown:SetSelected(-1, "???")
 
         local buttonAddRankPlayers = CreateFrame("Button", nil, addAllRankForm, "UIPanelButtonTemplate")
@@ -284,22 +697,15 @@ local function CreatePlayerEditForm(parent)
 
     local currentPlayerName = nil ---@type string|nil
 
-    local editClassDropdown = Env.UI.CreateMSADropdown("DMSDatabaseDropdownEditPlayerClass", peframe, nil, function(value)
+    local editClassDropdown = Env.UI.CreateMSADropdown(peframe, nil, function(value)
         if not currentPlayerName then return end
         Env.Database:UpdatePlayerEntry(currentPlayerName, value)
     end)
-    editClassDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 36, 4)
-    editClassDropdown:SetSize(60, 19)
+    editClassDropdown:SetPoint("LEFT", labelClass, "RIGHT", -labelClass:GetWidth() + 50, 0)
+    editClassDropdown:SetWidth(100)
     local entries = {} ---@type { displayText: string, value: any }[]
-    for i = 1, 99 do
-        local className, _, classId = GetClassInfo(i)
-        -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
-        -- or nil if classId is higher then the highest valid class Id.
-        if classId == i then
-            table.insert(entries, { displayText = ColorByClassId(className, classId), value = classId })
-        elseif not className then
-            break
-        end
+    for _, classData in ipairs(Env.classList) do
+        table.insert(entries, { displayText = ColorByClassId(classData.displayText, classData.id), value = classData.id })
     end
     editClassDropdown:SetEntries(entries)
 
@@ -442,6 +848,7 @@ local function UpdatePlayerTable()
         table.insert(dataTable, rowData)
     end
     playerTable:SetData(dataTable, true)
+    Filter.frame:Hide()
 end
 
 -- Setup player DB tab.
@@ -459,7 +866,7 @@ Env:OnAddonLoaded(function()
 end)
 
 Env.Database.OnPlayerChanged:RegisterCallback(function(playerName)
-    if state == "player" then
+    if mainWindow:IsShown() and state == "player" then
         UpdatePlayerTable()
         if playerEditFrame:GetSelected() == playerName then
             local entry = Env.Database:GetPlayer(playerName)
@@ -481,7 +888,7 @@ local pointHistoryTable ---@type ST_ScrollingTable
 local function CellUpdateTimeStamp(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
     local timeStamp = data[realrow][column] ---@type integer
-    cellFrame.text:SetText(date("%Y-%m-%d %H:%M:%S", timeStamp))
+    cellFrame.text:SetText(date("%Y-%m-%d %H:%M:%S", timeStamp) --[[@as string]])
 end
 
 ---Prepends a + for positive numbers and colors green or red.
@@ -527,23 +934,40 @@ local function UpdatePointsHistoryTable()
         table.insert(dataTable, rowData)
     end
     pointHistoryTable:SetData(dataTable, true)
+    Filter.frame:Show()
+    Filter.Loot.frame:Hide()
+    Filter.Date:SetDatesFromTable(pointHistoryTable, 1)
 end
 
 -- Setup point history DB tab.
 Env:OnAddonLoaded(function()
     pointHistoryTable = ScrollingTable:CreateST({
         { name = L["Time"],   width = 125, DoCellUpdate = CellUpdateTimeStamp },
-        { name = L["Name"],   width = 90,  DoCellUpdate = CellUpdateName,             defaultsort = ScrollingTable.SORT_ASC },
-        { name = L["Change"], width = 40,  DoCellUpdate = CellUpdatePointChangeValue },
-        { name = L["New"],    width = 40 },
-        { name = L["Type"],   width = 150 },
-        { name = L["Reason"], width = 175, DoCellUpdate = CellUpdatePointChangeReason },
+        { name = L["Player"], width = 90,  DoCellUpdate = CellUpdateName,             defaultsort = ScrollingTable.SORT_ASC },
+        { name = L["Change"], width = 55,  DoCellUpdate = CellUpdatePointChangeValue },
+        { name = L["New"],    width = 55 },
+        { name = L["Type"],   width = 80 },
+        { name = L["Reason"], width = 200, DoCellUpdate = CellUpdatePointChangeReason },
     }, 20, TABLE_ROW_HEIGHT, nil, mainWindow)
+
+    pointHistoryTable:SetFilter(function(_, rowData)
+        if not Filter.Date:IsTimestampInRange(rowData[1]) or
+            not Filter.Name:IsMatching(rowData[2]) then
+            return false
+        end
+        return true
+    end)
+    Filter.OnChanged:RegisterCallback(function()
+        if state == "points" then
+            pointHistoryTable:SortData()
+        end
+    end)
+
     AddTab("points", pointHistoryTable.frame, L["Sanity History"], UpdatePointsHistoryTable, -pointHistoryTable.head:GetHeight() - 4)
 end)
 
 Env.Database.OnPlayerPointHistoryUpdate:RegisterCallback(function(playerName)
-    if state == "points" then
+    if mainWindow:IsShown() and state == "points" then
         UpdatePointsHistoryTable()
     end
 end)
@@ -591,8 +1015,12 @@ end
 local function CellUpdateLootResponse(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
     local response = data[realrow][column] ---@type string {id,rgb_hexcolor}displayString
-    local _, hexColor, displayString = Env.Database.FormatResponseStringForUI(response)
-    cellFrame.text:SetText(("|cFF%s%s|r"):format(hexColor, displayString))
+    if response and response ~= "" then
+        local _, hexColor, displayString = Env.Database.FormatResponseStringForUI(response)
+        cellFrame.text:SetText(("|cFF%s%s|r"):format(hexColor, displayString))
+    else
+        cellFrame.text:SetText("")
+    end
 end
 
 ---Display a red "yes" if revert state is true.
@@ -615,6 +1043,10 @@ local function UpdateLootHistoryTable()
         table.insert(dataTable, rowData)
     end
     lootHistoryTable:SetData(dataTable, true)
+    Filter.frame:Show()
+    Filter.Loot.frame:Show()
+    Filter.Date:SetDatesFromTable(lootHistoryTable, 1)
+    Filter.Loot:SetResponseFromTable(lootHistoryTable, 5)
 end
 
 -- Setup loot history DB tab.
@@ -623,15 +1055,34 @@ Env:OnAddonLoaded(function()
         { name = L["Time"],     width = 125,              DoCellUpdate = CellUpdateTimeStamp },
         { name = L["Player"],   width = 90,               DoCellUpdate = CellUpdateName,        defaultsort = ScrollingTable.SORT_ASC },
         { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateItemIcon },
-        { name = L["Item"],     width = 150,              DoCellUpdate = CellUpdateItemId },
+        { name = L["Item"],     width = 175,              DoCellUpdate = CellUpdateItemId },
         { name = L["Response"], width = 100,              DoCellUpdate = CellUpdateLootResponse },
         { name = L["Reverted"], width = 60,               DoCellUpdate = CellUpdateReverted },
     }, 20, TABLE_ROW_HEIGHT, nil, mainWindow)
+
+    lootHistoryTable:SetFilter(function(_, rowData)
+        local playerName = rowData[2]
+        local playerEntry = Env.Database:GetPlayer(playerName)
+        if not Filter.Date:IsTimestampInRange(rowData[1]) or
+            not Filter.Name:IsMatching(playerName) or
+            (rowData[6] and not Filter.Loot.showReverted) or
+            (playerEntry and not Filter.Loot.classesSelected[playerEntry.classId]) or
+            (rowData[5] and rowData[5] ~= "" and not Filter.Loot:IsResponseSelected(rowData[5], true)) then
+            return false
+        end
+        return true
+    end)
+    Filter.OnChanged:RegisterCallback(function()
+        if state == "loot" then
+            lootHistoryTable:SortData()
+        end
+    end)
+
     AddTab("loot", lootHistoryTable.frame, L["Loot History"], UpdateLootHistoryTable, -lootHistoryTable.head:GetHeight() - 4)
 end)
 
 Env.Database.OnLootHistoryEntryChanged:RegisterCallback(function(entryGuid)
-    if state == "loot" then
+    if mainWindow:IsShown() and state == "loot" then
         UpdateLootHistoryTable()
     end
 end)
@@ -643,25 +1094,8 @@ end)
 Env:RegisterSlashCommand("db", L["Show database window."], function(args)
     if state == "none" then
         SwitchTab("player")
+    else
+        SwitchTab(state)
     end
     mainWindow:Show()
-end)
-
-Env:RegisterSlashCommand("dbpa", "TEST CMD REMOVE", function(args)
-    local name = args[1]
-    local points = tonumber(args[2])
-    if name and points then
-        if not Env.Database:GetPlayer(name) then
-            return Env:PrintError("Player does not exist in DB!")
-        end
-        points = math.floor(points)
-        Env.Database:UpdatePlayerPoints(name, points, "CUSTOM", "test command")
-    end
-end)
-
-Env:RegisterSlashCommand("dbc", "TEST CMD REMOVE", function(args)
-    Env:PrintWarn("Clearing DB!")
-    wipe(Env.Database.players)
-    wipe(Env.Database.lootHistory)
-    wipe(Env.Database.pointHistory)
 end)

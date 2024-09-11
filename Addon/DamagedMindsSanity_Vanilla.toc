@@ -51,6 +51,7 @@ UI/UIFunctions.lua
 UI/Components/IconButton.lua
 UI/Components/ButtonWindow.lua
 UI/Components/Dropdown.lua
+UI/Components/DatePicker.lua
 UI/SettingsTab.lua
 UI/SessionWindow.lua
 UI/LootWindow.lua

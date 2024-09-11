@@ -97,8 +97,11 @@ function GetAddOnMetadata(addonName, metaKey)
     return "value";
 end
 
+---@alias ostimeInput {year:integer,month:integer,day:integer,hour:integer,min:integer,sec:integer,isdst:boolean}
+
 --- UNIX timestamp
-function time()
+---@param d ostimeInput?
+function time(d)
     return 123;
 end
 
@@ -144,6 +147,7 @@ end
 ---@field SetScale fun(self:WoWFrame, scale:number)
 ---@field IsShown fun(self:WoWFrame):boolean
 ---@field SetToplevel fun(self:WoWFrame, isTopLevel:boolean)
+---@field SetHighlightLocked fun(self:WoWFrame, locked:boolean)
 
 ---@class ButtonFrameTemplate : WoWFrame
 ---@field TitleText FontString
@@ -361,7 +365,6 @@ function ScriptRegionResizing:GetPoint(index) end
 ---@field SetPushedTexture fun(self:WoWFrameButton,asset)
 ---@field SetText fun(self:WoWFrameButton,text:string|nil) -- Sets the text of the button.
 
-
 ---@param frame WoWFrame
 function ButtonFrameTemplate_HideButtonBar(frame) end
 
@@ -377,7 +380,7 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetValue fun(self:StatusBar, value) - Set the value of the statusbar.
 
 ---@class EditBox : WoWFrame
----@field SetAutoFocus fun(self:EditBox, autofocus:boolean) Sets whether the cursor should automatically focus on the edit box when it is shown. 
+---@field SetAutoFocus fun(self:EditBox, autofocus:boolean) Sets whether the cursor should automatically focus on the edit box when it is shown.
 ---@field SetFontObject fun(self:EditBox, fo)
 ---@field SetTextInsets fun(self:EditBox, left, right, top, bottom)
 ---@field SetMaxLetters fun(self:EditBox, maxLetters:integer)
@@ -1096,7 +1099,8 @@ ITEM_CLASSES_ALLOWED = "Classes: %s"
 ---@param channel string Either "Master" (this will play the sound also with disabled sounds like before 4.0.1), "SFX", "Ambience", "Music".
 function PlaySoundFile(path, channel) end
 
----@param format string
+---@param format string|"*t"
 ---@param time number
----@return string
+---@overload fun(format:string, time:number): string
+---@overload fun(format:"*t", time:number): ostimeInput
 function date(format, time) end

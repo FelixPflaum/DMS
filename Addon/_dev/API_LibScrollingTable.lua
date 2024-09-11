@@ -83,3 +83,9 @@ function ST_ScrollingTable:ClearSelection() end
 ---Enable or disbale selection of rows.
 ---@param enable boolean
 function ST_ScrollingTable:EnableSelection(enable) end
+
+---Enable or disbale selection of rows.
+---@param Filter fun(self:ST_ScrollingTable, rowData:ST_DataMinimal|ST_Data):boolean Should return true if row should be filtered out.
+function ST_ScrollingTable:SetFilter(Filter) end
+
+function ST_ScrollingTable:SortData() end

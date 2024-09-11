@@ -1,31 +1,9 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
-local classNameAndId = {
-    { "DRUID",   11 },
-    { "HUNTER",  3 },
-    { "MAGE",    8 },
-    { "PALADIN", 2 },
-    { "PRIEST",  5 },
-    { "ROGUE",   4 },
-    { "SHAMAN",  7 },
-    { "WARLOCK", 9 },
-    { "WARRIOR", 1 },
-}
-
-if Env.IS_CATA or Env.IS_RETAIL then
-    table.insert(classNameAndId, { "DEATHKNIGHT", 6 })
-end
-
-if Env.IS_RETAIL then
-    table.insert(classNameAndId, { "MONK", 10 })
-    table.insert(classNameAndId, { "DEMONHUNTER", 12 })
-    table.insert(classNameAndId, { "EVOKER", 13 })
-end
-
 ---@param n string
 local function GetClassIdFromName(n)
-    for _, v in ipairs(classNameAndId) do
+    for _, v in ipairs(Env.classList) do
         if v[1] == n then
             return v[2]
         end
@@ -118,7 +96,7 @@ function Guild:GetRandomGuildNameGenerator()
                 return name, classFile, GetClassIdFromName(classFile)
             end
         end
-        local classPick = classNameAndId[math.random(#classNameAndId)]
-        return catNameList[backupPicker:GetRoll()], classPick[1], classPick[2]
+        local classPick = Env.classList[math.random(#Env.classList)]
+        return catNameList[backupPicker:GetRoll()], classPick.file, classPick.id
     end
 end

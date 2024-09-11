@@ -431,7 +431,7 @@ do
             wipe(info)
             info.text = L["Close"]
             info.notCheckable = true
-            info.func = MSA_CloseDropDownMenus
+            info.func = function() MSA_CloseDropDownMenus() end
             MSA_DropDownMenu_AddButton(info, level)
         elseif level == 2 then
             if MSA_DROPDOWNMENU_MENU_VALUE == "CHANGE_CHOICE" then

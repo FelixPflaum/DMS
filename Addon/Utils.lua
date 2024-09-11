@@ -9,6 +9,24 @@ Env.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 Env.IS_CATA = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 Env.IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
+Env.classList = (function()
+    ---@type {file:string, id:integer, displayText:string}[]
+    local list = {}
+
+    for i = 1, 99 do
+        local className, classFile, classId = GetClassInfo(i)
+        -- When calling GetClassInfo() it will return the next valid class on invalid classIds,
+        -- or nil if classId is higher then the highest valid class Id.
+        if classId == i then
+            table.insert(list, { displayText = className, id = classId, file = classFile })
+        elseif not className then
+            break
+        end
+    end
+
+    return list
+end)()
+
 ---Print msg to chat, replacing default color.
 ---@param msg string The message to print.
 ---@param defColor string The color to use as default given as color esc sequence.
@@ -37,23 +55,23 @@ end
 
 ---Helper for printing tables.
 ---@param t table<any,any>
----@param d integer
+---@param depth integer
 ---@param maxDepth integer|nil
-local function PrintTable(t, d, maxDepth)
+function Env.PrintTable(t, depth, maxDepth)
     for k, v in pairs(t) do
-        if maxDepth and d > maxDepth then return end
-        print(string.rep("--", d) .. " " .. k .. ": " .. tostring(v))
+        if maxDepth and depth > maxDepth then return end
+        print(string.rep("--", depth) .. " " .. k .. ": " .. tostring(v))
         if type(v) == "table" then
-            PrintTable(v, d + 1)
+            Env.PrintTable(v, depth + 1)
         end
     end
 end
 
 ---@param arg1 any
----@param ... any 
+---@param ... any
 local function PrintDebug(arg1, ...)
     if type(arg1) == "table" then
-        PrintTable(arg1, 1)
+        Env.PrintTable(arg1, 1)
     else
         print(arg1, ...)
     end
