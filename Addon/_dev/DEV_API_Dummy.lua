@@ -391,6 +391,7 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetMaxLetters fun(self:EditBox, maxLetters:integer)
 ---@field SetText fun(self:EditBox, text:string)
 ---@field GetText fun(self:EditBox):string
+---@field HasFocus fun(self:EditBox):boolean
 
 ChatFontNormal = {}
 

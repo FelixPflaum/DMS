@@ -2,12 +2,7 @@
 local Env = select(2, ...)
 
 local L = Env:GetLocalization()
----@type LibScrollingTable
-local ScrollingTable = LibStub("ScrollingTable")
 local LibDialog = LibStub("LibDialog-1.1")
-local ShowItemTooltip = Env.UI.ShowItemTooltip
-local ColorByClassId = Env.UI.ColorByClassId
-local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 
 ---------------------------------------------------------------------------
 --- Main Window Setup
@@ -21,10 +16,12 @@ local function CloseWindow()
 end
 
 local function SettingsInit()
-    local target = UnitName("player")
-    syncWindow.SendSettingsButton:Disable()
-    syncWindow.SendDataButton:Disable()
-    Env.Sync.Initiate(target, "settings")
+    local target = syncWindow.NameInput:GetText()
+    if target and target ~= "" then
+        syncWindow.SendSettingsButton:Disable()
+        syncWindow.SendDataButton:Disable()
+        Env.Sync.Initiate(target, "settings")
+    end
 end
 
 local function Reset()
@@ -37,20 +34,65 @@ end
 Env.Sync.OnSendProgress:RegisterCallback(function(target, state, sent, total)
     if syncWindow:IsShown() then
         if state == "probing" then
+            Reset()
             syncWindow.InfoText:SetText(L["Trying to send to %s..."]:format(target))
         elseif state == "waiting" then
             syncWindow.InfoText:SetText(L["Waiting for %s to accept..."]:format(target))
         elseif state == "sending" then
             if sent < total then
-                syncWindow.InfoText:SetText(L["Sending %d / %d (%.0f)"]:format(sent, total, (total / sent) * 100))
+                syncWindow.InfoText:SetText(L["Sending to %s..."]:format(target))
             else
                 syncWindow.InfoText:SetText(L["Done!"])
-                Reset()
             end
+            syncWindow.ProgressText:SetText(L["%dB / %dB (%.1f%%)"]:format(sent, total, (sent / total) * 100))
         elseif state == "failed" then
-            syncWindow.InfoText:SetText(L["Sending to %s failed!"]:format(target))
             Reset()
+            syncWindow.InfoText:SetText(L["Sending to %s failed!"]:format(target))
         end
+    end
+end)
+
+local confirmReceiveDialog = {
+    text = "-", -- So height is initialized
+    on_cancel = function(self, data, source)
+        Env.Sync.RespondToProbe(source, false)
+    end,
+    buttons = {
+        {
+            text = L["Accept"],
+            on_click = function(self, source)
+                Env.Sync.RespondToProbe(source, true)
+                syncWindow.InfoText:SetText(L["Waiting for data..."])
+            end
+        },
+        {
+            text = L["Cancel"],
+            on_click = function(self, source)
+                Env.Sync.RespondToProbe(source, false)
+            end
+        },
+    },
+}
+
+---@param dataType SyncDataType
+local function GetDataTypeString(dataType)
+    return dataType == "settings" and L["settings"] or "?"
+end
+
+Env.Sync.OnProbe:RegisterCallback(function(source, dataType)
+    if syncWindow:IsShown() then
+        if LibDialog:ActiveDialog(confirmReceiveDialog) then
+            LibDialog:Dismiss(confirmReceiveDialog)
+        end
+        local dialog = LibDialog:Spawn(confirmReceiveDialog, source) ---@type any
+        dialog.text:SetText(L["%s wants to send you %s data."]:format(source, GetDataTypeString(dataType)))
+    end
+end)
+
+Env.Sync.OnReceived:RegisterCallback(function(source, dataType)
+    if syncWindow:IsShown() then
+        syncWindow.InfoText:SetText(L["Received %s data successfully."]:format(GetDataTypeString(dataType)))
+        syncWindow.ProgressText:SetText("")
     end
 end)
 
@@ -71,6 +113,7 @@ Env:OnAddonLoaded(function()
     nameBox:SetPoint("TOP", syncWindow.Inset, "TOP", 0, -7)
     nameBox:SetHeight(24)
     nameBox:SetWidth(120)
+    syncWindow.NameInput = nameBox
 
     local labelName = syncWindow.Inset:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     labelName:SetJustifyH("CENTER")
@@ -103,6 +146,24 @@ Env:OnAddonLoaded(function()
     progressText:SetPoint("TOP", infoText, "BOTTOM", 0, -10)
     syncWindow.ProgressText = progressText
 end)
+
+local origSIF = SetItemRef
+---@param link string
+---@param text string
+---@param button any
+---@param chatFrame any
+SetItemRef = function(link, text, button, chatFrame)
+    if syncWindow.NameInput:HasFocus() then
+        local namelink = link:sub(8)
+        local name, lineID, chatType, chatTarget = strsplit(":", namelink)
+        if (name and (name:len() > 0)) then
+            name = Ambiguate(name, "short")
+            syncWindow.NameInput:SetText(name)
+            return
+        end
+    end
+    origSIF(link, text, button, chatFrame)
+end
 
 Env.UI:RegisterOnReset(function()
     syncWindow:Reset()

@@ -113,25 +113,77 @@ commHandler[SYNC_OPCODES.PROBE_RESPONSE] = function(sender, data)
             end
         else
             initiatedSyncs[sender] = nil
+            Sync.OnSendProgress:Trigger(sender, "failed", 0, 0)
         end
     end
+end
+
+---Initiate syncing with target.
+---@param target string
+---@param dataType SyncDataType
+function Sync.Initiate(target, dataType)
+    return SendProbe(target, dataType)
 end
 
 --------------------------------------------------------------------------------------------------------------------
 --- Receiving side
 --------------------------------------------------------------------------------------------------------------------
 
+---@alias ReceiveState "probing"|"waitingForData"
+local incoming = {} ---@type table<string,{type:SyncDataType,state:ReceiveState}>
+
+---@class (exact) SyncProbeEvent
+---@field RegisterCallback fun(self:SyncProbeEvent, cb:fun(source:string, dataType:SyncDataType))
+---@field Trigger fun(self:SyncProbeEvent, source:string, dataType:SyncDataType)
+Sync.OnProbe = Env:NewEventEmitter()
+
+---@class (exact) SyncReceiveProgressEvent
+---@field RegisterCallback fun(self:SyncReceiveProgressEvent, cb:fun(source:string, dataType:SyncDataType))
+---@field Trigger fun(self:SyncReceiveProgressEvent, source:string, dataType:SyncDataType)
+Sync.OnReceived = Env:NewEventEmitter()
+
 commHandler[SYNC_OPCODES.PROBE_RECEIVER] = function(sender, data)
-    LogDebug("doing fake placeholder accept")
+    ---@cast data SyncDataType
+    if incoming[sender] then
+        return
+    end
+    incoming[sender] = {
+        type = data,
+        state = "probing",
+    }
     Net:SendWhisper(SYNC_COMM_PREFIX, sender, SYNC_OPCODES.PROBE_RECEIVED, data)
-    C_Timer.NewTimer(4, function(t)
-        Net:SendWhisper(SYNC_COMM_PREFIX, sender, SYNC_OPCODES.PROBE_RESPONSE, true)
-    end)
+    Sync.OnProbe:Trigger(sender, data)
+    LogDebug("Got probe from", sender, data)
 end
 
 commHandler[SYNC_OPCODES.SEND_SESSION_SETTINGS] = function(sender, data)
-    print("got data")
-    -- TODO: Update settings
+    ---@cast data table<string,any>
+    if incoming[sender] and incoming[sender].state == "waitingForData" then
+        LogDebug("Data received", sender)
+        Env:PrintVerbose(data)
+        Sync.OnReceived:Trigger(sender, incoming[sender].type)
+        incoming[sender] = nil
+        for k, v in pairs(data) do
+            if Env.settings.lootSession[k] and type(Env.settings.lootSession[k]) == type(v) then
+                Env.settings.lootSession[k] = v
+            end
+        end
+    end
+end
+
+---Initiate syncing with target.
+---@param source string
+---@param accept boolean
+function Sync.RespondToProbe(source, accept)
+    LogDebug("Response to probe:", source, tostring(accept))
+    if incoming[source] then
+        if not accept then
+            incoming[source] = nil
+        else
+            incoming[source].state = "waitingForData"
+        end
+        Net:SendWhisper(SYNC_COMM_PREFIX, source, SYNC_OPCODES.PROBE_RESPONSE, accept)
+    end
 end
 
 Env:OnAddonLoaded(function(...)
@@ -159,14 +211,8 @@ function Sync.EnableSync(enabled)
             end
         end
         initiatedSyncs = {}
+        incoming = {}
     end
-end
-
----Initiate syncing with target.
----@param target string
----@param dataType SyncDataType
-function Sync.Initiate(target, dataType)
-    return SendProbe(target, dataType)
 end
 
 Env:RegisterSlashCommand("st", "", function(args)
