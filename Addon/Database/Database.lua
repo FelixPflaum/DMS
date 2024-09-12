@@ -256,7 +256,7 @@ end
 
 ---Get filtered loot history.
 ---@param filter HistoryFilter
----@param maxResults integer Default 100
+---@param maxResults integer? Default 100
 ---@return LootHistoryEntry[] history Will be a copy of the data.
 function Env.Database:GetLootHistory(filter, maxResults)
     local toGo = maxResults or 100
@@ -266,7 +266,7 @@ function Env.Database:GetLootHistory(filter, maxResults)
 
     for _, entry in ipairs(self.lootHistory) do
         if FilterLootEntry(entry, filter) then
-            table.insert(entry)
+            table.insert(filtered, entry)
             toGo = toGo - 1
             if toGo <= 0 then
                 break
@@ -304,7 +304,7 @@ end
 
 ---Get id, hexcolor and display string from database response string.
 ---@param rstr string The string from the DB in the format {id,rgb_hexcolor}displayString
----@return number id
+---@return integer id
 ---@return string hexColor RGB
 ---@return string displayString
 function Env.Database.FormatResponseStringForUI(rstr)
@@ -314,6 +314,7 @@ function Env.Database.FormatResponseStringForUI(rstr)
         return 0, "FFFFFF", rstr
     end
     local id = tonumber(idStr)
+    ---@cast id integer?
     return id and id or 0, hexColor, display
 end
 

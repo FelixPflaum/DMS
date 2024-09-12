@@ -233,6 +233,11 @@ function ScriptRegionResizing:GetPoint(index) end
 ---@field SetSpacing fun(self:FontInstance, spacing) -- Sets the spacing between lines of text in the object. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetSpacing
 ---@field SetTextColor fun(self:FontInstance, colorR:number, colorG:number, colorB:number, a:number?) -- Sets the default text color. -- https://warcraft.wiki.gg/wiki/API_FontInstance_SetTextColor
 
+---Creates a Font object.
+---@param name string Globally-accessible name to be assigned for use as _G["name"]
+---@return Font
+function CreateFont(name) end
+
 ---@class FrameScriptObject
 ---@field GetName fun(self:FrameScriptObject):string  -- Returns the object's global name. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetName
 ---@field GetObjectType fun(self:FrameScriptObject):string  -- Returns the object's widget type. -- https://warcraft.wiki.gg/wiki/API_FrameScriptObject_GetObjectType
@@ -1104,3 +1109,4 @@ function PlaySoundFile(path, channel) end
 ---@overload fun(format:string, time:number): string
 ---@overload fun(format:"*t", time:number): ostimeInput
 function date(format, time) end
+

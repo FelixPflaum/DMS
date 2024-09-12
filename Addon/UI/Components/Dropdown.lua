@@ -125,7 +125,7 @@ end
 ---@param updateFunc fun(entries:{displayText:string, value:any}[])|nil Will be called when dropdown is opened. Fill entries table with entries to show. Can be nil if entries are static, see dropdown:SetEntries()
 ---@param onSelectionChange fun(value:any)? Will be called if selection changes.
 local function CreateMSADropdown(parent, updateFunc, onSelectionChange)
-    ---@class (exact) DmsDropdown : DmsDropdownButton
+    ---@class DmsDropdown : DmsDropdownButton
     ---@field _entries {displayText:string, value:any}[]
     ---@field selectedValue any
     local dropdown = CreateDropdownButton(parent)
@@ -139,13 +139,13 @@ local function CreateMSADropdown(parent, updateFunc, onSelectionChange)
         MSA_ToggleDropDownMenu(1, nil, dropdownMenu)
     end)
 
-    dropdown._updateFunc = updateFunc ---@diagnostic disable-line: inject-field
+    dropdown._updateFunc = updateFunc
     dropdown._entries = {}
 
     ---@param value any
     ---@param display string
     ---@param noEmit boolean?
-    dropdown._Select = function(btn, value, display, noEmit) ---@diagnostic disable-line: inject-field
+    dropdown._Select = function(btn, value, display, noEmit)
         local changed = dropdown.selectedValue ~= value
         if changed then
             dropdown.selectedValue = value
@@ -154,8 +154,8 @@ local function CreateMSADropdown(parent, updateFunc, onSelectionChange)
         end
     end
 
-    dropdown.SetEntries = SetEntries ---@diagnostic disable-line: inject-field
-    dropdown.SetSelected = SetSelected ---@diagnostic disable-line: inject-field
+    dropdown.SetEntries = SetEntries
+    dropdown.SetSelected = SetSelected
 
     return dropdown
 end

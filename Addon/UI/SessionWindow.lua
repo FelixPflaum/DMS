@@ -855,13 +855,31 @@ local function CreateWindow()
     ---@field item SessionClient_Item
     frame.st = ScrollingTable:CreateST(TABLE_DEF, 15, TABLE_ROW_HEIGHT, nil, frame)
     frame.st.frame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", -1, -frame.st.head:GetHeight() - 4)
-    frame.st:RegisterEvents({ OnClick = Script_TableRightClick })
+    frame.st:RegisterEvents({
+        OnClick = Script_TableRightClick,
+        OnEnter = function(_, _, data, _, row, realrow)
+            if row then
+                local candidate = data[realrow][TABLE_INDICES.NAME] ---@type SessionClient_Candidate
+                if candidate then
+                    frame.MoreInfoPanel:SetPlayer(candidate.name)
+                end
+            end
+        end,
+        OnLeave = function(_, _, data, _, row, realrow)
+            if row then
+                frame.MoreInfoPanel:SetPlayer()
+            end
+        end
+    })
 
     frame:SetWidth(frame.st.frame:GetWidth() + 7)
     frame:SetHeight(frame.st.frame:GetHeight() + 86)
 
     CreateItemStatusDisplay()
     CreateStatusHeaders(frame)
+
+    frame.MoreInfoPanel = Env.UI.CreateMoreInfoPanel(frame)
+    frame.MoreInfoPanel.frame:SetPoint("TOPLEFT", frame, "TOPRIGHT", 0, 0)
 end
 
 ---@param index integer

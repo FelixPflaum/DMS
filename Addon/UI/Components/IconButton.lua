@@ -77,7 +77,7 @@ end
 ---@param noHighlight boolean|nil
 ---@return IconButon
 local function CreateIconButton(parent, size, noHighlight)
-    ---@class (exact) IconButon : WoWFrameButton
+    ---@class IconButon : WoWFrameButton
     ---@field onClickCallback fun(arg:any)|nil
     ---@field itemId integer|nil
     ---@field clickCallbackArg any
@@ -93,10 +93,10 @@ local function CreateIconButton(parent, size, noHighlight)
     iicon:SetBackdrop({ bgFile = "", edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], edgeSize = 15 })
     iicon:EnableMouse(true)
     iicon:RegisterForClicks("AnyUp")
-    iicon.SetDesaturated = SetDesaturated ---@diagnostic disable-line: inject-field
-    iicon.SetOnClick = SetOnClick ---@diagnostic disable-line: inject-field
-    iicon.SetItemData = SetItemData ---@diagnostic disable-line: inject-field
-    iicon.GetArg = GetArg ---@diagnostic disable-line: inject-field
+    iicon.SetDesaturated = SetDesaturated
+    iicon.SetOnClick = SetOnClick
+    iicon.SetItemData = SetItemData
+    iicon.GetArg = GetArg
     iicon:SetScript("OnClick", function()
         if iicon.onClickCallback then
             iicon.onClickCallback(iicon.clickCallbackArg)
@@ -110,14 +110,14 @@ local function CreateIconButton(parent, size, noHighlight)
     iicon:SetScript("OnLeave", GameTooltip_Hide)
 
     local checkMarkOverlayInset = size / 10
-    iicon.OverlayTexStatus = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
+    iicon.OverlayTexStatus = iicon:CreateTexture(nil, "OVERLAY")
     iicon.OverlayTexStatus:SetPoint("TOPLEFT", checkMarkOverlayInset, -checkMarkOverlayInset)
     iicon.OverlayTexStatus:SetPoint("BOTTOMRIGHT", -checkMarkOverlayInset, checkMarkOverlayInset)
     iicon.OverlayTexStatus:Hide()
     iicon.ShowStatus = ShowStatus ---@diagnostic disable-line: inject-field
 
     local borderOverlayInset = 1
-    iicon.OverLayTexture = iicon:CreateTexture(nil, "OVERLAY") ---@diagnostic disable-line: inject-field
+    iicon.OverLayTexture = iicon:CreateTexture(nil, "OVERLAY")
     iicon.OverLayTexture:SetTexture(GetImagePath("border_r10_thick.png"))
     iicon.OverLayTexture:SetPoint("TOPLEFT", borderOverlayInset, -borderOverlayInset)
     iicon.OverLayTexture:SetPoint("BOTTOMRIGHT", -borderOverlayInset, borderOverlayInset)

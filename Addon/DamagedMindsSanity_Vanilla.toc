@@ -53,6 +53,7 @@ UI/Components/ButtonWindow.lua
 UI/Components/Dropdown.lua
 UI/Components/DatePicker.lua
 UI/SettingsTab.lua
+UI/SessionWindowMoreInfo.lua
 UI/SessionWindow.lua
 UI/LootWindow.lua
 UI/ResponseWindow.lua
