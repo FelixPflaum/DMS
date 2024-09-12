@@ -45,6 +45,49 @@ local function CreateOptionTable()
                         width = 1.5,
                         type = "toggle",
                     },
+                    headerResponses = {
+                        order = 3,
+                        type = "header",
+                        name = L["More Info Panel"]
+                    },
+                    descCound = {
+                        order = 4,
+                        type = "description",
+                        name = L["Panel that shows the recent loot history of players in loot session window on mouseover."]
+                    },
+                    moreInfoEnabled = {
+                        order = 5,
+                        name = L["Enable"],
+                        width = 0.5,
+                        type = "toggle",
+                    },
+                    moreInfoItemCount = {
+                        order = 6,
+                        name = L["Item Count"],
+                        desc = L["How many recent items to list."],
+                        type = "range",
+                        width = 1,
+                        min = 1,
+                        max = 20,
+                        step = 1,
+                    },
+                    moreInfoTimeframe = {
+                        order = 7,
+                        name = L["Timeframe Days"],
+                        desc = L["How far back in time to look for the recent loot history."],
+                        type = "range",
+                        width = 1,
+                        min = 1,
+                        max = 365,
+                        step = 1,
+                        get = function(info)
+                            return math.floor(Env.settings[info[#info]] / 86400) -- Convert to days.
+                        end,
+                        set = function(info, val)
+                            ---@diagnostic disable-next-line: no-unknown
+                            Env.settings[info[#info]] = val * 86400 -- Convert to seconds.
+                        end,
+                    },
                 }
             },
             hostGroup = {
@@ -62,7 +105,7 @@ local function CreateOptionTable()
                     timeout = {
                         order = 1,
                         name = L["Roll Timeout"],
-                        desc = L["How many seconds do player have for selecting a response."],
+                        desc = L["How many seconds do players have for selecting a response."],
                         type = "range",
                         width = "full",
                         min = 10,
@@ -163,7 +206,7 @@ local function CreateOptionTable()
                         order = ORDER_LAST_RESPONSE_BUTTON + 8,
                         type = "description",
                         name = L
-                            ["How much sanity to remove if a sanity roll is won with competition, i.e. another sanity or need roll exists."]
+                            ["How much sanity to remove if a sanity roll is won without competition, i.e. it was the only sanity roll and no need roll exists."]
                     },
                     pointsRemoveUncontestedFlat = {
                         order = ORDER_LAST_RESPONSE_BUTTON + 9,
@@ -218,6 +261,7 @@ local function CreateOptionTable()
                         order = 2,
                         type = "toggle",
                         name = L["Test mode"],
+                        desc = L["Create test player entries when hosting a session."]
                     }
                 }
             },

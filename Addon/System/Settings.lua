@@ -23,6 +23,9 @@ local defaultSettings = {
         masterLooter = true,
         guildRanks = {},
     },
+    moreInfoEnabled = true,
+    moreInfoItemCount = 8,
+    moreInfoTimeframe = 60 * 86400, -- 60 days
     UI = {
         SessionWindow = {},
         LootWindow = {},

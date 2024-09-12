@@ -239,11 +239,11 @@ local function FilterLootEntry(entry, filter)
         return false
     end
 
-    if filter.fromTime and filter.fromTime <= entry.timeStamp then
+    if filter.fromTime and filter.fromTime > entry.timeStamp then
         return false
     end
 
-    if filter.untilTime and filter.untilTime >= entry.timeStamp then
+    if filter.untilTime and filter.untilTime < entry.timeStamp then
         return false
     end
 

@@ -6,8 +6,6 @@ local L = Env:GetLocalization()
 local ColorByClassId = Env.UI.ColorByClassId
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 
-local TIMEFRAME = 60 * 86400 -- 60 days TODO: make settings entry
-local MAX_ITEMS = 8          -- TODO: make settings entry
 local CONTENT_MARGIN = 5
 local ITEM_ROW_MARGIN = 2
 local RESPONSE_WIDTH = 35
@@ -235,6 +233,7 @@ local function CreateBaseFrame(parent)
     ---@class SessionWindowMoreInfoPanelFrame : WoWFrame
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(250, 400)
+    frame:Hide()
 
     frame.Bg = frame:CreateTexture(nil, "BACKGROUND")
     frame.Bg:SetColorTexture(0.15, 0.15, 0.15, 0.75)
@@ -284,7 +283,7 @@ end
 ---@param self SessionWindowMoreInfo
 ---@param name string? Set nil to hide panel.
 local function SetPlayer(self, name)
-    if not name then
+    if not Env.settings.moreInfoEnabled or not name then
         self.frame:Hide()
         return
     end
@@ -294,21 +293,25 @@ local function SetPlayer(self, name)
 
     self.frame.PlayerName:SetText(ColorByClassId(dbData.playerName, dbData.classId))
 
+    local timeframe = Env.settings.moreInfoTimeframe
+    local maxItemsToShow = Env.settings.moreInfoItemCount
     local now = time()
-    local lootHistory = Env.Database:GetLootHistory({ playerName = dbData.playerName }) --, untilTime = now, fromTime = now - TIMEFRAME })
+    local lootHistory = Env.Database:GetLootHistory({ playerName = dbData.playerName, untilTime = now, fromTime = now - timeframe })
     local responseCount = {} ---@type table<string,{id:integer, display:string, count:integer}>
+
+    print(maxItemsToShow, timeframe, #lootHistory)
 
     table.sort(lootHistory, function(a, b)
         return a.timeStamp > b.timeStamp
     end)
 
-    self.frame.LastItemsHeading:SetText(L["Last %d items received:"]:format(MAX_ITEMS))
+    self.frame.LastItemsHeading:SetText(L["Last %d items received:"]:format(maxItemsToShow))
 
-    for i = 1, math.max(#lootHistory, MAX_ITEMS, #self.frame.lastItemRows) do
+    for i = 1, math.max(#lootHistory, maxItemsToShow, #self.frame.lastItemRows) do
         local item = lootHistory[i]
         if item then
             local id, color, display = Env.Database.FormatResponseStringForUI(item.response)
-            if i <= MAX_ITEMS then
+            if i <= maxItemsToShow then
                 local row = self.frame:ShowLastItemRow(i, ("|cFF%s%s|r"):format(color, display), LootAgeString(now - item.timeStamp), tostring(item.itemId))
                 DoWhenItemInfoReady(item.itemId, function(_, itemLink)
                     self.frame:UpdateLastItemRowName(i, itemLink)
@@ -330,7 +333,7 @@ local function SetPlayer(self, name)
         end
     end
 
-    self.frame.LastItemsResponsesHeading:SetText(L["Total items in the last %d days:"]:format(math.floor(TIMEFRAME / 86400)))
+    self.frame.LastItemsResponsesHeading:SetText(L["Total items in the last %d days:"]:format(math.floor(timeframe / 86400)))
 
     local respCountArray = {} ---@type {id:integer, display:string, count:integer}[]
     for _, v in pairs(responseCount) do
