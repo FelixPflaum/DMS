@@ -18,7 +18,7 @@ local defaultSettings = {
     testMode = false,
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
     autoSwitchToNextItem = false,
-    startPermissions = {
+    startPermissions = { -- TODO: use this?
         leader = true,
         masterLooter = true,
         guildRanks = {},
@@ -31,6 +31,7 @@ local defaultSettings = {
         LootWindow = {},
         ResponseWindow = {},
         DatabaseWindow = {},
+        SyncWindow = {},
     },
     lootSession = {
         timeout = 90,

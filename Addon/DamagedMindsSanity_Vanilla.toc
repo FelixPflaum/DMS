@@ -44,6 +44,7 @@ Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/Autopass.lua
 Modules/LootSession/LootSessionClient.lua
 Modules/LootSession/LootList.lua
+Modules/Sync/Sync.lua
 
 Modules/Meow.lua
 
@@ -58,3 +59,4 @@ UI/SessionWindow.lua
 UI/LootWindow.lua
 UI/ResponseWindow.lua
 UI/DatabaseWindow.lua
+UI/SyncWindow.lua

@@ -47,6 +47,7 @@ local clientHostName = ""
 local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
 
 Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
+    ---@cast opcode Opcode
     if not messageHandler[opcode] then
         Env:PrintError(L["Received unhandled opcode %s from %s"]:format(LookupOpcodeName(opcode), sender))
         return
