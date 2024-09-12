@@ -29,7 +29,7 @@ end
 ---@param flat integer
 ---@param pct integer
 local function RemoveFlatAndPctFromValue(val, flat, pct)
-    local mult = 1 - (pct / 100)
+    local mult = val > 0 and  1 - (pct / 100) or 0
     return math.floor((val - flat) * mult)
 end
 
