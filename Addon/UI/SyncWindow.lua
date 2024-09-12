@@ -101,7 +101,7 @@ Env:OnAddonLoaded(function()
     ---@class SyncWindow : ButtonWindow
     syncWindow = Env.UI.CreateButtonWindow("DMSSyncWindow", L["DMS Sync"], 300, 150, 0, false, Env.settings.UI.SyncWindow)
     syncWindow.onTopCloseClicked = CloseWindow
-    syncWindow:SetFrameStrata("HIGH")
+    syncWindow:SetFrameStrata("DIALOG")
 
     local nameBox = CreateFrame("EditBox", nil, syncWindow, "InputBoxTemplate")
     nameBox:SetAutoFocus(false)

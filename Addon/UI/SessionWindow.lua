@@ -934,6 +934,7 @@ Client.OnStart:RegisterCallback(function()
         return
     end
     frame:Show()
+    frame:SetFrameLevel(10000)
 end)
 
 Client.OnEnd:RegisterCallback(function()
