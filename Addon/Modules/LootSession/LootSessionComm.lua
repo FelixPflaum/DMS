@@ -123,7 +123,7 @@ local function LogDebugHtC(...)
     Env:PrintDebug("Comm Host:", ...)
 end
 
----Get GetTime() stamp of the last broadcast sent to clients.
+---Get GetTime() stamp of the last broadcast sent to clients. This is only available on the host.
 function Comm.GetLastHostBroadcastSent()
     return lastHostBroadcastSent
 end
@@ -563,6 +563,7 @@ do
 end
 
 -- HMSG_KEEPALIVE
+-- This is basically just to update the last received time for clients if no other comm happens.
 do
     function Sender.HMSG_KEEPALIVE()
         SendToClients(OPCODES.HMSG_KEEPALIVE)

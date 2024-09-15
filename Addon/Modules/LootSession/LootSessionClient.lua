@@ -91,12 +91,15 @@ Client.OnItemUpdate = Env:NewEventEmitter()
 --- Construction
 ------------------------------------------------------------------------------------
 
+local KEEP_ALIVE_INTERVAL = Env.Session.CLIENT_KEEPALIVE_TIME
+local HOST_MAX_MSG_INTERVAL = Env.Session.HOST_TIMEOUT_TIME
+
 local timers = Env:NewUniqueTimers()
 
 local function KeepAlive()
     if not Client.isRunning then return end
     Comm.Send.CMSG_ATTENDANCE_CHECK()
-    timers:StartUnique("keepaliveTimer", 20, KeepAlive)
+    timers:StartUnique("keepaliveTimer", KEEP_ALIVE_INTERVAL, KeepAlive)
 end
 
 ---Reset and initialize client session.
@@ -114,6 +117,7 @@ function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange)
     Client.items = {}
     Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
+    Client:CheckHostAlive()
     Env:RegisterEvent("UNIT_CONNECTION", Client)
     Env:RegisterEvent("GROUP_LEFT", Client)
     Client.OnStart:Trigger()
@@ -129,6 +133,17 @@ local function EndSession()
     Client.OnEnd:Trigger()
 end
 
+function Client:CheckHostAlive()
+    if not Client.isRunning then return end
+    local lastHostMessageAge = Comm.GetLastReceivedAgo(Client.hostName)
+    if lastHostMessageAge > HOST_MAX_MSG_INTERVAL then
+        Env:PrintWarn(L["Host %s did not send any messages for %d seconds. Ending session."]:format(Client.hostName, HOST_MAX_MSG_INTERVAL))
+        EndSession()
+        return
+    end
+    timers:StartUnique("CheckHostAliveTimer", 2, "CheckHostAlive", self)
+end
+
 ---@private
 function Client:GROUP_LEFT()
     if not self.isRunning then return end
@@ -139,7 +154,7 @@ end
 Comm.Events.HMSG_SESSION_START:RegisterCallback(function(data, responses, sender)
     if Client.isRunning and Client.hostName ~= sender then
         local lastMsgAgeCurrentHost = Comm.GetLastReceivedAgo(Client.hostName)
-        if not lastMsgAgeCurrentHost or lastMsgAgeCurrentHost > 30 then
+        if not lastMsgAgeCurrentHost or lastMsgAgeCurrentHost > HOST_MAX_MSG_INTERVAL then
             Env:PrintWarn(L["New session start from %s and current host %s stopped sending data, starting new session."]:format(sender, Client.hostName))
         else
             LogDebug("Received HMSG_SESSION_START from", sender, "but already have a session from", Client.hostName)
@@ -215,6 +230,13 @@ end)
 ---@param isConnected boolean
 function Client:UNIT_CONNECTION(unit, isConnected)
     local name = UnitName(unit)
+
+    if name == Client.hostName and not isConnected then
+        Env:PrintWarn(L["Host %s went offline, ending session."]:format(Client.hostName))
+        EndSession()
+        return
+    end
+
     local candidate = Client.candidates[name]
     LogDebug("UNIT_CONNECTION", name, isConnected, "have candidate", candidate ~= nil)
     if candidate and candidate.isOffline == isConnected then

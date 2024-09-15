@@ -69,6 +69,8 @@ Env.SessionHost = Host
 ------------------------------------------------------------------------------------
 
 local UPDATE_TIMER_KEY = "mainUpdate"
+local UPDATE_TIME = Env.Session.HOST_UPDATE_TIME
+local CLIENT_TIMEOUT_TIME = Env.Session.CLIENT_TIMEOUT_TIME
 
 local targetChannelType = "self" ---@type CommTarget
 local timers = Env:NewUniqueTimers()
@@ -101,7 +103,7 @@ local function InitHost(target)
     Comm.Send.HMSG_SESSION_START(Host.guid, responses.responses, pointsMinForRoll, pointsMaxRange)
 
     Host:UpdateCandidateList()
-    timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", Host)
+    timers:StartUnique(UPDATE_TIMER_KEY, UPDATE_TIME, "TimerUpdate", Host)
 
     if Env.settings.testMode then
         Env:PrintError("TEST MODE: Generating fake candidate entries!")
@@ -131,7 +133,7 @@ function Host:TimerUpdate()
     local haveCandidateChange = false
     for _, candidate in pairs(candidates) do
         local oldIsResponding = candidate.isResponding
-        candidate.isResponding = candidate.lastMessage > nowgt - 25
+        candidate.isResponding = candidate.lastMessage > nowgt - CLIENT_TIMEOUT_TIME
         if oldIsResponding ~= candidate.isResponding then
             changedLootCandidates[candidate.name] = candidate
             haveCandidateChange = true
@@ -143,12 +145,12 @@ function Host:TimerUpdate()
     end
 
     local lastBoradcastTime = Comm.GetLastHostBroadcastSent()
-    if nowgt - lastBoradcastTime >= 10 then
+    if nowgt - lastBoradcastTime >= UPDATE_TIME - 0.5 then
         Comm.Send.HMSG_KEEPALIVE()
     end
 
     -- Restart timer
-    timers:StartUnique(UPDATE_TIMER_KEY, 10, "TimerUpdate", self)
+    timers:StartUnique(UPDATE_TIMER_KEY, UPDATE_TIME, "TimerUpdate", self)
 end
 
 ---@private
@@ -286,6 +288,7 @@ function Host:GROUP_ROSTER_UPDATE()
 end
 
 Comm.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
+    if not Host.isRunning then return end
     local candidate = candidates[sender]
     if not candidate then return end
     local update = not candidate.isResponding
@@ -301,6 +304,7 @@ end)
 ------------------------------------------------------------------------------------
 
 Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
+    if not Host.isRunning then return end
     local candidate = candidates[sender]
     if not candidate then return end
     local item = items[itemGuid]
@@ -369,6 +373,7 @@ function Host:SetItemResponse(itemGuid, candidateName, responseId, doInstant)
 end
 
 Comm.Events.CMSG_ITEM_RESPONSE:RegisterCallback(function(sender, itemGuid, responseId)
+    if not Host.isRunning then return end
     local item = items[itemGuid]
     if not item then
         Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)

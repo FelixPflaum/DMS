@@ -5,6 +5,11 @@ local L = Env:GetLocalization()
 
 Env.Session = {}
 
+Env.Session.HOST_UPDATE_TIME = 10 -- Frequency of host update function = min time between assured messages to client, max is this times 2
+Env.Session.HOST_TIMEOUT_TIME = Env.Session.HOST_UPDATE_TIME * 2 + 5 -- If client doesn't get any message from host for this time consider host gone.
+Env.Session.CLIENT_KEEPALIVE_TIME = 20 -- How often the client sends its keepalive msg.
+Env.Session.CLIENT_TIMEOUT_TIME = Env.Session.CLIENT_KEEPALIVE_TIME + 5 -- Consider client offline/gone if not getting keepalive for this long.
+
 ----------------------------------------------------------------------------
 --- Loot Status
 --- This is static and the same for host and client. Only id needs to be communicated.
