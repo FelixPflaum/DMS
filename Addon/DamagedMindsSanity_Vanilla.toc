@@ -62,3 +62,6 @@ UI/ResponseWindow.lua
 UI/DatabaseWindow.lua
 UI/SyncWindow.lua
 UI/TradeWindow.lua
+
+Modules/VersionCheck/VersionCheck.lua
+Modules/VersionCheck/VersionCheckWindow.lua

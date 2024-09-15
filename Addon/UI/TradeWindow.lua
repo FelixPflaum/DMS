@@ -93,8 +93,6 @@ local function CreateFrame()
     sTable:RegisterEvents({ OnClick = TableClicked })
     frame:SetWidth(sTable.frame:GetWidth() + 6)
     frame:SetHeight(sTable.frame:GetHeight() + 22)
-
-    frame:Show()
 end
 
 -- Create frame when settings are ready.

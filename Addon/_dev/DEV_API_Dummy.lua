@@ -33,11 +33,22 @@ bit = {
 LE_ITEM_CLASS_WEAPON = 2;
 ERR_TRADE_COMPLETE = "Trade complete."
 ERR_TRADE_CANCELLED = "Trade cancelled."
+ERR_TRADE_NOT_ON_TAPLIST = ""
+ERR_TRADE_QUEST_ITEM = ""
+ERR_TRADE_TARGET_BAG_FULL = ""
+ERR_TRADE_TARGET_DEAD = ""
+ERR_TRADE_TARGET_MAX_COUNT_EXCEEDED = ""
 
 ---Returns the item link for an item in the trade window.
 ---@param index integer
 ---@return string itemLink
 function GetTradePlayerItemLink(index) end
+
+---Returns true if the player is in range to perform a specific interaction with the unit. 
+---@param unit string
+---@param dist integer 1=acm 28y, 2=trade 8y, 3=duel 7y, 4=follow 28y, 5=petbattle 7y
+---@return boolean 1 if you are in range to perform the interaction, nil otherwise.
+function CheckInteractDistance(unit, dist) end
 
 --- mhBase, mhMod, ohBase, ohMod
 function UnitAttackBothHands(unit)
