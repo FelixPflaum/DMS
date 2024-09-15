@@ -214,8 +214,3 @@ function Sync.EnableSync(enabled)
         incoming = {}
     end
 end
-
-Env:RegisterSlashCommand("st", "", function(args)
-    Sync.EnableSync(true)
-    SendProbe(UnitName("player"), "settings")
-end)
