@@ -10,7 +10,8 @@ local eventHandlers = {}
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if eventHandlers[event] then
         local handlers = eventHandlers[event]
-        for _, funcOrObj in ipairs(handlers) do
+        for i = #handlers, 1, -1 do
+            local funcOrObj = handlers[i]
             if type(funcOrObj) == "table" then
                 funcOrObj[event](funcOrObj, ...)
             else
@@ -38,8 +39,9 @@ end
 ---@param callbackOrObject table|fun(...:any):boolean|nil
 function Env:UnregisterEvent(event, callbackOrObject)
     if not eventHandlers[event] then return end
-    for i, v in ipairs(eventHandlers[event]) do
-        if v == callbackOrObject then
+    for i = #eventHandlers[event], 1, -1 do
+        local funcOrObj = eventHandlers[event][i]
+        if funcOrObj == callbackOrObject then
             table.remove(eventHandlers[event], i)
             self:PrintDebug("Removed event callback", event, callbackOrObject)
             if #eventHandlers[event] == 0 then
