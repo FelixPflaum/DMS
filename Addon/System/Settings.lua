@@ -32,6 +32,7 @@ local defaultSettings = {
         ResponseWindow = {},
         DatabaseWindow = {},
         SyncWindow = {},
+        TradeWindow = {},
     },
     lootSession = {
         timeout = 90,

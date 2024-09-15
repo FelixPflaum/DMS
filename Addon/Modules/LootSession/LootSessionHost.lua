@@ -482,6 +482,7 @@ function Host:AwardItem(itemGuid, candidateName)
     end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
 
+    Env.Trade:AddItem(item.itemId, item.awarded.candidateName)
     UnveilNextItem()
 
     return nil, responseUsed, pointsUsed, pointUsageReason
@@ -536,6 +537,8 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
         end
     end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid)
+
+    Env.Trade:RemoveItem(item.itemId, candidateName)
 
     return nil, pointsReturned
 end

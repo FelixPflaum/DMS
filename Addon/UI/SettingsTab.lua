@@ -379,6 +379,10 @@ Env:OnAddonLoaded(function()
 end)
 
 Env:RegisterSlashCommand("config", L["Opens the config window."], function()
-    InterfaceOptionsFrame_OpenToCategory(addonName)
-    InterfaceOptionsFrame_OpenToCategory(addonName)
+    if InterfaceOptionsFrame_OpenToCategory then
+        InterfaceOptionsFrame_OpenToCategory(addonName)
+        InterfaceOptionsFrame_OpenToCategory(addonName)
+    else
+        Settings.OpenToCategory(addonName)
+    end
 end)

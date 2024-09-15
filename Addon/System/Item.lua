@@ -72,7 +72,7 @@ end
 ---Get item Id from an item link. Matches the "|Hitem:id:" part, everything else is irrelevant.
 ---@param itemLink string
 ---@return integer|nil
-function Env.Item:GetIdFromLink(itemLink)
+function Env.Item.GetIdFromLink(itemLink)
     local match = itemLink:match("|Hitem:(%d+):")
     if match then
         local num = tonumber(match)

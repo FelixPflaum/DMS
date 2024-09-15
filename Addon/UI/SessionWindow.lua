@@ -481,7 +481,7 @@ do
             cellFrame:SetScript("OnEnter", nil)
             return
         end
-        local itemId = Env.Item:GetIdFromLink(itemLink)
+        local itemId = Env.Item.GetIdFromLink(itemLink)
         local icon = itemId and GetItemIcon(itemId)
         cellFrame:SetNormalTexture(icon or [[Interface/Icons/inv_misc_questionmark]])
         cellFrame:SetScript("OnEnter", function() Env.UI.ShowItemTooltip(cellFrame, itemLink) end)

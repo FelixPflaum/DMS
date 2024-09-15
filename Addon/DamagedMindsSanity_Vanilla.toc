@@ -37,6 +37,7 @@ System/Guild.lua
 
 Database/Database.lua
 
+Modules/LootSession/Trade.lua
 Modules/LootSession/LootSession.lua
 Modules/LootSession/LootSessionComm.lua
 Modules/LootSession/PointLogic.lua
@@ -60,3 +61,4 @@ UI/LootWindow.lua
 UI/ResponseWindow.lua
 UI/DatabaseWindow.lua
 UI/SyncWindow.lua
+UI/TradeWindow.lua

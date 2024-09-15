@@ -92,7 +92,7 @@ Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
         for _, arg in ipairs(args) do
             local links = ItemLinkSplit(arg)
             for _, v in pairs(links) do
-                local id = Env.Item:GetIdFromLink(v)
+                local id = Env.Item.GetIdFromLink(v)
                 if id then
                     table.insert(itemList, id)
                 end

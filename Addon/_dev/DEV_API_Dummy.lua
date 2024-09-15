@@ -31,6 +31,13 @@ bit = {
 }
 
 LE_ITEM_CLASS_WEAPON = 2;
+ERR_TRADE_COMPLETE = "Trade complete."
+ERR_TRADE_CANCELLED = "Trade cancelled."
+
+---Returns the item link for an item in the trade window.
+---@param index integer
+---@return string itemLink
+function GetTradePlayerItemLink(index) end
 
 --- mhBase, mhMod, ohBase, ohMod
 function UnitAttackBothHands(unit)
@@ -578,6 +585,13 @@ function GetInventoryItemDurability(slot)
     return 123;
 end
 
+C_AddOns = {}
+
+---@param addon string
+---@param field string
+---@return string?
+function C_AddOns.GetAddOnMetadata(addon, field) end
+
 ---Returns information about a specified talent in a specified tab.
 ---@param tree any
 ---@param talent any
@@ -990,6 +1004,18 @@ Enum.ItemQuality = {
 ---@return ContainerItemInfo|nil info Returns nil if the container slot is empty.
 function C_Container.GetContainerItemInfo(containerIndex, slotIndex) end
 
+---comment
+---@param containerIndex integer
+---@param slotIndex integer
+function C_Container.PickupContainerItem(containerIndex, slotIndex) end
+
+---Equivalent of a mouseclick on the trade window buttons [1-7].
+---@param index integer
+function ClickTradeButton(index) end
+
+---Clears any objects from the cursor.
+function ClearCursor() end
+
 ---@type number[][]
 CLASS_ICON_TCOORDS = {}
 
@@ -1111,3 +1137,15 @@ function PlaySoundFile(path, channel) end
 ---@overload fun(format:"*t", time:number): ostimeInput
 function date(format, time) end
 
+TradeFrameRecipientNameText = nil ---@type FontString
+
+---@param unit string
+function TargetUnit(unit) end
+
+---@param unit string
+function InitiateTrade(unit) end
+
+Settings = {}
+
+---@param addonName string
+function Settings.OpenToCategory(addonName) end
