@@ -9,7 +9,7 @@ local AceSerializer = LibStub("AceSerializer-3.0")
 local Net = {}
 Env.Net = Net
 
----@alias AddonCommCallback fun(prefix:string, sender:string, opcode:integer, data:any)
+---@alias AddonCommCallback fun(channel:string, sender:string, opcode:integer, data:any)
 
 ---@type table<string, (AddonCommCallback|{object:table, funcName:string})[]>
 local callbacks = {}
@@ -46,9 +46,9 @@ local function MessageReceived(prefix, text, channel, sender)
 
     for _, cb in ipairs(callbacks[prefix]) do
         if type(cb) == "function" then
-            cb(prefix, sender, opcode, data)
+            cb(channel, sender, opcode, data)
         else
-            cb.object[cb.funcName](cb.object, prefix, sender, opcode, data)
+            cb.object[cb.funcName](cb.object, channel, sender, opcode, data)
         end
     end
 end

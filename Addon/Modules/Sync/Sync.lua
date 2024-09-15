@@ -187,8 +187,8 @@ function Sync.RespondToProbe(source, accept)
 end
 
 Env:OnAddonLoaded(function(...)
-    Env.Net:Register(SYNC_COMM_PREFIX, function(prefix, sender, opcode, data)
-        if not isEnabled then
+    Env.Net:Register(SYNC_COMM_PREFIX, function(channel, sender, opcode, data)
+        if not isEnabled or channel ~= "WHISPER" then
             return
         end
         if commHandler[opcode] then

@@ -40,13 +40,13 @@ local function LookupOpcodeName(opcode)
 end
 
 local messageHandler = {} ---@type table<Opcode,fun(data:any, sender:string)>
-local messageFilter = {} ---@type table<Opcode,fun(sender:string, opcode:Opcode, data:any)|nil>
+local messageFilter = {} ---@type table<Opcode,(fun(channel:string, sender:string, opcode:Opcode, data:any):boolean)|nil>
 local batchTimers = Env:NewUniqueTimers()
 local hostCommTarget = "group" ---@type CommTarget
 local clientHostName = ""
 local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
 
-Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
+Net:Register(COMM_SESSION_PREFIX, function(channel, sender, opcode, data)
     ---@cast opcode Opcode
     if not messageHandler[opcode] then
         Env:PrintError(L["Received unhandled opcode %s from %s"]:format(LookupOpcodeName(opcode), sender))
@@ -69,7 +69,7 @@ Net:Register(COMM_SESSION_PREFIX, function(prefix, sender, opcode, data)
         return
     end
 
-    if messageFilter[opcode] and not messageFilter[opcode](sender, opcode, data) then
+    if messageFilter[opcode] and not messageFilter[opcode](channel, sender, opcode, data) then
         return
     end
     messageHandler[opcode](data, sender)
@@ -155,10 +155,11 @@ local function SendToClients(opcode, data)
     Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
 end
 
+---@param channel string
 ---@param sender string
 ---@param opcode Opcode
 ---@param data any
-local function FilterReceivedOnClient(sender, opcode, data)
+local function FilterReceivedOnClient(channel, sender, opcode, data)
     if opcode >= OPCODES.MAX_HMSG then
         return false
     end
@@ -167,6 +168,11 @@ local function FilterReceivedOnClient(sender, opcode, data)
         Env:PrintDebug("Received", LookupOpcodeName(opcode), "from", sender, "who isn't the current host")
         return false
     end
+
+    if channel ~= "WHISPER" and channel ~= "RAID" and channel ~= "PARTY" then
+        return false
+    end
+
     return true
 end
 
@@ -200,6 +206,7 @@ do
     ---@field Trigger fun(self:CommEvent_HMSG_SESSION_START, data:Packet_HMSG_SESSION_START, responses:LootResponses, sender:string)
     Events.HMSG_SESSION_START = Env:NewEventEmitter()
 
+    messageFilter[OPCODES.HMSG_SESSION_START] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_SESSION_START] = function(data, sender)
         ---@cast data Packet_HMSG_SESSION_START
         if COMM_VERSION ~= data.commVersion then
@@ -596,11 +603,15 @@ function SendToHost(opcode, data)
     Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, data)
 end
 
+---@param channel string
 ---@param sender string
 ---@param opcode Opcode
 ---@param data any
-local function FilterReceivedOnHost(sender, opcode, data)
+local function FilterReceivedOnHost(channel, sender, opcode, data)
     if opcode < OPCODES.MAX_HMSG then
+        return false
+    end
+    if channel ~= "WHISPER" and channel ~= "RAID" and channel ~= "PARTY" then
         return false
     end
     return true
@@ -699,11 +710,15 @@ function SendClientToAll(opcode, data)
     Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
 end
 
+---@param channel string
 ---@param sender string
 ---@param opcode Opcode
 ---@param data any
-local function FilterReceivedClientBroadcast(sender, opcode, data)
+local function FilterReceivedClientBroadcast(channel, sender, opcode, data)
     if opcode < OPCODES.MAX_CMSG then
+        return false
+    end
+    if channel ~= "WHISPER" and channel ~= "RAID" and channel ~= "PARTY" then
         return false
     end
     return true

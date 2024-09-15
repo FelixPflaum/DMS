@@ -133,10 +133,12 @@ function VersionCheck.GetMyVersion()
 end
 
 Env:OnAddonLoaded(function(...)
-    Env.Net:Register(VC_COMM_PREFIX, function(prefix, sender, opcode, data)
+    Env.Net:Register(VC_COMM_PREFIX, function(channel, sender, opcode, data)
         if opcode == VC_OPCODES.REQUEST_VERSION then
+            if channel ~= "PARTY" and channel ~= "RAID" and channel ~= "GUILD" then return end
             Net:SendWhisper(VC_COMM_PREFIX, sender, VC_OPCODES.MY_VERSION, VERSION)
         elseif opcode == VC_OPCODES.MY_VERSION then
+            if channel ~= "WHISPER" then return end
             if isEnabled and responseList[sender] then
                 responseList[sender].state = "response"
                 responseList[sender].version = data
