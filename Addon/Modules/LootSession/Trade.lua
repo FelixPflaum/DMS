@@ -42,6 +42,7 @@ end
 ---@param itemId integer
 ---@param receiver string
 function Trade:AddItem(itemId, receiver)
+    if receiver == UnitName("player") then return end
     table.insert(itemList, {
         itemId = itemId,
         receiver = receiver,

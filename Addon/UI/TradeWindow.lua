@@ -42,6 +42,15 @@ local function TableClicked(rowFrame, cellFrame, data, cols, row, realrow, colum
     return false
 end
 
+local function UpdateRange()
+    if frame:IsShown() then
+        if #sTable.data > 0 then
+            sTable:Refresh()
+        end
+        C_Timer.NewTimer(1, UpdateRange)
+    end
+end
+
 ---------------------------------------------------------------------------
 --- Create Frames
 ---------------------------------------------------------------------------
@@ -68,12 +77,18 @@ end
 
 local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
+
     local name = data[realrow][column] ---@type string
+    if not CheckInteractDistance(name, 2) then
+        cellFrame.text:SetText("|cFFFF2222"..name.."|r")
+        return
+    end
+
     local _, _, classId = UnitClass(name)
     if classId then
         cellFrame.text:SetText(ColorByClassId(data[realrow][column], classId))
     else
-        cellFrame.text:SetText(data[realrow][column])
+        cellFrame.text:SetText(name)
     end
 end
 
@@ -113,8 +128,11 @@ Trade.OnItemsChanged:RegisterCallback(function(items)
         return
     end
 
-    frame:Show()
-    frame:SetFrameLevel(1000)
+    if not frame:IsShown() then
+        frame:Show()
+        frame:SetFrameLevel(1000)
+        UpdateRange()
+    end
 
     ---@type ST_DataMinimal[]
     local dataTable = {}
@@ -140,4 +158,5 @@ Env:RegisterSlashCommand("trade", L["Open trade window."], function(args)
         return
     end
     frame:Show()
+    UpdateRange()
 end)
