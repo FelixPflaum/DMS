@@ -127,7 +127,7 @@ local function EndSession()
     if not Client.isRunning then return end
     timers:CancelAll()
     Client.isRunning = false
-    Comm:ClientSetAllowedHost("_nohost_")
+    Comm:ClientSetAllowedHost()
     Env:UnregisterEvent("UNIT_CONNECTION", Client)
     Env:UnregisterEvent("GROUP_LEFT", Client)
     Client.OnEnd:Trigger()
@@ -318,7 +318,7 @@ Comm.Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:RegisterCallback(function(sender, data
         Client.OnItemUpdate:Trigger(item, false)
         return
     end
-    LogDebug("Adding current items to buffer because we did not yet get item data.", item.guid, sender)
+    LogDebug("Adding current items to buffer because we did not yet get item data.", data.itemGuid, sender)
     gearReceivedBuffer[data.itemGuid] = gearReceivedBuffer[data.itemGuid] or {}
     gearReceivedBuffer[data.itemGuid][sender] = data.currentItems
 end)

@@ -71,6 +71,8 @@ Env.SessionHost = Host
 local UPDATE_TIMER_KEY = "mainUpdate"
 local UPDATE_TIME = Env.Session.HOST_UPDATE_TIME
 local CLIENT_TIMEOUT_TIME = Env.Session.CLIENT_TIMEOUT_TIME
+local RESEND_MIN_INTERVAL = 10
+local RESEND_TIMER_KEY = "resendStart"
 
 local targetChannelType = "self" ---@type CommTarget
 local timers = Env:NewUniqueTimers()
@@ -80,6 +82,7 @@ local candidates = {} ---@type table<string, SessionHost_Candidate>
 local responses ---@type LootResponses
 local pointsMinForRoll = 0
 local pointsMaxRange = 0
+local lastStartResend = 0
 
 ---@param target CommTarget
 local function InitHost(target)
@@ -121,6 +124,33 @@ function Host:Destroy()
     Env:UnregisterEvent("GROUP_LEFT", self)
     Comm.Send.HMSG_SESSION_END()
 end
+
+local function ResendStart()
+    if not Host.isRunning then return end
+    lastStartResend = GetTime()
+    LogDebug("Resending start")
+    Comm.Send.HMSG_SESSION_START_RESEND(Host.guid, responses.responses, pointsMinForRoll, pointsMaxRange, candidates, items)
+end
+
+Comm.Events.CMSG_RESEND_START:RegisterCallback(function(sender)
+    if not Host.isRunning then return end
+    Env:PrintWarn(L["%s is reconnecting to session."]:format(sender))
+    local now = GetTime()
+    local timeSinceLastResend = now - lastStartResend
+    if not timers:HasTimer(RESEND_TIMER_KEY) and timeSinceLastResend > RESEND_MIN_INTERVAL then
+        ResendStart()
+    else
+        timers:StartUnique(RESEND_TIMER_KEY, RESEND_MIN_INTERVAL - timeSinceLastResend, ResendStart)
+    end
+    for _, sessionItem in pairs(items) do
+        if sessionItem.status == "waiting" and
+            sessionItem.responses[sender] and
+            sessionItem.responses[sender].status.id == LootStatus.unknown.id then
+            sessionItem.responses[sender].status = LootStatus.sent
+            Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(sessionItem.guid, sessionItem.responses[sender])
+        end
+    end
+end)
 
 ---@private
 function Host:TimerUpdate()
@@ -264,6 +294,15 @@ function Host:UpdateCandidateList()
             candidates[newName] = newEntry
             changed = true
             changedLootCandidates[newName] = newEntry
+            for _, sessionItem in pairs(items) do
+                if sessionItem.status == "waiting" then
+                    sessionItem.responses[newName] = {
+                        candidate = newEntry,
+                        status = LootStatus.unknown,
+                    }
+                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(sessionItem.guid, sessionItem.responses[newName])
+                end
+            end
         end
     end
 
@@ -284,7 +323,7 @@ function Host:GROUP_ROSTER_UPDATE()
     local tkey = "groupupdate"
     if timers:HasTimer(tkey) then return end
     LogDebug("Start UpdateCandidateList timer")
-    timers:StartUnique(tkey, 5, "UpdateCandidateList", self)
+    timers:StartUnique(tkey, 1, "UpdateCandidateList", self)
 end
 
 Comm.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)

@@ -18,12 +18,14 @@ local OPCODES = {
     HMSG_ITEM_ROLL_END = 7,
     HMSG_ITEM_AWARD_UPDATE = 8,
     HMSG_KEEPALIVE = 9,
+    HMSG_SESSION_START_RESEND = 10,
 
     MAX_HMSG = 99,
 
     CMSG_ATTENDANCE_CHECK = 100,
     CMSG_ITEM_RECEIVED = 101,
     CMSG_ITEM_RESPONSE = 102,
+    CMSG_RESEND_START = 103,
 
     MAX_CMSG = 199,
 
@@ -44,10 +46,14 @@ local messageFilter = {} ---@type table<Opcode,(fun(channel:string, sender:strin
 local batchTimers = Env:NewUniqueTimers()
 local hostCommTarget = "group" ---@type CommTarget
 local clientHostName = ""
+local reconnectMsgBuffer = nil ---@type {src:string,buf:{channel:string, sender:string, opcode:Opcode, data:any}[]}|nil
 local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
 
-Net:Register(COMM_SESSION_PREFIX, function(channel, sender, opcode, data)
-    ---@cast opcode Opcode
+---@param channel string
+---@param sender string
+---@param opcode Opcode
+---@param data any
+local function HandleMessage(channel, sender, opcode, data)
     if not messageHandler[opcode] then
         Env:PrintError(L["Received unhandled opcode %s from %s"]:format(LookupOpcodeName(opcode), sender))
         return
@@ -63,9 +69,15 @@ Net:Register(COMM_SESSION_PREFIX, function(channel, sender, opcode, data)
         end
     end
 
-    -- Stop all but session start opcodes here if session is no from sending host
-    if opcode ~= OPCODES.HMSG_SESSION_START and opcode < OPCODES.MAX_HMSG and sender ~= clientHostName then
-        Env:PrintDebug("Received", LookupOpcodeName(opcode), "from", sender, "who isn't the current host")
+    -- Buffer all packets except the resend start packet.
+    if opcode ~= OPCODES.HMSG_SESSION_START_RESEND and reconnectMsgBuffer and reconnectMsgBuffer.src == sender then
+        Env:PrintDebug("Buffering msg from", sender, LookupOpcodeName(opcode))
+        table.insert(reconnectMsgBuffer.buf, {
+            channel = channel,
+            sender = sender,
+            opcode = opcode,
+            data = data,
+        })
         return
     end
 
@@ -73,7 +85,8 @@ Net:Register(COMM_SESSION_PREFIX, function(channel, sender, opcode, data)
         return
     end
     messageHandler[opcode](data, sender)
-end)
+end
+Net:Register(COMM_SESSION_PREFIX, HandleMessage)
 
 ---@class CommSender
 local Sender = {}
@@ -99,9 +112,10 @@ function Comm:HostSetCurrentTarget(target)
 end
 
 ---Set the hostname the client is listening to.
----@param name string
+---@param name string?
 function Comm:ClientSetAllowedHost(name)
-    clientHostName = name
+    clientHostName = name or ""
+    reconnectMsgBuffer = nil
 end
 
 ---Get how many seconds ago the sender sent us the last message.
@@ -163,9 +177,20 @@ local function FilterReceivedOnClient(channel, sender, opcode, data)
     if opcode >= OPCODES.MAX_HMSG then
         return false
     end
+
     -- Filter all but session start here if session is not from currently set host.
-    if opcode ~= OPCODES.HMSG_SESSION_START and sender ~= clientHostName then
-        Env:PrintDebug("Received", LookupOpcodeName(opcode), "from", sender, "who isn't the current host")
+    if opcode ~= OPCODES.HMSG_SESSION_START and sender ~= clientHostName and sender ~= UnitName("player") then
+        if clientHostName == "" then
+            LogDebugHtC("Received", LookupOpcodeName(opcode), "from", sender, "while not having a host")
+            if Env.Session.CanUnitStartSession(sender) then
+                Env:PrintWarn(L["A loot session from %s is running, trying to reconnect..."]:format(sender))
+                reconnectMsgBuffer = { src = sender }
+                Comm.Send.CMSG_RESEND_START()
+                HandleMessage(channel, sender, opcode, data) -- Make it buffer this msg
+                return false
+            end
+        end
+        LogDebugHtC("Received", LookupOpcodeName(opcode), "from", sender, "who isn't the current host")
         return false
     end
 
@@ -241,6 +266,24 @@ do
 end
 
 -- HMSG_CANDIDATE_UPDATE
+
+---@param candidate SessionHost_Candidate
+local function PackLootCandidate(candidate)
+    local data = { ---@type PackedLootCandidate
+        n = candidate.name,
+        c = candidate.classId,
+        s = 0,
+        cp = candidate.currentPoints,
+    }
+    if candidate.leftGroup then
+        data.s = data.s + 0x2
+    end
+    if candidate.isResponding then
+        data.s = data.s + 0x4
+    end
+    return data
+end
+
 do
     ---@class (exact) PackedLootCandidate
     ---@field n string
@@ -254,23 +297,6 @@ do
     ---@field leftGroup boolean
     ---@field isResponding boolean
     ---@field currentPoints integer
-
-    ---@param candidate SessionHost_Candidate
-    local function PackLootCandidate(candidate)
-        local data = { ---@type PackedLootCandidate
-            n = candidate.name,
-            c = candidate.classId,
-            s = 0,
-            cp = candidate.currentPoints,
-        }
-        if candidate.leftGroup then
-            data.s = data.s + 0x2
-        end
-        if candidate.isResponding then
-            data.s = data.s + 0x4
-        end
-        return data
-    end
 
     ---@param candidates table<string,SessionHost_Candidate>|SessionHost_Candidate
     function Sender.HMSG_CANDIDATE_UPDATE(candidates)
@@ -311,6 +337,29 @@ do
 end
 
 -- HMSG_ITEM_ANNOUNCE
+
+---@param item SessionHost_Item
+local function MakeItemAnnouncePacket(item)
+    local pitem ---@type Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem
+    if not item.parentGuid then
+        pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE
+            guid = item.guid,
+            order = item.order,
+            itemId = item.itemId,
+            veiled = item.veiled,
+            startTime = item.startTime,
+            endTime = item.endTime,
+        }
+    else
+        pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE_ChildItem
+            guid = item.guid,
+            parentGuid = item.parentGuid,
+            order = item.order,
+        }
+    end
+    return pitem
+end
+
 do
     ---@class (exact) Packet_HMSG_ITEM_ANNOUNCE
     ---@field guid string
@@ -327,24 +376,7 @@ do
 
     ---@param item SessionHost_Item
     function Sender.HMSG_ITEM_ANNOUNCE(item)
-        local pitem ---@type Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-        if not item.parentGuid then
-            pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE
-                guid = item.guid,
-                order = item.order,
-                itemId = item.itemId,
-                veiled = item.veiled,
-                startTime = item.startTime,
-                endTime = item.endTime,
-            }
-        else
-            pitem = { ---@type Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-                guid = item.guid,
-                parentGuid = item.parentGuid,
-                order = item.order,
-            }
-        end
-        SendToClients(OPCODES.HMSG_ITEM_ANNOUNCE, pitem)
+        SendToClients(OPCODES.HMSG_ITEM_ANNOUNCE, MakeItemAnnouncePacket(item))
     end
 
     ---@class CommEvent_HMSG_ITEM_ANNOUNCE
@@ -365,6 +397,67 @@ do
         else
             ---@cast data Packet_HMSG_ITEM_ANNOUNCE
             Events.HMSG_ITEM_ANNOUNCE:Trigger(data, sender)
+        end
+    end
+end
+
+-- HMSG_SESSION_START_RESEND
+do
+    ---@alias Packet_HMSG_SESSION_START_RESEND {startPck:Packet_HMSG_SESSION_START, candidates:PackedLootCandidate[], items:(Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem)[]}
+
+    ---@param guid string
+    ---@param responses LootResponse[]
+    ---@param pointsMinRoll integer
+    ---@param pointsMaxRange integer
+    ---@param candidates table<string,SessionHost_Candidate>
+    ---@param items table<string, SessionHost_Item>
+    function Sender.HMSG_SESSION_START_RESEND(guid, responses, pointsMinRoll, pointsMaxRange, candidates, items)
+        local p = { ---@type Packet_HMSG_SESSION_START_RESEND
+            startPck = {
+                guid = guid,
+                commVersion = COMM_VERSION,
+                responses = responses,
+                pointsMinForRoll = pointsMinRoll,
+                pointsMaxRange = pointsMaxRange,
+            },
+            candidates = {},
+            items = {},
+        }
+        for _, v in pairs(candidates) do
+            table.insert(p.candidates, PackLootCandidate(v))
+        end
+        for _, v in pairs(items) do
+            table.insert(p.items, MakeItemAnnouncePacket(v))
+        end
+        SendToClients(OPCODES.HMSG_SESSION_START_RESEND, p)
+    end
+
+    messageFilter[OPCODES.HMSG_SESSION_START_RESEND] = function(channel, sender, opcode, data)
+        if not reconnectMsgBuffer or reconnectMsgBuffer.src ~= sender then
+            return false
+        end
+        if channel ~= "RAID" and channel ~= "PARTY" then
+            return false
+        end
+        return true
+    end
+    messageHandler[OPCODES.HMSG_SESSION_START_RESEND] = function(data, sender)
+        ---@cast data Packet_HMSG_SESSION_START_RESEND
+        if not reconnectMsgBuffer then return end
+
+        local channel = "RAID" -- TODO: placeholder
+        local msgbuf = reconnectMsgBuffer
+        reconnectMsgBuffer = nil
+
+        HandleMessage(channel, sender, OPCODES.HMSG_SESSION_START, data.startPck)
+        HandleMessage(channel, sender, OPCODES.HMSG_CANDIDATE_UPDATE, data.candidates)
+
+        for _, v in ipairs(data.items) do
+            HandleMessage(channel, sender, OPCODES.HMSG_ITEM_ANNOUNCE, v)
+        end
+
+        for _, buffered in ipairs(msgbuf.buf) do
+            HandleMessage(buffered.channel, buffered.sender, buffered.opcode, buffered.data)
         end
     end
 end
@@ -749,5 +842,35 @@ do
     messageHandler[OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED] = function(data, sender)
         ---@cast data Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
         Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:Trigger(sender, data)
+    end
+end
+
+-- CMSG_RESEND_START
+do
+    function Sender.CMSG_RESEND_START()
+        SendClientToAll(OPCODES.CMSG_RESEND_START)
+    end
+
+    ---@class CommEvent_CMSG_RESEND_START
+    ---@field RegisterCallback fun(self:CommEvent_CMSG_RESEND_START, cb:fun(sender:string))
+    ---@field Trigger fun(self:CommEvent_CMSG_RESEND_START, sender:string)
+    Events.CMSG_RESEND_START = Env:NewEventEmitter()
+
+    messageFilter[OPCODES.CMSG_RESEND_START] = function(channel, sender, opcode, data)
+        if IsInRaid() then
+            if channel ~= "RAID" then
+                return false
+            end
+        elseif IsInGroup() then
+            if channel ~= "PARTY" then
+                return false
+            end
+        else
+            return false
+        end
+        return true
+    end
+    messageHandler[OPCODES.CMSG_RESEND_START] = function(data, sender)
+        Events.CMSG_RESEND_START:Trigger(sender)
     end
 end

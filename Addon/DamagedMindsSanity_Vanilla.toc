@@ -1,7 +1,7 @@
 ## Interface: 11503
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
-## Version: 0.0.1
+## Version: 0.1.0
 ## Notes: 
 ## SavedVariables: DMS_Settings, DMS_Database
 
