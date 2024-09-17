@@ -44,7 +44,7 @@ ERR_TRADE_TARGET_MAX_COUNT_EXCEEDED = ""
 ---@return string itemLink
 function GetTradePlayerItemLink(index) end
 
----Returns true if the player is in range to perform a specific interaction with the unit. 
+---Returns true if the player is in range to perform a specific interaction with the unit.
 ---@param unit string
 ---@param dist integer 1=acm 28y, 2=trade 8y, 3=duel 7y, 4=follow 28y, 5=petbattle 7y
 ---@return boolean 1 if you are in range to perform the interaction, nil otherwise.
@@ -1160,3 +1160,90 @@ Settings = {}
 
 ---@param addonName string
 function Settings.OpenToCategory(addonName) end
+
+C_Map = {}
+
+---@enum UIMapType
+Enum.UIMapType = {
+    Cosmic = 0,
+    World = 1,
+    Continent = 2,
+    Zone = 3,
+    Dungeon = 4,
+    Micro = 5,
+    Orphan = 6,
+}
+
+---@class UiMapDetails
+---@field mapID integer
+---@field name string
+---@field mapType UIMapType
+---@field parentMapID integer
+---@field flags integer
+
+---Returns map information.
+---@param uiMapID integer
+---@return UiMapDetails
+function C_Map.GetMapInfo(uiMapID) end
+
+---@param unit string
+---@return integer
+function C_Map.GetBestMapForUnit(unit) end
+
+---Returns the size in yards of the area represented by the map. 
+-- NOT AVAILABLE IN CLASSIC
+-- ---@param uiMapID integer
+-- ---@return number width
+-- ---@return number height
+-- function C_Map.GetMapWorldSize(uiMapID) end
+
+---@class Vector2Mixin
+---@field x number
+---@field y number
+
+---Returns the location of the unit on a map. Does not work in instances.
+---@param uiMapID integer
+---@param unitToken string
+---@return Vector2Mixin position
+function C_Map.GetPlayerMapPosition(uiMapID, unitToken) end
+
+---Translates a map position to a world map position. 
+---@param uiMapID integer
+---@param mapPosition Vector2Mixin
+---@return integer continentId
+---@return Vector2Mixin worldPosition
+function C_Map.GetWorldPosFromMapPos(uiMapID, mapPosition) end
+
+---@return string name
+---@return string instanceType
+---@return integer difficultyID
+---@return string difficultyName
+---@return integer maxPlayers
+---@return number dynamicDifficulty
+---@return boolean isDynamic
+---@return integer instanceId
+---@return integer instanceGroupSize
+---@return integer LfgDungeonID
+function GetInstanceInfo() end
+
+---Returns 1 if the unit is in range of most helpful spells (40yds) and in a group / raid with you, otherwise nil. 
+---@param unit string
+---@return 1|nil
+function UnitInRange(unit) end
+
+---Returns true if the player is in an instance, and the type of instance. 
+---@return boolean
+---@return string instanceType
+function IsInInstance() end
+
+--- Returns true if the combat lockdown restrictions are active.
+---@return boolean
+function InCombatLockdown() end
+
+---Returns the position of a unit in the current world area. 
+---@param unit string
+---@return number x
+---@return number y
+---@return number z Always 0.
+---@return integer instanceId
+function UnitPosition(unit) end

@@ -13,7 +13,7 @@ Env.LogLevel = {
 ---@class SettingsTable
 local defaultSettings = {
     firstStart = true,
-    version = 5,
+    version = 6,
     logLevel = 1, ---@type LogLevel
     testMode = false,
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
@@ -33,6 +33,7 @@ local defaultSettings = {
         DatabaseWindow = {},
         SyncWindow = {},
         TradeWindow = {},
+        DistWindow = {},
     },
     lootSession = {
         timeout = 90,
@@ -43,6 +44,14 @@ local defaultSettings = {
         pointsRemoveIfCompetition = { flat = 0, pct = 50 }, ---@type FlatAndPctVal
         pointsRemoveIfSoloRoll = { flat = 0, pct = 0 }, ---@type FlatAndPctVal
     },
+    pointDistrib = {
+        worldBuffPoints = 1,
+        worldBuffPointsMax = 5,
+        worldBuffMinDuration = 40,
+        inRangeReadyPoints = 3,
+        inRangeReadyMaxDistance = 100,
+        raidCompleteDefaultPoints = 15,
+    }
 }
 
 ---Fills missing entries in table.

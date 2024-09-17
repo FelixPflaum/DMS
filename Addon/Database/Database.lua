@@ -7,7 +7,7 @@ end
 
 Env.Database = {}
 
----@alias PointChangeType "ITEM_AWARD"|"ITEM_AWARD_REVERTED"|"PLAYER_ADDED"|"CUSTOM"
+---@alias PointChangeType "ITEM_AWARD"|"ITEM_AWARD_REVERTED"|"PLAYER_ADDED"|"CUSTOM"|"READY"|"RAID"
 
 ---@class (exact) PointHistoryEntry
 ---@field timeStamp integer -- Unix timestamp.
@@ -132,6 +132,22 @@ local function AddPlayerPointHistory(playerName, change, newPoints, type, reason
     LogDebug("Added player point history entry", playerName, change, newPoints, type, reason)
     table.insert(Env.Database.pointHistory, newEntry)
     Env.Database.OnPlayerPointHistoryUpdate:Trigger(playerName)
+end
+
+---Add (or remove) points to player.
+---@param playerName string
+---@param change integer
+---@param type PointChangeType
+---@param reason string?
+function Env.Database:AddPointsToPlayer(playerName, change, type, reason)
+    local pentry = self.players[playerName]
+    if not pentry then
+        error("Tried to update non-existant player entry in database! " .. playerName)
+    end
+    pentry.points = pentry.points + change
+    AddPlayerPointHistory(playerName, change, pentry.points, type, reason)
+    LogDebug("Added player points", playerName, change)
+    self.OnPlayerChanged:Trigger(playerName)
 end
 
 ---Update player points.
@@ -355,7 +371,7 @@ function Env.Database:UpdateLootHistoryEntry(guid, playerName, response, reverte
         if v.guid == guid then
             v.playerName = playerName and playerName or v.playerName
             v.response = response and FormatResponseForDb(response) or v.response
-            v.reverted = reverted and reverted or v.reverted
+            v.reverted = reverted ~= nil and reverted or v.reverted
             LogDebug("Updated loot history entry", guid, playerName, response, reverted)
             self.OnLootHistoryEntryChanged:Trigger(guid)
             return

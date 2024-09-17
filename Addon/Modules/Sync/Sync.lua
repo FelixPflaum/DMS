@@ -80,7 +80,11 @@ end
 local function SendSettings(target)
     LogDebug("sending settings to", target)
     Sync.OnSendProgress:Trigger(target, "sending", 0, 0)
-    Net:SendWhisperWithProgress(SYNC_COMM_PREFIX, target, SYNC_OPCODES.SEND_SESSION_SETTINGS, SendProgress, target, Env.settings.lootSession)
+    local syncData = {
+        lootSession = Env.settings.lootSession,
+        pointDistrib = Env.settings.pointDistrib,
+    }
+    Net:SendWhisperWithProgress(SYNC_COMM_PREFIX, target, SYNC_OPCODES.SEND_SESSION_SETTINGS, SendProgress, target, syncData)
 end
 
 commHandler[SYNC_OPCODES.PROBE_RECEIVED] = function(sender, data)
@@ -156,6 +160,27 @@ commHandler[SYNC_OPCODES.PROBE_RECEIVER] = function(sender, data)
     LogDebug("Got probe from", sender, data)
 end
 
+---@param data table<string, any>
+---@param settingsTable table<string, any>
+local function ApplySyncData(data, settingsTable)
+    for key, value in pairs(data) do
+        if not settingsTable[key] then
+            Env:PrintError(("Invalid settings key received! Key %s is not known."):format(key))
+        else
+            local stype = type(settingsTable[key])
+            if stype ~= type(value) then
+                Env:PrintError(("Invalid settings value received! Type for %s does not match."):format(key))
+            else
+                if stype == "table" then
+                    ApplySyncData(value, settingsTable[key])
+                else
+                    settingsTable[key] = value
+                end
+            end
+        end
+    end
+end
+
 commHandler[SYNC_OPCODES.SEND_SESSION_SETTINGS] = function(sender, data)
     ---@cast data table<string,any>
     if incoming[sender] and incoming[sender].state == "waitingForData" then
@@ -163,11 +188,7 @@ commHandler[SYNC_OPCODES.SEND_SESSION_SETTINGS] = function(sender, data)
         Env:PrintVerbose(data)
         Sync.OnReceived:Trigger(sender, incoming[sender].type)
         incoming[sender] = nil
-        for k, v in pairs(data) do
-            if Env.settings.lootSession[k] and type(Env.settings.lootSession[k]) == type(v) then
-                Env.settings.lootSession[k] = v
-            end
-        end
+        ApplySyncData(data, Env.settings)
     end
 end
 

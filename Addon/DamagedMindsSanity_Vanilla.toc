@@ -65,3 +65,7 @@ UI/TradeWindow.lua
 
 Modules/VersionCheck/VersionCheck.lua
 Modules/VersionCheck/VersionCheckWindow.lua
+
+Modules/PointDistribution/WorldBuffs.lua
+Modules/PointDistribution/PointDistributor.lua
+Modules/PointDistribution/DistUI.lua

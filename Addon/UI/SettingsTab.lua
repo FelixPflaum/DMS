@@ -6,6 +6,20 @@ local Env = select(2, ...)
 local L = Env:GetLocalization()
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+local GetImagePath = Env.UI.GetImagePath
+
+---Create "spacer" for config table using a width 0 image.
+---@param order integer
+local function MakeHackySpacer(order)
+    return {
+        order = order,
+        type = "description",
+        name = "",
+        image = GetImagePath("icon_die_trans80.png"),
+        imageWidth = 0.01, -- Hacky spacer...
+        imageHeight = 20,
+    }
+end
 
 local function CreateOptionTable()
     local MAX_RESPONSE_BUTTONS = 8
@@ -45,24 +59,25 @@ local function CreateOptionTable()
                         width = 1.5,
                         type = "toggle",
                     },
-                    headerResponses = {
-                        order = 3,
+                    spacerMoreInfo = MakeHackySpacer(9),
+                    headerMoreInfo = {
+                        order = 10,
                         type = "header",
                         name = L["More Info Panel"]
                     },
-                    descCound = {
-                        order = 4,
+                    desctMoreInfo = {
+                        order = 11,
                         type = "description",
                         name = L["Panel that shows the recent loot history of players in loot session window on mouseover."]
                     },
                     moreInfoEnabled = {
-                        order = 5,
+                        order = 12,
                         name = L["Enable"],
                         width = 0.5,
                         type = "toggle",
                     },
                     moreInfoItemCount = {
-                        order = 6,
+                        order = 13,
                         name = L["Item Count"],
                         desc = L["How many recent items to list."],
                         type = "range",
@@ -72,7 +87,7 @@ local function CreateOptionTable()
                         step = 1,
                     },
                     moreInfoTimeframe = {
-                        order = 7,
+                        order = 14,
                         name = L["Timeframe Days"],
                         desc = L["How far back in time to look for the recent loot history."],
                         type = "range",
@@ -112,6 +127,7 @@ local function CreateOptionTable()
                         max = 300,
                         step = 1,
                     },
+                    spacerResponses = MakeHackySpacer(9),
                     headerResponses = {
                         order = 10,
                         type = "header",
@@ -132,18 +148,19 @@ local function CreateOptionTable()
                         max = MAX_RESPONSE_BUTTONS,
                         step = 1,
                     },
+                    spacerSanity = MakeHackySpacer(ORDER_LAST_RESPONSE_BUTTON + 1),
                     pointsHeader = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 1,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 2,
                         type = "header",
                         name = L["Sanity Settings"]
                     },
                     pointsDesc = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 2,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 4,
                         type = "description",
                         name = L["Configure settings for how sanity is handled and used."]
                     },
                     pointsMaxRange = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 3,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 6,
                         name = L["Max sanity roll range"],
                         desc = L
                             ["Which range to consider for sanity behind the highest sanity value when ordering results with roll values. 100 = disabled"],
@@ -154,7 +171,7 @@ local function CreateOptionTable()
                         step = 1,
                     },
                     pointsMinForRoll = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 4,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 8,
                         name = L["Min sanity for roll"],
                         desc = L
                             ["How much sanity is needed to use a sanity button and for a sanity roll to count as a sanity roll."],
@@ -165,13 +182,13 @@ local function CreateOptionTable()
                         step = 1,
                     },
                     descSanityRemoveCompetetion = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 5,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 10,
                         type = "description",
                         name = L
                             ["How much sanity to remove if a sanity roll is won with competition, i.e. another sanity or need roll exists."]
                     },
                     pointsRemoveIfCompetitionFlat = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 6,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 12,
                         name = L["Flat Value"],
                         desc = L["Flat value to remove."],
                         type = "range",
@@ -187,7 +204,7 @@ local function CreateOptionTable()
                         end,
                     },
                     pointsRemoveIfCompetitionPct = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 7,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 14,
                         name = L["Percent"],
                         desc = L["Percentage to remove."],
                         type = "range",
@@ -203,13 +220,13 @@ local function CreateOptionTable()
                         end,
                     },
                     descSanityRemoveUncontested = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 8,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 16,
                         type = "description",
                         name = L
                             ["How much sanity to remove if a sanity roll is won without competition, i.e. it was the only sanity roll and no need roll exists."]
                     },
                     pointsRemoveUncontestedFlat = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 9,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 18,
                         name = L["Flat Value"],
                         desc = L["Flat value to remove."],
                         type = "range",
@@ -225,7 +242,7 @@ local function CreateOptionTable()
                         end,
                     },
                     pointsRemoveUncontestedPct = {
-                        order = ORDER_LAST_RESPONSE_BUTTON + 10,
+                        order = ORDER_LAST_RESPONSE_BUTTON + 20,
                         name = L["Percent"],
                         desc = L["Percentage to remove."],
                         type = "range",
@@ -239,6 +256,98 @@ local function CreateOptionTable()
                         set = function(info, val)
                             Env.settings.lootSession.pointsRemoveIfSoloRoll.pct = val
                         end,
+                    },
+                }
+            },
+            pointDistributionGroup = {
+                order = 300,
+                type = "group",
+                name = L["Sanity Distribution"],
+                get = function(info)
+                    return Env.settings.pointDistrib[info[#info]]
+                end,
+                set = function(info, val)
+                    ---@diagnostic disable-next-line: no-unknown
+                    Env.settings.pointDistrib[info[#info]] = val
+                end,
+                args = {
+                    headerPrep = {
+                        order = 1,
+                        type = "header",
+                        name = L["Preperation"]
+                    },
+                    inRangeReadyPoints = {
+                        order = 2,
+                        name = L["In Range Sanity"],
+                        desc = L["Sanity given for being in range when using the preperation distribution function."],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 20,
+                        step = 1,
+                    },
+                    inRangeReadyMaxDistance = {
+                        order = 3,
+                        name = L["Max Distance"],
+                        desc = L["Maximum distance to count as in range. Only works in open world. 40y fallback used in instances!"],
+                        type = "range",
+                        width = 1,
+                        min = 40,
+                        max = 1000,
+                        step = 10,
+                    },
+                    worldBuffPoints = {
+                        order = 10,
+                        name = L["Sanity per Worldbuff"],
+                        desc = L["The sum of worldbuff sanity is rounded to full numbers!"],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 3,
+                        step = 0.1,
+                    },
+                    worldBuffPointsMax = {
+                        order = 11,
+                        name = L["Max. Worldbuff Sanity"],
+                        desc = L["Maximum sanity that can be aquired from worldbuffs."],
+                        type = "range",
+                        width = 1,
+                        min = 1,
+                        max = 10,
+                        step = 1,
+                    },
+                    worldBuffMinDuration = {
+                        order = 12,
+                        name = L["Worldbuff min. Duration"],
+                        desc = L["Duration in seconds a buff needs to have to count."],
+                        type = "range",
+                        width = 2,
+                        min = 0,
+                        max = 3600,
+                        step = 60,
+                    },
+                    spacerDesc = {
+                        order = 19,
+                        type = "description",
+                        name = "",
+                        image = GetImagePath("icon_die_trans80.png"),
+                        imageWidth = 0.01, -- Hacky spacer...
+                        imageHeight = 20,
+                    },
+                    headerRaidCompletion = {
+                        order = 20,
+                        type = "header",
+                        name = L["Raid Completion"]
+                    },
+                    raidCompleteDefaultPoints = {
+                        order = 21,
+                        name = L["Default Sanity"],
+                        desc = L["The default sanity value that is prefilled in the distribution form."],
+                        type = "range",
+                        width = 2,
+                        min = 0,
+                        max = 40,
+                        step = 1,
                     },
                 }
             },
