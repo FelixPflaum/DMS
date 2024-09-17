@@ -27,6 +27,28 @@ Env.classList = (function()
     return list
 end)()
 
+-- Returns an iterator for looping over either raid or party.
+function Env.MakeGroupIterator()
+    local prefix = "raid"
+    local size = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
+    local i = 1
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
+        prefix = "party"
+        size = size - 1 -- party size includes player, party unitIds do not.
+        i = 0
+    end
+    return function()
+        local unit ---@type string?
+        if i == 0 then
+            unit = "player"
+        elseif i <= size then
+            unit = prefix .. i
+        end
+        i = i + 1
+        return unit
+    end
+end
+
 ---Print msg to chat, replacing default color.
 ---@param msg string The message to print.
 ---@param defColor string The color to use as default given as color esc sequence.

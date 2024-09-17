@@ -86,7 +86,7 @@ local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, col
 
     local _, _, classId = UnitClass(name)
     if classId then
-        cellFrame.text:SetText(ColorByClassId(data[realrow][column], classId))
+        cellFrame.text:SetText(ColorByClassId(name, classId))
     else
         cellFrame.text:SetText(name)
     end

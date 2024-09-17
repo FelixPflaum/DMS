@@ -47,13 +47,12 @@ local ROW_HEIGHT = 14
 ---@type ST_CellUpdateFunc
 local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
-    if not fShow then return end
     local name = data[realrow][column] ---@type string
     local _, _, classId = UnitClass(name)
     if classId then
-        cellFrame.text:SetText(ColorByClassId(data[realrow][column], classId))
+        cellFrame.text:SetText(ColorByClassId(name, classId))
     else
-        cellFrame.text:SetText(data[realrow][column])
+        cellFrame.text:SetText(name)
     end
 end
 

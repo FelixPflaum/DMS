@@ -59,20 +59,9 @@ local function FillFromGroup()
     if not IsInGroup(LE_PARTY_CATEGORY_HOME) then
         return false
     end
-    local size = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
-    local prefix = "raid"
-    if not IsInRaid(LE_PARTY_CATEGORY_HOME) then
-        prefix = "party"
-        size = size - 1
-        responseList[UnitName("player")] = {
-            state = "waiting",
-            version = "",
-            versionNum = 0,
-        }
-    end
-    LogDebug("fill group:", prefix)
-    for i = 1, size do
-        local name = UnitName(prefix .. i)
+    LogDebug("fill group")
+    for unit in Env.MakeGroupIterator() do
+        local name = UnitName(unit)
         responseList[name] = {
             state = "waiting",
             version = "",
@@ -173,5 +162,6 @@ function VersionCheck.Enable(enabled)
         end
         responseList = {}
         VersionCheck.OnResponsesUpdate:Trigger(responseList)
+        VersionCheck.OnAllResponded:Trigger(true)
     end
 end

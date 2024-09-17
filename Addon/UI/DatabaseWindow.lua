@@ -942,7 +942,7 @@ end
 -- Setup point history DB tab.
 Env:OnAddonLoaded(function()
     pointHistoryTable = ScrollingTable:CreateST({
-        { name = L["Time"],   width = 125, DoCellUpdate = CellUpdateTimeStamp },
+        { name = L["Time"],   width = 125, DoCellUpdate = CellUpdateTimeStamp,        sort = ScrollingTable.SORT_ASC,       sortnext = 2 },
         { name = L["Player"], width = 90,  DoCellUpdate = CellUpdateName,             defaultsort = ScrollingTable.SORT_ASC },
         { name = L["Change"], width = 55,  DoCellUpdate = CellUpdatePointChangeValue },
         { name = L["New"],    width = 55 },
@@ -1052,8 +1052,8 @@ end
 -- Setup loot history DB tab.
 Env:OnAddonLoaded(function()
     lootHistoryTable = ScrollingTable:CreateST({
-        { name = L["Time"],     width = 125,              DoCellUpdate = CellUpdateTimeStamp },
-        { name = L["Player"],   width = 90,               DoCellUpdate = CellUpdateName,        defaultsort = ScrollingTable.SORT_ASC },
+        { name = L["Time"],     width = 125,              DoCellUpdate = CellUpdateTimeStamp,   sort = ScrollingTable.SORT_ASC,        defaultsort = ScrollingTable.SORT_ASC },
+        { name = L["Player"],   width = 90,               DoCellUpdate = CellUpdateName,        defaultsort = ScrollingTable.SORT_ASC, sortnext = 1 },
         { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateItemIcon },
         { name = L["Item"],     width = 175,              DoCellUpdate = CellUpdateItemId },
         { name = L["Response"], width = 100,              DoCellUpdate = CellUpdateLootResponse },

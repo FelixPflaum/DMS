@@ -299,8 +299,6 @@ local function SetPlayer(self, name)
     local lootHistory = Env.Database:GetLootHistory({ playerName = dbData.playerName, untilTime = now, fromTime = now - timeframe })
     local responseCount = {} ---@type table<string,{id:integer, display:string, count:integer}>
 
-    print(maxItemsToShow, timeframe, #lootHistory)
-
     table.sort(lootHistory, function(a, b)
         return a.timeStamp > b.timeStamp
     end)
