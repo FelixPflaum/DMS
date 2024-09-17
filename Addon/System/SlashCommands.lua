@@ -23,13 +23,15 @@ SlashCmdList["DAMAGEDMINDSSANITY"] = function(arg)
     local descColor = "|cFFCCCCCC"
     print(addonName .. " " .. L["commands"] .. ":")
     for command, v in pairs(registeredCommands) do
-        print(cmdColor .. "  /" .. command .. "|r - " .. descColor .. v.description)
+        if v.description ~= "" then
+            print(cmdColor .. "  /" .. command .. "|r - " .. descColor .. v.description)
+        end
     end
 end
 
 ---Register a slash command.
 ---@param command string The command to add.
----@param description string
+---@param description string Empty string to not show command.
 ---@param callback fun(args: string[]): nil The function to call when the cmommand is used.
 function Env:RegisterSlashCommand(command, description, callback)
     assert(registeredCommands[command] == nil, "Command with that name already exists!")

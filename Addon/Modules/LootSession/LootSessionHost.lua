@@ -831,7 +831,7 @@ function Host:Start(target)
     return Host
 end
 
-Env:RegisterSlashCommand("end", L["End hosting a loot session."], function(args)
+Env:RegisterSlashCommand("end", "", function(args)
     if not Host.isRunning then
         Env:PrintWarn(L["No session is running."])
         return
