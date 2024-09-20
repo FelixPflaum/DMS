@@ -1,0 +1,17 @@
+.inputWrap {
+    margin-bottom: 0.5em;
+}
+
+.inputLabel {
+    width: 7.5em;
+    display: inline-block;
+}
+
+.input {
+    border-radius: 0.2em;
+    background: #eaeaea;
+    border: 2px solid #4977a8;
+    font-size: 0.9rem;
+    padding: 0.2em 0.4em;
+    width: 15em;
+}

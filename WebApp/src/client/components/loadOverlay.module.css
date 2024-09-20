@@ -1,0 +1,71 @@
+.headerWrap {
+    background-color: #324053;
+    position: relative;
+}
+
+.headerButton {
+    font-size: 1rem;
+    color: #fff;
+    padding: 0.75em 1em;
+    display: inline-block;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.headerButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.headerUserInfo {
+    display: inline-block;
+    position: absolute;
+    right: 0;
+}
+
+.headerUserLabel,
+.headerUserName {
+    margin-right: 0.5em;
+    color: #9b9b9b;
+}
+
+.loadOverlay {
+    width: 100vw;
+    background: #3e3e3e6e;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.loadStatusWrap {
+    display: inline-block;
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loadIndicator {
+    animation-name: spin;
+    animation-duration: 5000ms;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    display: inline-block;
+    font-size: 2rem;
+}
+
+.loadStatusText {
+    padding-left: 1em;
+    font-size: 1.5rem;
+}

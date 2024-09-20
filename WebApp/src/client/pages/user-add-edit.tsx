@@ -1,0 +1,114 @@
+import { FormEventHandler, useEffect, useRef } from "react";
+import TextInput from "../components/form/TextInput";
+import NumberInput from "../components/form/NumberInput";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLoadOverlayCtx } from "../LoadOverlayProvider";
+import { apiPost } from "../serverApi";
+
+const UserAddEditPage = (): JSX.Element => {
+    const loadctx = useLoadOverlayCtx();
+    const [searchParams, _setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    const idParam = searchParams.get("id");
+    const isEdit = !!idParam;
+
+    const idInputRef = useRef<HTMLInputElement>(null);
+    const nameInputRef = useRef<HTMLInputElement>(null);
+    const permInputRef = useRef<HTMLInputElement>(null);
+    const submitBtnRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (isEdit) {
+            idInputRef.current!.disabled = true;
+            nameInputRef.current!.disabled = true;
+        } else {
+            return;
+        }
+
+        loadctx.setLoading("fetchuser", "Loading user data...");
+        fetch("/api/users/user/" + idParam).then((res) => {
+            loadctx.removeLoading("fetchuser");
+            if (res.status !== 200) {
+                res.json()
+                    .then((errRes: ErrorRes) => {
+                        alert("Failed to get user data: " + errRes.error);
+                    })
+                    .catch(() => {
+                        alert("Failed to get user data: " + res.status);
+                    });
+                return;
+            }
+            res.json().then((userRes: UserRes) => {
+                if (userRes.length === 0) {
+                    alert("User doesn't exist.");
+                    navigate("/users");
+                    return;
+                }
+                idInputRef.current!.value = userRes[0].loginId;
+                nameInputRef.current!.value = userRes[0].userName;
+                permInputRef.current!.value = userRes[0].permissions.toString();
+            });
+        });
+    }, []);
+
+    const onSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+        event.preventDefault();
+
+        const idValue = idInputRef.current?.value;
+        const nameValue = nameInputRef.current?.value;
+        const permValue = parseInt(permInputRef.current?.value ?? "x");
+        if (typeof permValue !== "number" || !idValue || !nameValue) return;
+
+        submitBtnRef.current!.disabled = true;
+        if (isEdit) {
+            apiPost<UserUpdateRes>("/api/users/update/" + idValue, "update user", { permissions: permValue }).then(
+                (updateRes) => {
+                    submitBtnRef.current!.disabled = false;
+                    if (updateRes) {
+                        if (updateRes.success) {
+                            alert("User updated.");
+                        } else {
+                            alert("Failed to update user: " + updateRes.error);
+                        }
+                    }
+                }
+            );
+        } else {
+            const body: UserEntry = {
+                loginId: idValue,
+                userName: nameValue,
+                permissions: permValue,
+            };
+            apiPost<UserUpdateRes>("/api/users/create/", "create user", body).then((updateRes) => {
+                submitBtnRef.current!.disabled = false;
+                if (updateRes) {
+                    if (updateRes.success) {
+                        alert("User created.");
+                    } else {
+                        alert("Failed to create user: " + updateRes.error);
+                    }
+                }
+            });
+        }
+        return false;
+    };
+
+    return (
+        <>
+            <h1 className="pageHeading">{isEdit ? "Edit" : "Add"} User</h1>
+            <form onSubmit={onSubmit}>
+                <TextInput label="Discord ID" inputRef={idInputRef} required={true}></TextInput>
+                <TextInput label="Name" inputRef={nameInputRef} required={true}></TextInput>
+                <NumberInput label="Permissions" inputRef={permInputRef} required={true}></NumberInput>
+                <div>
+                    <button className="button" ref={submitBtnRef}>
+                        Save
+                    </button>
+                </div>
+            </form>
+        </>
+    );
+};
+
+export default UserAddEditPage;

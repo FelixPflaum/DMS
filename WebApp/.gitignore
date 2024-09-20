@@ -1,0 +1,4 @@
+node_modules/
+build/
+config.json
+config_client.json

@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        /* Visit https://aka.ms/tsconfig to read more about this file */
+        "target": "es2022",
+        "jsx": "preserve",
+        "module": "ESNext",
+        "moduleResolution": "Node",
+        "sourceMap": true,
+        "outDir": "./build/client",
+        "rootDir": "./src",
+        "resolveJsonModule": true,
+        "preserveConstEnums": true,
+        "esModuleInterop": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"]
+        },
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": false,
+        "types": ["node"],
+        "typeRoots": ["src/client/typings/*.d.ts", "./node_modules/@types"],
+        "skipLibCheck": true /* Skip type checking all .d.ts files. */
+    },
+    "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
