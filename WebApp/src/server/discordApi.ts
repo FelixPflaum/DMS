@@ -1,6 +1,8 @@
 import { getConfig } from "./config";
+import { Logger } from "./Logger";
 
 const API_URL = "https://discord.com/api/v10";
+const logger = new Logger("Discord API");
 
 /**
  * Do a discord oauth token request.
@@ -40,10 +42,13 @@ export const getUserDataFromOauthCode = async (code: string): Promise<DiscordUse
     });
 
     if (tokenResult.status != 200) {
-        if (tokenResult.status == 400) {
-            const data = await tokenResult.json();
-            console.log("Status 400 on discord oauth request:");
-            console.log(data);
+        try {
+            if (tokenResult.status == 400) {
+                const data = await tokenResult.text();
+                logger.logError(`Status ${tokenResult.status} on discord oauth request.`, data);
+            }
+        } catch (error) {
+            logger.logError(`Status ${tokenResult.status} on discord oauth request.`);
         }
         return false;
     }
@@ -57,12 +62,14 @@ export const getUserDataFromOauthCode = async (code: string): Promise<DiscordUse
     });
 
     if (userResult.status != 200) {
-        if (userResult.status == 400) {
-            const data = await userResult.json();
-            console.log("Status 400 on discord user request:");
-            console.log(data);
+        try {
+            if (userResult.status == 400) {
+                const data = await userResult.text();
+                logger.logError(`Status ${userResult.status} on discord user request.`, data);
+            }
+        } catch (error) {
+            logger.logError(`Status ${userResult.status} on discord user request.`);
         }
-
         return false;
     }
 

@@ -2,7 +2,9 @@ import mysql, { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { creationSqlQueries } from "./createSql";
 import { AccPermissions } from "@/shared/enums";
 import { getConfig } from "../config";
+import { Logger } from "../Logger";
 
+const logger = new Logger("DB");
 const pool = mysql.createPool({
     host: getConfig().dbHost,
     port: getConfig().dbPort,
@@ -29,11 +31,11 @@ export const checkDb = async (): Promise<boolean> => {
         const targetVersion = creationSqlQueries.length;
 
         if (currentVersion < targetVersion) {
-            console.log(`Updating database. Current ver ${currentVersion}, target ver ${targetVersion}`);
+            logger.log(`Updating database. Current ver ${currentVersion}, target ver ${targetVersion}`);
 
             await conn.beginTransaction();
             for (let i = currentVersion; i < targetVersion; i++) {
-                console.log("Applying sql update: " + (i + 1));
+                logger.log("Applying sql update: " + (i + 1));
                 await conn.query(creationSqlQueries[i]);
             }
             if (currentVersion == 0) {
@@ -42,10 +44,10 @@ export const checkDb = async (): Promise<boolean> => {
                 await conn.query(`UPDATE settings SET svalue=? WHERE skey='dbVersion';`, [targetVersion.toString()]);
             }
             await conn.commit();
-            console.log("Database updated!");
+            logger.log("Database updated!");
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("DB check failed.", error);
         return false;
     } finally {
         pool.releaseConnection(conn);
@@ -164,7 +166,7 @@ const addAuditEntryNoErr = async (loginId: string, userName: string, eventInfo: 
     try {
         await addAuditEntry(loginId, userName, eventInfo);
     } catch (error) {
-        console.error(error);
+        logger.logError("Add audit entry failed.", error);
     }
 };
 

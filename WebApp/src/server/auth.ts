@@ -1,9 +1,12 @@
 import { Request } from "express";
 import { authDb } from "./database/database";
 import { AccPermissions } from "@/shared/enums";
+import { Logger } from "./Logger";
 
 export const TOKEN_LIFETIME = 7 * 86400 * 1000;
 export const TOKEN_REFRESH_TIME = 3 * 86400 * 1000;
+
+const logger = new Logger("Auth");
 
 export class AuthUser {
     constructor(
@@ -49,7 +52,7 @@ export const checkRequestAuth = async (req: Request): Promise<AuthUser | false> 
 
         return new AuthUser(loginId, authData.userName, authData.permissions);
     } catch (error) {
-        console.error(error);
+        logger.logError("Error in request auth check.", error);
         // Just treat this as no permissions on any DB error.
         return false;
     }

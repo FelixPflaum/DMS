@@ -4,7 +4,9 @@ import { AccPermissions } from "@/shared/enums";
 import { auditDb, authDb } from "../database/database";
 import { checkRequestAuth } from "../auth";
 import { send400, send403, send500Db, send401 } from "./util";
+import { Logger } from "../Logger";
 
+const logger = new Logger("API:User");
 export const userRouter = express.Router();
 
 userRouter.get("/user/:loginId", async (req: Request, res: Response): Promise<void> => {
@@ -28,7 +30,7 @@ userRouter.get("/user/:loginId", async (req: Request, res: Response): Promise<vo
             });
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Get user failed.", error);
         return send500Db(res);
     }
 
@@ -51,7 +53,7 @@ userRouter.get("/list", async (req: Request, res: Response): Promise<void> => {
             });
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Get user list failed.", error);
         return send500Db(res);
     }
 
@@ -85,7 +87,7 @@ userRouter.get("/delete/:loginId", async (req: Request, res: Response): Promise<
             }
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Delete user failed.", error);
         return send500Db(res);
     }
 
@@ -130,7 +132,7 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
             userRes.error = "User doesn't exist!";
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Update user failed.", error);
         return send500Db(res);
     }
 
@@ -174,7 +176,7 @@ userRouter.post("/create", async (req: Request, res: Response): Promise<void> =>
             await auditDb.addEntryNoErr(accessingUser.loginId, accessingUser.userName, log);
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Create user failed.", error);
         return send500Db(res);
     }
 

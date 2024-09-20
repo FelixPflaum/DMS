@@ -4,8 +4,10 @@ import { AccPermissions } from "@/shared/enums";
 import { auditDb } from "../database/database";
 import { checkRequestAuth } from "../auth";
 import { send500Db, send401, send403 } from "./util";
+import { Logger } from "../Logger";
 
 export const auditRouter = express.Router();
+const logger = new Logger("API:Audit");
 
 auditRouter.get("/get/:pageOffset", async (req: Request, res: Response): Promise<void> => {
     const user = await checkRequestAuth(req);
@@ -25,7 +27,7 @@ auditRouter.get("/get/:pageOffset", async (req: Request, res: Response): Promise
         };
         res.send(auditRes);
     } catch (error) {
-        console.error(error);
+        logger.logError("Getting audit log page failed.", error);
         return send500Db(res);
     }
 });

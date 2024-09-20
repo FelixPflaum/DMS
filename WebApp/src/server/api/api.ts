@@ -4,7 +4,9 @@ import { checkDb } from "../database/database";
 import { authRouter } from "./authApi";
 import { auditRouter } from "./auditApi";
 import { userRouter } from "./userApi";
+import { Logger } from "../Logger";
 
+const logger = new Logger("API");
 const cookieParser = require("cookie-parser");
 const app: Application = express();
 
@@ -20,7 +22,7 @@ apiRouter.use("/audit", auditRouter);
 
 checkDb().then((ok) => {
     if (!ok) {
-        console.log("DB setup failed, exiting.");
+        logger.logError("DB setup failed, exiting.");
         process.exit(1);
     }
     app.use("/api", apiRouter);

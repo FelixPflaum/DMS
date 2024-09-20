@@ -7,9 +7,10 @@ import { getUserDataFromOauthCode } from "../discordApi";
 import { authDb } from "../database/database";
 import { checkRequestAuth, generateLoginToken, TOKEN_LIFETIME } from "../auth";
 import { send500Db, send401, send400, send500, send429 } from "./util";
+import { Logger } from "../Logger";
 
 export const authRouter = express.Router();
-
+const logger = new Logger("API:Auth");
 const authSpamCheck = new SpamCheck(2, 60000);
 
 authRouter.post("/authenticate", async (req: Request, res: Response): Promise<void> => {
@@ -44,7 +45,7 @@ authRouter.post("/authenticate", async (req: Request, res: Response): Promise<vo
             }
         }
     } catch (error) {
-        console.error(error);
+        logger.logError("Getting or creating auth entry in authentication process failed.", error);
         return send500Db(res);
     }
 
@@ -58,7 +59,7 @@ authRouter.post("/authenticate", async (req: Request, res: Response): Promise<vo
         res.send(authRes);
         return;
     } catch (error) {
-        console.error(error);
+        logger.logError("Updating auth entry in auth process failed.", error);
         return send500Db(res);
     }
 });
@@ -86,7 +87,7 @@ authRouter.get("/logout", async (req: Request, res: Response): Promise<void> => 
         await authDb.updateEntry(auth.loginId, { loginToken: "" });
         res.status(200).end();
     } catch (error) {
-        console.error(error);
+        logger.logError("Logout failed.", error);
         return send500Db(res);
     }
 });
