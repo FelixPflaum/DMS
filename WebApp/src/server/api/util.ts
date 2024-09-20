@@ -1,4 +1,5 @@
-import { Response } from "express";
+import type { ErrorRes } from "@/shared/types";
+import type { Response } from "express";
 
 /** Send 400 */
 export const send400 = (res: Response, reason: string): void => {
@@ -22,6 +23,14 @@ export const send403 = (res: Response, reason = "Missing permissions."): void =>
         error: reason,
     };
     res.status(403).send(r);
+};
+
+/** Send 404 */
+export const send404 = (res: Response, reason = "No found."): void => {
+    const r: ErrorRes = {
+        error: reason,
+    };
+    res.status(404).send(r);
 };
 
 /** Send 429, "Try again later." */

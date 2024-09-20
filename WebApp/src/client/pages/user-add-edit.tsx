@@ -3,7 +3,8 @@ import TextInput from "../components/form/TextInput";
 import NumberInput from "../components/form/NumberInput";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
-import { apiPost } from "../serverApi";
+import { apiGet, apiPost } from "../serverApi";
+import type { UpdateRes, UserEntry, UserRes } from "@/shared/types";
 
 const UserAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -26,28 +27,16 @@ const UserAddEditPage = (): JSX.Element => {
         }
 
         loadctx.setLoading("fetchuser", "Loading user data...");
-        fetch("/api/users/user/" + idParam).then((res) => {
+        apiGet<UserRes>("/api/users/user/" + idParam, "get user data").then((userRes) => {
             loadctx.removeLoading("fetchuser");
-            if (res.status !== 200) {
-                res.json()
-                    .then((errRes: ErrorRes) => {
-                        alert("Failed to get user data: " + errRes.error);
-                    })
-                    .catch(() => {
-                        alert("Failed to get user data: " + res.status);
-                    });
+            if (!userRes || userRes.length === 0) {
+                alert("User doesn't exist.");
+                navigate("/users");
                 return;
             }
-            res.json().then((userRes: UserRes) => {
-                if (userRes.length === 0) {
-                    alert("User doesn't exist.");
-                    navigate("/users");
-                    return;
-                }
-                idInputRef.current!.value = userRes[0].loginId;
-                nameInputRef.current!.value = userRes[0].userName;
-                permInputRef.current!.value = userRes[0].permissions.toString();
-            });
+            idInputRef.current!.value = userRes[0].loginId;
+            nameInputRef.current!.value = userRes[0].userName;
+            permInputRef.current!.value = userRes[0].permissions.toString();
         });
     }, []);
 
@@ -67,7 +56,7 @@ const UserAddEditPage = (): JSX.Element => {
 
         submitBtnRef.current!.disabled = true;
         if (isEdit) {
-            apiPost<UserUpdateRes>("/api/users/update/" + idValue, "update user", body).then((updateRes) => {
+            apiPost<UpdateRes>("/api/users/update/" + idValue, "update user", body).then((updateRes) => {
                 submitBtnRef.current!.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {
@@ -78,12 +67,7 @@ const UserAddEditPage = (): JSX.Element => {
                 }
             });
         } else {
-            const body: UserEntry = {
-                loginId: idValue,
-                userName: nameValue,
-                permissions: permValue,
-            };
-            apiPost<UserUpdateRes>("/api/users/create/", "create user", body).then((updateRes) => {
+            apiPost<UpdateRes>("/api/users/create/", "create user", body).then((updateRes) => {
                 submitBtnRef.current!.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {

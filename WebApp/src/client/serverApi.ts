@@ -1,3 +1,5 @@
+import type { ErrorRes } from "@/shared/types";
+
 /**
  * Post json body using fetch().
  * @param url

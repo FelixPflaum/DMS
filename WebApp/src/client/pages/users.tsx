@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
 import { AccPermissions } from "@/shared/enums";
+import type { DeleteRes, UserEntry, UserRes } from "@/shared/types";
 
 const UsersPage = (): JSX.Element => {
     const [users, setUsers] = useState<UserEntry[]>([]);
@@ -27,18 +28,11 @@ const UsersPage = (): JSX.Element => {
 
     const deleteUser = async (userEntry: UserEntry) => {
         if (!confirm(`Really delete user ${userEntry.userName}?`)) return;
-
-        const res = await fetch("/api/users/delete/" + userEntry.loginId);
-        if (res.status !== 200) {
-            try {
-                const errRes: ErrorRes = await res.json();
-                alert("User deletiong failed: " + errRes.error);
-            } catch (error) {
-                alert("User deletiong failed, status: " + res.status.toString());
-            }
+        const res = await apiGet<DeleteRes>("/api/users/delete/" + userEntry.loginId, "delete user");
+        if (!res || !res.success) {
+            if (res?.error) alert(res.error);
             return;
         }
-
         const delIdx = users.findIndex((x) => x.loginId == userEntry.loginId);
         if (delIdx !== -1) {
             const newUsers = [...users];

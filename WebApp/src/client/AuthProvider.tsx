@@ -1,6 +1,7 @@
 import { useContext, createContext, useState, useEffect } from "react";
 import { config } from "./config";
 import { apiGet, apiPost } from "./serverApi";
+import type { AuthRes, AuthUserRes } from "@/shared/types";
 
 type AuthUser = {
     name: string;

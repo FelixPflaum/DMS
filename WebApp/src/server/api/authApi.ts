@@ -6,6 +6,7 @@ import { authDb } from "../database/database";
 import { checkRequestAuth, generateLoginToken, TOKEN_LIFETIME } from "../auth";
 import { send500Db, send401, send400, send500, send429 } from "./util";
 import { Logger } from "../Logger";
+import type { AuthRes, AuthUserRes } from "@/shared/types";
 
 export const authRouter = express.Router();
 const logger = new Logger("API:Auth");

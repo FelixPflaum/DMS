@@ -11,6 +11,7 @@ const Header = (): JSX.Element => {
         { text: "Test", path: "/" },
         { text: "Users", path: "/users", permission: AccPermissions.USERS_VIEW },
         { text: "Audit", path: "/audit", permission: AccPermissions.AUDIT_VIEW },
+        { text: "Players", path: "/players", permission: AccPermissions.DATA_VIEW },
     ];
 
     const buttonElems: JSX.Element[] = [];

@@ -5,6 +5,7 @@ import { auditDb, authDb } from "../database/database";
 import { checkRequestAuth } from "../auth";
 import { send400, send403, send500Db, send401 } from "./util";
 import { Logger } from "../Logger";
+import type { DeleteRes, UpdateRes, UserEntry, UserRes } from "@/shared/types";
 
 const logger = new Logger("API:User");
 export const userRouter = express.Router();
@@ -70,7 +71,7 @@ userRouter.get("/delete/:loginId", async (req: Request, res: Response): Promise<
         return send400(res, "Invalid loginId.");
     }
 
-    const userRes: UserDeleteRes = { success: true };
+    const userRes: DeleteRes = { success: true };
     try {
         const userEntry = await authDb.getEntry(loginId);
         if (!userEntry) {
@@ -116,7 +117,7 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
         return send400(res, "Invalid name.");
     }
 
-    const userRes: UserUpdateRes = { success: true };
+    const userRes: UpdateRes = { success: true };
     try {
         const targetUser = await authDb.getEntry(loginId);
         if (!targetUser) {
@@ -164,7 +165,7 @@ userRouter.post("/create", async (req: Request, res: Response): Promise<void> =>
         return send403(res, "Can't set missing permissions.");
     }
 
-    const userRes: UserUpdateRes = { success: true };
+    const userRes: UpdateRes = { success: true };
 
     try {
         const exists = await authDb.getEntry(loginId);
