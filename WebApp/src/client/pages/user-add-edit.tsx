@@ -21,7 +21,6 @@ const UserAddEditPage = (): JSX.Element => {
     useEffect(() => {
         if (isEdit) {
             idInputRef.current!.disabled = true;
-            nameInputRef.current!.disabled = true;
         } else {
             return;
         }
@@ -60,20 +59,24 @@ const UserAddEditPage = (): JSX.Element => {
         const permValue = parseInt(permInputRef.current?.value ?? "x");
         if (typeof permValue !== "number" || !idValue || !nameValue) return;
 
+        const body: UserEntry = {
+            loginId: idValue,
+            userName: nameValue,
+            permissions: permValue,
+        };
+
         submitBtnRef.current!.disabled = true;
         if (isEdit) {
-            apiPost<UserUpdateRes>("/api/users/update/" + idValue, "update user", { permissions: permValue }).then(
-                (updateRes) => {
-                    submitBtnRef.current!.disabled = false;
-                    if (updateRes) {
-                        if (updateRes.success) {
-                            alert("User updated.");
-                        } else {
-                            alert("Failed to update user: " + updateRes.error);
-                        }
+            apiPost<UserUpdateRes>("/api/users/update/" + idValue, "update user", body).then((updateRes) => {
+                submitBtnRef.current!.disabled = false;
+                if (updateRes) {
+                    if (updateRes.success) {
+                        alert("User updated.");
+                    } else {
+                        alert("Failed to update user: " + updateRes.error);
                     }
                 }
-            );
+            });
         } else {
             const body: UserEntry = {
                 loginId: idValue,
@@ -98,8 +101,8 @@ const UserAddEditPage = (): JSX.Element => {
         <>
             <h1 className="pageHeading">{isEdit ? "Edit" : "Add"} User</h1>
             <form onSubmit={onSubmit}>
-                <TextInput label="Discord ID" inputRef={idInputRef} required={true}></TextInput>
-                <TextInput label="Name" inputRef={nameInputRef} required={true}></TextInput>
+                <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17}></TextInput>
+                <TextInput label="Name" inputRef={nameInputRef} required={true} minLen={4}></TextInput>
                 <NumberInput label="Permissions" inputRef={permInputRef} required={true}></NumberInput>
                 <div>
                     <button className="button" ref={submitBtnRef}>

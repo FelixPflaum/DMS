@@ -104,9 +104,16 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
         return send400(res, "Invalid loginId.");
     }
 
-    const permissions = req.body.permissions;
+    const body = req.body as Partial<UserEntry>;
+    const permissions = body.permissions;
+    const userName = body.userName;
+
     if (typeof permissions !== "number") {
         return send400(res, "Invalid permissions.");
+    }
+
+    if (typeof userName !== "string" || userName.length < 4) {
+        return send400(res, "Invalid name.");
     }
 
     const userRes: UserUpdateRes = { success: true };
@@ -123,9 +130,9 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
             return send403(res, "Can't change missing permissions.");
         }
 
-        const success = await authDb.updateEntry(loginId, { permissions });
+        const success = await authDb.updateEntry(loginId, { userName, permissions });
         if (success) {
-            const log = `Update user ${loginId} - ${targetUser.userName}, Permissions: ${permissions}`;
+            const log = `Update user ${targetUser.loginId} - ${targetUser.userName} - ${targetUser.permissions} => ${loginId} - ${userName} - ${permissions}`;
             await auditDb.addEntryNoErr(accessingUser.loginId, accessingUser.userName, log);
         } else {
             userRes.success = false;
@@ -149,7 +156,7 @@ userRouter.post("/create", async (req: Request, res: Response): Promise<void> =>
     const loginId = body.loginId;
     const userName = body.userName;
 
-    if (!loginId) return send400(res, "Invalid login id.");
+    if (!loginId || loginId.length < 17) return send400(res, "Invalid login id.");
     if (!userName) return send400(res, "Invalid name.");
     if (typeof permissions !== "number") return send400(res, "Invalid permissions.");
 

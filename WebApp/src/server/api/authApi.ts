@@ -1,7 +1,5 @@
 import express from "express";
 import { Request, Response } from "express";
-import { getConfig } from "../config";
-import { AccPermissions } from "@/shared/enums";
 import { SpamCheck } from "./spamCheck";
 import { getUserDataFromOauthCode } from "../discordApi";
 import { authDb } from "../database/database";
@@ -30,29 +28,18 @@ authRouter.post("/authenticate", async (req: Request, res: Response): Promise<vo
     }
     const loginId = userData.id;
     const loginToken = generateLoginToken();
-    const userName = userData.userName; // TODO: does bot get that by default?
 
     try {
         const userEntry = await authDb.getEntry(loginId);
-        if (!userEntry) {
-            if (loginId == getConfig().adminLoginId) {
-                const didCreate = await authDb.createEntry(loginId, userName, AccPermissions.ALL);
-                if (!didCreate) {
-                    return send500(res, "Failed to create admin user entry!");
-                }
-            } else {
-                return send401(res);
-            }
-        }
+        if (!userEntry) return send401(res);
     } catch (error) {
-        logger.logError("Getting or creating auth entry in authentication process failed.", error);
+        logger.logError("Getting auth entry in authentication process failed.", error);
         return send500Db(res);
     }
 
     try {
         await authDb.updateEntry(loginId, {
             loginToken,
-            userName,
             validUntil: Date.now() + TOKEN_LIFETIME,
         });
         const authRes: AuthRes = { loginId, loginToken };

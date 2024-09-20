@@ -4,6 +4,8 @@ type ConfigData = {
     discordClientId: string;
     discordClientSecret: string;
     discordRedirectUrl: string;
+    discordBotToken: string;
+    discordAllowedRoles: string[];
     dbHost: string;
     dbPort: number;
     dbUser: string;
@@ -16,6 +18,8 @@ const config: ConfigData = {
     discordClientId: "",
     discordClientSecret: "",
     discordRedirectUrl: "",
+    discordBotToken: "",
+    discordAllowedRoles: [],
     dbHost: "localhost",
     dbPort: 3306,
     dbUser: "",
