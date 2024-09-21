@@ -17,7 +17,7 @@ type AuthUserRes = {
 
 type AuditEntry = {
     id: number;
-    timestamp: number;
+    timestamp: string;
     loginId: string;
     userName: string;
     eventInfo: string;

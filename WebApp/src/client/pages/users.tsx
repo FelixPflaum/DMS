@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
-import Tablel, { ActionDef, ColumnDef } from "../components/table/Tablel";
+import type { ActionDef, ColumnDef } from "../components/table/Tablel";
+import Tablel from "../components/table/Tablel";
 import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";

@@ -1,6 +1,7 @@
-import { Client, GatewayIntentBits, Guild, REST, RESTPostAPIChatInputApplicationCommandsJSONBody, Routes } from "discord.js";
+import type { Guild, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
+import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { Logger } from "../Logger";
-import { BotCommandBase } from "./commandBase";
+import type { BotCommandBase } from "./BotCommandBase";
 
 export class Discordbot {
     private readonly token: string;

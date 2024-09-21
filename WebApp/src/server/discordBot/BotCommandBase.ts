@@ -1,13 +1,12 @@
-import {
+import type {
     ChatInputCommandInteraction,
-    SlashCommandBuilder,
-    PermissionsBitField,
     Embed,
     EmbedBuilder,
     InteractionReplyOptions,
     RESTPostAPIChatInputApplicationCommandsJSONBody,
     VoiceBasedChannel,
 } from "discord.js";
+import { SlashCommandBuilder, PermissionsBitField } from "discord.js";
 import { Logger } from "../Logger";
 
 export abstract class BotCommandBase {

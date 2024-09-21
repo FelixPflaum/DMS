@@ -1,19 +1,21 @@
-import { Request } from "express";
-import { authDb } from "./database/database";
-import { AccPermissions } from "@/shared/enums";
-import { Logger } from "./Logger";
+import type { Request } from "express";
+import type { AccPermissions } from "@/shared/enums";
+import type { UserRow } from "../database/types";
+import { getUser, updateUser } from "../database/tableFunctions/users";
 
 export const TOKEN_LIFETIME = 7 * 86400 * 1000;
 export const TOKEN_REFRESH_TIME = 3 * 86400 * 1000;
 
-const logger = new Logger("Auth");
-
 export class AuthUser {
-    constructor(
-        readonly loginId: string,
-        readonly userName: string,
-        readonly permissions: AccPermissions
-    ) {}
+    readonly loginId: string;
+    readonly userName: string;
+    readonly permissions: AccPermissions;
+
+    constructor(userData: UserRow) {
+        this.loginId = userData.loginId;
+        this.userName = userData.userName;
+        this.permissions = userData.permissions;
+    }
 
     /**
      * Check if user has permissions.
@@ -30,32 +32,28 @@ export class AuthUser {
  * @param req The Request object.
  * @returns The user data if valid login data in request, otherwise false.
  */
-export const checkRequestAuth = async (req: Request): Promise<AuthUser | false> => {
+export const getUserFromRequest = async (req: Request): Promise<AuthUser | false> => {
     if (!req.cookies) return false;
     const loginId = req.cookies.loginId;
     const loginToken = req.cookies.loginToken;
     if (!loginId || !loginToken) return false;
 
-    try {
-        const authData = await authDb.getEntry(loginId);
-        if (!authData || !authData.loginToken) return false;
-        if (authData.loginToken != loginToken) return false;
+    const userRes = await getUser(loginId);
+    if (userRes.isError || !userRes.row) return false;
 
-        const now = Date.now();
-        const remainingLife = authData.validUntil - now;
-        if (remainingLife <= 0) {
-            await authDb.updateEntry(loginId, { loginToken: "" });
-            return false;
-        } else if (remainingLife < TOKEN_REFRESH_TIME) {
-            await authDb.updateEntry(loginId, { validUntil: now + TOKEN_LIFETIME });
-        }
+    const userRow = userRes.row;
+    if (!userRow.loginToken || userRow.loginToken != loginToken) return false;
 
-        return new AuthUser(loginId, authData.userName, authData.permissions);
-    } catch (error) {
-        logger.logError("Error in request auth check.", error);
-        // Just treat this as no permissions on any DB error.
+    const now = Date.now();
+    const remainingLife = userRow.validUntil - now;
+    if (remainingLife <= 0) {
+        await updateUser(loginId, { loginToken: "" });
         return false;
+    } else if (remainingLife < TOKEN_REFRESH_TIME) {
+        await updateUser(loginId, { validUntil: now + TOKEN_LIFETIME });
     }
+
+    return new AuthUser(userRow);
 };
 
 /**

@@ -1,8 +1,9 @@
-import { ChatInputCommandInteraction, CacheType, GuildMember } from "discord.js";
-import { BotCommandBase } from "./commandBase";
+import type { ChatInputCommandInteraction, CacheType, GuildMember } from "discord.js";
+import { BotCommandBase } from "./BotCommandBase";
 import { getConfig } from "../config";
-import { auditDb, authDb } from "../database/database";
 import { AccPermissions } from "@/shared/enums";
+import { addUser } from "../database/tableFunctions/users";
+import { addAuditEntry } from "../database/tableFunctions/audit";
 
 export class RegisterCommand extends BotCommandBase {
     constructor() {
@@ -50,21 +51,22 @@ export class RegisterCommand extends BotCommandBase {
             (interaction.member as GuildMember | undefined)?.displayName ??
             interaction.user.displayName ??
             interaction.user.username;
+        let perms = AccPermissions.DATA_VIEW;
 
-        try {
-            const isAdminId = id == getConfig().adminLoginId;
-            if (isAdminId) this.logger.log(`Admin account registration: ${id} - ${name}`);
-            const perms = id == getConfig().adminLoginId ? AccPermissions.ALL : AccPermissions.NONE;
-            const success = await authDb.createEntry(id, name, perms);
-            if (!success) {
-                this.replyError(interaction, "Registration failed. Account seems to exist already.");
-                return;
-            }
-            await auditDb.addEntry("-", "-", `Self registration via bot: ${id} - ${name}, Permissions: ${perms}`);
-            this.replySuccess(interaction, "Registered successfully.");
-        } catch (error) {
-            this.logger.logError("DB error.", error);
-            this.replyError(interaction, "Registration failed due to a DB error.");
+        const isAdminId = id == getConfig().adminLoginId;
+        if (isAdminId) {
+            this.logger.log(`Admin account registration: ${id} - ${name}`);
+            perms = AccPermissions.ALL;
         }
+
+        const insertRes = await addUser(id, name, perms);
+        if (insertRes.isError) {
+            this.replyError(interaction, "Registration failed due to a DB error.");
+        } else if (insertRes.duplicate) {
+            this.replyError(interaction, "Registration failed. Account seems to exist already.");
+            return;
+        }
+        await addAuditEntry("-", "-", `Self registration via bot: ${id} - ${name}, Permissions: ${perms}`);
+        this.replySuccess(interaction, "Registered successfully.");
     }
 }

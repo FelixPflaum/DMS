@@ -1,9 +1,10 @@
-import express, { Application } from "express";
+import type { Application } from "express";
+import express from "express";
 import cors from "cors";
-import { authRouter } from "./authApi";
-import { auditRouter } from "./auditApi";
-import { userRouter } from "./userApi";
-import { playerRouter } from "./playerApi";
+import { authRouter } from "./routes/auth";
+import { auditRouter } from "./routes/audit";
+import { userRouter } from "./routes/users";
+import { playerRouter } from "./routes/players";
 
 const cookieParser = require("cookie-parser");
 const app: Application = express();

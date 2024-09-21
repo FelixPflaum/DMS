@@ -36,7 +36,7 @@ const AuthProvider = ({ children }: { children: JSX.Element }): JSX.Element => {
 
     const checkLoginAndGetUser = async (): Promise<void> => {
         setAuthStatus("Checking login...");
-        const data = await apiGet<AuthUserRes>("/api/auth/user", "login check");
+        const data = await apiGet<AuthUserRes>("/api/auth/self", "login check");
         if (data && data.loginValid) {
             setUser({ name: data.userName, permissions: data.permissions });
         } else {

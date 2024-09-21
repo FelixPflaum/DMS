@@ -1,7 +1,9 @@
 import { readDBCSVtoMap } from "./dbcReader";
 import { Logger } from "@/server/Logger";
-import { itemDb, queryDb, settingsDb } from "../database";
-import { ItemDataRow } from "../types";
+import { queryDb } from "../database";
+import type { ItemDataRow } from "../types";
+import { getSetting, setSetting } from "../tableFunctions/settings";
+import { getAllItems } from "../tableFunctions/itemData";
 
 const url = "https://wago.tools/db2/ItemSparse/csv?branch=wow_classic_era";
 
@@ -16,9 +18,7 @@ async function getCurrentBuild() {
     return build;
 }
 
-export const checkAndUpdateItemDb = async (): Promise<void> => {
-    const logger = new Logger("Item DB");
-
+async function update(logger: Logger) {
     logger.log("Getting current build number...");
     const currentBuild = await getCurrentBuild();
     if (!currentBuild) {
@@ -27,12 +27,16 @@ export const checkAndUpdateItemDb = async (): Promise<void> => {
     }
     logger.log("Current build is " + currentBuild);
 
-    const installedBuild = await settingsDb.get("itemDbVersion");
-    if (installedBuild && parseInt(installedBuild.svalue) >= currentBuild) {
+    const settingResult = await getSetting("itemDbVersion");
+    if (settingResult.isError) {
+        logger.logError("Getting setting from DB failed.");
+        process.exit(1);
+    }
+    if (settingResult.row && parseInt(settingResult.row.svalue) >= currentBuild) {
         logger.log("Build is up to date.");
         return;
     }
-    logger.log("Installed build is " + (installedBuild?.svalue ?? "none"));
+    logger.log("Installed build is " + (settingResult.row?.svalue ?? "none"));
 
     const res = await fetch(url);
     if (res.status !== 200) {
@@ -43,10 +47,14 @@ export const checkAndUpdateItemDb = async (): Promise<void> => {
     const csv = await res.text();
     const csvMap = readDBCSVtoMap<{ ID: number; Display_lang: string; OverallQualityID: number }>(csv, "ID");
 
-    const dbItems = await itemDb.getAll();
+    const dbItemsRes = await getAllItems();
+    if (dbItemsRes.isError) {
+        logger.logError("Getting items from DB failed.");
+        process.exit(1);
+    }
 
     logger.log(`Have ${csvMap.size} items from file.`);
-    logger.log(`Have ${dbItems.length} items from DB.`);
+    logger.log(`Have ${dbItemsRes.rows.length} items from DB.`);
 
     const itemsToInsert: ItemDataRow[] = [];
     const itemsToUpdate: ItemDataRow[] = [];
@@ -54,7 +62,7 @@ export const checkAndUpdateItemDb = async (): Promise<void> => {
     for (const newItem of csvMap.values()) {
         if (!newItem.Display_lang) continue;
         let found = false;
-        for (const oldItem of dbItems) {
+        for (const oldItem of dbItemsRes.rows) {
             if (oldItem.itemId == newItem.ID) {
                 found = true;
                 if (oldItem.itemName != newItem.Display_lang || oldItem.qualityId != newItem.OverallQualityID) {
@@ -98,7 +106,37 @@ export const checkAndUpdateItemDb = async (): Promise<void> => {
         if (count % 20 == 0) logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
     }
 
-    await settingsDb.set("itemDbVersion", currentBuild.toString());
+    const setRes = await setSetting("itemDbVersion", currentBuild.toString());
+    if (setRes.isError) {
+        logger.logError("Could not update itemDbVersion settings value to " + currentBuild);
+        process.exit(1);
+    }
+}
+
+export const checkAndUpdateItemDb = async (): Promise<void> => {
+    const logger = new Logger("Item DB");
+
+    const settingLastUpdateRes = await getSetting("itemDbLastCheck");
+    if (settingLastUpdateRes.isError) {
+        logger.logError("Getting setting itemDbLastCheck from DB failed.");
+        process.exit(1);
+    }
+
+    const lastUpdate = settingLastUpdateRes.row ? parseInt(settingLastUpdateRes.row.svalue) : 0;
+    const now = Date.now();
+    if (now - lastUpdate < 3600 * 1000) {
+        logger.log("Last update check recent, skipping.");
+        setSetting("itemDbLastCheck", Date.now().toString());
+        return;
+    }
+
+    await update(logger);
+
+    const setLastRes = await setSetting("itemDbLastCheck", Date.now().toString());
+    if (setLastRes.isError) {
+        logger.logError("Could not update itemDbLastCheck settings value to " + Date.now());
+        process.exit(1);
+    }
 
     logger.log("Item DB updated!");
 };

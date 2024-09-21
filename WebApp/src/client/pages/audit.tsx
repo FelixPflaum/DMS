@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
-import Tablel, { ColumnDef } from "../components/table/Tablel";
+import type { ColumnDef } from "../components/table/Tablel";
+import Tablel from "../components/table/Tablel";
 import { apiGet } from "../serverApi";
+import type { AuditEntry, AuditRes } from "@/shared/types";
 
 const AuditPage = (): JSX.Element => {
     const [auditLogData, setAuditLog] = useState<{ lastPageOffset: number; data: AuditEntry[]; haveMore: boolean }>({
@@ -14,7 +16,7 @@ const AuditPage = (): JSX.Element => {
 
     useEffect(() => {
         loadctx.setLoading("auditfetch", "Loading user data...");
-        apiGet<AuditRes>("/api/audit/get/0", "get audit log").then((auditRes) => {
+        apiGet<AuditRes>("/api/audit/page/0", "get audit log").then((auditRes) => {
             loadctx.removeLoading("auditfetch");
             if (auditRes) setAuditLog({ lastPageOffset: 0, data: auditRes.entries, haveMore: auditRes.haveMore });
         });
@@ -24,7 +26,7 @@ const AuditPage = (): JSX.Element => {
         const nextPage = auditLogData.lastPageOffset + 1;
         loadBtnRef.current!.disabled = true;
         loadctx.setLoading("auditfetch", "Loading user data...");
-        apiGet<AuditRes>("/api/audit/get/" + nextPage, "get audit log").then((auditRes) => {
+        apiGet<AuditRes>("/api/audit/page/" + nextPage, "get audit log").then((auditRes) => {
             loadBtnRef.current!.disabled = false;
             loadctx.removeLoading("auditfetch");
             if (auditRes)

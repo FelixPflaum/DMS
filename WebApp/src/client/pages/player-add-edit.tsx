@@ -1,4 +1,5 @@
-import { FormEventHandler, useEffect, useRef } from "react";
+import type { FormEventHandler } from "react";
+import { useEffect, useRef } from "react";
 import TextInput from "../components/form/TextInput";
 import NumberInput from "../components/form/NumberInput";
 import { useNavigate, useSearchParams } from "react-router-dom";

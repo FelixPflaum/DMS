@@ -95,6 +95,7 @@
                 "varsIgnorePattern": "^_"
             }
         ],
+        "@typescript-eslint/consistent-type-imports": "error",
         "prettier/prettier": [
             "error",
             {

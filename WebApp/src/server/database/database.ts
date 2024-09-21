@@ -1,11 +1,10 @@
-import mysql, { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import mysql from "mysql2/promise";
 import { creationSqlQueries } from "./createSql";
-import { AccPermissions } from "@/shared/enums";
 import { getConfig } from "../config";
 import { Logger } from "../Logger";
 import { checkAndUpdateItemDb } from "./dbcLoader/itemDataLoader";
-import type { AuditRow, ItemDataRow, PlayerRow, PointHistoryRow, SettingsRow, UserRow } from "./types";
-import type { ClassId } from "@/shared/wow";
+import type { SettingsRow } from "./types";
 
 const logger = new Logger("DB");
 const pool = mysql.createPool({
@@ -16,37 +15,258 @@ const pool = mysql.createPool({
     database: getConfig().dbName,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const queryDb = async <T extends mysql.QueryResult>(sql: string, values: any[]): Promise<T> => {
+export type DbDataValue = number | string | Date;
+
+/**
+ * Query the DB.
+ * @param sql
+ * @param values
+ * @returns
+ * @throws Error if DB operation throws an error.
+ */
+export const queryDb = async <T extends mysql.QueryResult>(sql: string, values?: DbDataValue[]): Promise<T> => {
     const [res] = await pool.query<T>(sql, values);
-    return res as T;
+    return res;
+};
+
+export type DbResult = {
+    isError?: boolean;
+};
+
+export type DbRowResult<T> = DbResult & {
+    row?: T;
+};
+
+export type DbRowsResult<T> = DbResult & {
+    rows: T[];
 };
 
 /**
- * Get settings entry.
- * @param key
- * @returns
- * @throws Error if DB operation fails for whatever reason.
+ * Convenience function for SELECTing single rows.
+ * @param sql
+ * @param values
+ * @returns A DatabaseResult containing a single row or undefined if 0 or 2+ results.
  */
-const getSetting = async (key: string): Promise<SettingsRow | undefined> => {
-    const [res] = await pool.query<RowDataPacket[]>("SELECT * FROM settings WHERE skey=?", [key]);
-    return res.length == 1 ? (res[0] as SettingsRow) : undefined;
+export const querySelectSingle = async <T extends {}>(sql: string, values: DbDataValue[]): Promise<DbRowResult<T>> => {
+    try {
+        const [res] = await pool.query<RowDataPacket[]>(sql, values);
+        const dbres: DbRowResult<T> = {};
+        if (res.length === 1) dbres.row = res[0] as T;
+        return dbres;
+    } catch (error) {
+        logger.logError(`DB error for query "${sql}"`, error);
+        return { isError: true };
+    }
 };
 
 /**
- * Set settings entry.
- * @param key
- * @returns
- * @throws Error if DB operation fails for whatever reason.
+ * Convenience function for SELECTing multiple rows.
+ * @param sql
+ * @param values
+ * @returns A DatabaseResult containing the rows.
  */
-const setSetting = async (key: string, value: string): Promise<boolean> => {
-    const [res] = await pool.query<ResultSetHeader>("REPLACE INTO settings (skey, svalue) VALUES (?, ?);", [key, value]);
-    return res.affectedRows != 0;
+export const querySelect = async <T extends {}>(sql: string, values?: DbDataValue[]): Promise<DbRowsResult<T>> => {
+    try {
+        const [res] = await pool.query<RowDataPacket[]>(sql, values);
+        return { rows: res as T[] };
+    } catch (error) {
+        logger.logError(`DB error for query "${sql}"`, error);
+        return { isError: true, rows: [] };
+    }
 };
 
-export const settingsDb = {
-    get: getSetting,
-    set: setSetting,
+export type DbUpdateResult = DbResult & {
+    affectedRows: number;
+};
+
+/**
+ * Convenience function for UPDATEing rows.
+ * @param table
+ * @param idFields The fields that are the unique id of the row and their values.
+ * @param fields The remaining fields and their values, without fields already provided in idFields.
+ * @returns
+ */
+export const queryUpdate = async (
+    table: string,
+    idFields: Record<string, DbDataValue>,
+    fields: Record<string, DbDataValue>
+): Promise<DbUpdateResult> => {
+    const idKeys: string[] = [];
+    const idValues: DbDataValue[] = [];
+    for (const key in idFields) {
+        idKeys.push(key);
+        idValues.push(idFields[key]);
+    }
+
+    const setKeys: string[] = [];
+    const setValues: DbDataValue[] = [];
+    for (const key in fields) {
+        setKeys.push(key);
+        setValues.push(fields[key]);
+    }
+
+    const sqlQuery = `UPDATE ${table} SET ${setKeys.join("=? ,")}=? WHERE ${idKeys.join("=? AND ")}=?;`;
+    try {
+        const [ures] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+        return { affectedRows: ures.affectedRows };
+    } catch (error) {
+        logger.logError(`DB error for query "${sqlQuery}"`, error);
+        return { isError: true, affectedRows: 0 };
+    }
+};
+
+/**
+ * Convenience function that updates a row or inserts it if it doesn't exist. All required columns need to be provided for insert to work!
+ * @param table
+ * @param idFields The fields that are the unique id of the row and their values.
+ * @param fields The remaining fields and their values, without fields already provided in idFields.
+ * @returns
+ */
+export const queryUpdateOrInsert = async (
+    table: string,
+    idFields: Record<string, DbDataValue>,
+    fields: Record<string, DbDataValue>
+): Promise<DbUpdateResult> => {
+    let sqlQuery: string | undefined;
+
+    const idKeys: string[] = [];
+    const idValues: DbDataValue[] = [];
+    for (const key in idFields) {
+        idKeys.push(key);
+        idValues.push(idFields[key]);
+    }
+
+    const setKeys: string[] = [];
+    const setValues: DbDataValue[] = [];
+    for (const key in fields) {
+        setKeys.push(key);
+        setValues.push(fields[key]);
+    }
+
+    try {
+        // Check if it exists.
+        sqlQuery = `SELECT * FROM ${table} WHERE ${idKeys.join("=? AND ")}=?;`;
+        const [sres] = await pool.query<RowDataPacket[]>(sqlQuery, idValues);
+        if (sres.length === 0) {
+            // Insert
+            const valphs = new Array(idKeys.length + setKeys.length).fill("?");
+            sqlQuery = `INSERT INTO ${table} (${Object.keys(fields).join(",")}, ${Object.keys(idFields).join(",")}) VALUES (${valphs.join(",")});`;
+            const [isres] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            return { affectedRows: isres.affectedRows };
+        } else {
+            // Update
+            sqlQuery = `UPDATE ${table} SET ${setKeys.join("=? ,")}=? WHERE ${idKeys.join("=? AND ")}=?;`;
+            const [ures] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            return { affectedRows: ures.affectedRows };
+        }
+    } catch (error) {
+        logger.logError(`DB error for query "${sqlQuery || "--"}"`, error);
+        return { isError: true, affectedRows: 0 };
+    }
+};
+
+/**
+ * Convenience function that inserts a row.
+ * @param table
+ * @param fields The fields and their values.
+ * @returns true if inserted, false on error
+ */
+export const queryInsert = async (table: string, fields: Record<string, DbDataValue>): Promise<boolean> => {
+    let sqlQuery: string | undefined;
+    try {
+        const keys: string[] = [];
+        const values: DbDataValue[] = [];
+        const valphs: "?"[] = [];
+        for (const key in fields) {
+            keys.push(key);
+            values.push(fields[key]);
+            valphs.push("?");
+        }
+
+        sqlQuery = `INSERT INTO ${table} (${keys.join(",")}) VALUES (${valphs.join(",")});`;
+        await pool.query<ResultSetHeader>(sqlQuery, values);
+        return true;
+    } catch (error) {
+        logger.logError(`DB error for query "${sqlQuery || "--"}"`, error);
+        return false;
+    }
+};
+
+export type DbInsertCheckedResult = DbResult & {
+    duplicate: boolean;
+};
+
+/**
+ * Convenience function that inserts a row if it doesn't exist.
+ * @param table
+ * @param idFields The fields that are the unique id of the row and their values.
+ * @param fields The remaining fields and their values, without fields already provided in idFields.
+ * @returns
+ */
+export const queryInsertChecked = async (
+    table: string,
+    idFields: Record<string, DbDataValue>,
+    fields: Record<string, DbDataValue>
+): Promise<DbInsertCheckedResult> => {
+    let sqlQuery: string | undefined;
+    try {
+        const idKeys: string[] = [];
+        const idValues: DbDataValue[] = [];
+        for (const key in idFields) {
+            idKeys.push(key);
+            idValues.push(idFields[key]);
+        }
+
+        const setKeys: string[] = [];
+        const setValues: DbDataValue[] = [];
+        for (const key in fields) {
+            setKeys.push(key);
+            setValues.push(fields[key]);
+        }
+
+        // Check if it exists.
+        sqlQuery = `SELECT * FROM ${table} WHERE ${idKeys.join("=? AND ")}=?;`;
+        const [sres] = await pool.query<RowDataPacket[]>(sqlQuery, idValues);
+        if (sres.length === 0) {
+            // Insert
+            const valphs = new Array(idKeys.length + setKeys.length).fill("?");
+            sqlQuery = `INSERT INTO ${table} (${setKeys.join(",")}, ${idKeys.join(",")}) VALUES (${valphs.join(",")});`;
+            await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            return { duplicate: false };
+        } else {
+            return { duplicate: true };
+        }
+    } catch (error) {
+        logger.logError(`DB error for query "${sqlQuery || "--"}"`, error);
+        return { isError: true, duplicate: false };
+    }
+};
+
+export type DbDeleteResult = DbResult & {
+    affectedRows: number;
+};
+
+/**
+ * Convenience function that deletes row(s).
+ * @param table
+ * @param idFields The fields that are the id of the row(s) and their values.
+ * @returns
+ */
+export const queryDelete = async (table: string, idFields: Record<string, DbDataValue>): Promise<DbDeleteResult> => {
+    const idKeys: string[] = [];
+    const idValues: DbDataValue[] = [];
+    for (const key in idFields) {
+        idKeys.push(key);
+        idValues.push(idFields[key]);
+    }
+    const sqlQuery = `DELETE FROM ${table} WHERE ${idKeys.join("=? AND ")}=?;`;
+    try {
+        const [deleteResult] = await pool.query<ResultSetHeader>(sqlQuery, [idValues]);
+        return { affectedRows: deleteResult.affectedRows };
+    } catch (error) {
+        logger.logError(`DB error for query "${sqlQuery || "--"}"`, error);
+        return { isError: true, affectedRows: 0 };
+    }
 };
 
 /**
@@ -92,402 +312,4 @@ export const checkDb = async (): Promise<boolean> => {
     }
 
     return true;
-};
-
-/**
- * Create new auth entry.
- * @param loginId
- * @param userName
- * @param permissions
- * @returns true if entry was created, false it loginId already exists.
- * @throws Error if DB operation fails for whatever reason.
- */
-const createAuthEntry = async (loginId: string, userName: string, permissions = AccPermissions.NONE): Promise<boolean> => {
-    const [existsResult] = await pool.query<RowDataPacket[]>(`SELECT * FROM users WHERE loginId=?`, [loginId]);
-    if (existsResult.length == 1) return false;
-
-    const [insertResult] = await pool.query<ResultSetHeader>(
-        `INSERT INTO users (loginId, userName, permissions) VALUES (?, ?, ?);`,
-        [loginId, userName, permissions]
-    );
-
-    if (insertResult.affectedRows) return true;
-    return false;
-};
-
-/**
- * Get auth entry.
- * @param loginId
- * @returns The auth entry if it exists.
- * @throws Error if DB operation fails for whatever reason.
- */
-const getAuthEntry = async (loginId: string): Promise<UserRow | undefined> => {
-    const [existsResult] = await pool.query<RowDataPacket[]>(`SELECT * FROM users WHERE loginId=?;`, [loginId]);
-    if (existsResult.length == 1) return existsResult[0] as UserRow;
-};
-
-/**
- * Get all auth entries.
- * @returns The array of auth rows.
- * @throws Error if DB operation fails for whatever reason.
- */
-const getAuthEntries = async (): Promise<UserRow[]> => {
-    const [existsResult] = await pool.query<RowDataPacket[]>(`SELECT * FROM users;`);
-    return existsResult as UserRow[];
-};
-
-/**
- * Update auth entry.
- * @param loginId
- * @param newValues Object with values to update set. Unset value will not change.
- * @returns true if entry was updated, false if loginId is not valid.
- * @throws Error if DB operation fails for whatever reason.
- */
-const updateAuthEntry = async (loginId: string, newValues: Partial<UserRow>): Promise<boolean> => {
-    delete newValues.loginId;
-
-    const setStrings: string[] = [];
-    const valueArray = [];
-    for (const k in newValues) {
-        setStrings.push(`${k}=?`);
-        valueArray.push(newValues[k as keyof UserRow]);
-    }
-    valueArray.push(loginId);
-
-    const [res] = await pool.query<ResultSetHeader>(`UPDATE users SET ${setStrings.join(",")} WHERE loginId=?;`, valueArray);
-    return res.affectedRows > 0;
-};
-
-/**
- * Remove auth entry.
- * @param loginId
- * @returns true if it was deleted, false if it didn't exist.
- * @throws Error if DB operation fails for whatever reason.
- */
-const removeAuthEntry = async (loginId: string): Promise<boolean> => {
-    const [deleteResult] = await pool.query<ResultSetHeader>(`DELETE FROM users WHERE loginId=?;`, [loginId]);
-    if (deleteResult.affectedRows) return true;
-    return false;
-};
-
-export const authDb = {
-    createEntry: createAuthEntry,
-    getEntry: getAuthEntry,
-    getEntries: getAuthEntries,
-    updateEntry: updateAuthEntry,
-    removeEntry: removeAuthEntry,
-};
-
-/**
- * Add new entry to audit log.
- * @param loginId
- * @param userName
- * @param eventInfo
- * @throws Error if DB operation fails for whatever reason.
- */
-const addAuditEntry = async (loginId: string, userName: string, eventInfo: string): Promise<void> => {
-    await pool.query<ResultSetHeader>(`INSERT INTO audit (timestamp, loginId, userName, eventInfo) VALUES (?, ?, ?, ?);`, [
-        new Date(),
-        loginId,
-        userName,
-        eventInfo,
-    ]);
-};
-
-/**
- * Add new entry to audit log.
- * @param loginId
- * @param userName
- * @param eventInfo
- */
-const addAuditEntryNoErr = async (loginId: string, userName: string, eventInfo: string): Promise<void> => {
-    try {
-        await addAuditEntry(loginId, userName, eventInfo);
-    } catch (error) {
-        logger.logError("Add audit entry failed.", error);
-    }
-};
-
-/**
- * Get last audit entries.
- * @param limit How many entries to get.
- * @param pageOffset Pagination page offset.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getAuditEntries = async (limit = 50, pageOffset = 0): Promise<AuditRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM audit ORDER BY id DESC LIMIT ? OFFSET ?;`, [
-        limit,
-        pageOffset * limit,
-    ]);
-    return result as AuditRow[];
-};
-
-export const auditDb = {
-    addEntry: addAuditEntry,
-    addEntryNoErr: addAuditEntryNoErr,
-    getEntries: getAuditEntries,
-};
-
-/**
- * Get item data.
- * @param itemId
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getItem = async (itemId: number): Promise<ItemDataRow | undefined> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM itemData WHERE itemId=?;`, [itemId]);
-    return result.length == 1 ? (result[0] as ItemDataRow) : undefined;
-};
-
-/**
- * Get item data by name.
- * @param itemId
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const searchItemByName = async (itemName: string): Promise<ItemDataRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM itemData WHERE itemName LIKE ?;`, [
-        "%" + itemName + "%",
-    ]);
-    return result as ItemDataRow[];
-};
-
-/**
- * Get all items.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getAllItems = async (): Promise<ItemDataRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM itemData;`);
-    return result as ItemDataRow[];
-};
-
-export const itemDb = {
-    getItem,
-    searchByName: searchItemByName,
-    getAll: getAllItems,
-};
-
-/**
- * Get player entry.
- * @param name
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPlayer = async (name: string): Promise<PlayerRow | undefined> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM players WHERE playerName=?;`, [name]);
-    return result.length == 1 ? (result[0] as PlayerRow) : undefined;
-};
-
-/**
- * Get all player entries.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPlayers = async (): Promise<PlayerRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM players;`);
-    return result as PlayerRow[];
-};
-
-/**
- * Create new player entry.
- * @param name
- * @param classId
- * @param points
- * @param accountId
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const createPlayer = async (name: string, classId: ClassId, points: number, accountId?: string): Promise<boolean> => {
-    const [existsResult] = await pool.query<RowDataPacket[]>(`SELECT * FROM players WHERE playerName=?;`, [name]);
-    if (existsResult.length == 1) return false;
-
-    const [insertResult] = await pool.query<ResultSetHeader>(
-        `INSERT INTO players (playerName, classId, points, account) VALUES (?, ?, ?, ?);`,
-        [name, classId, points, accountId]
-    );
-
-    if (insertResult.affectedRows) return true;
-    return false;
-};
-
-/**
- * Update player entry.
- * @param name
- * @param newValues Object with values to update set. Unset value will not change.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const updatePlayer = async (name: string, newValues: Partial<PlayerRow>): Promise<boolean> => {
-    const setStrings: string[] = [];
-    const valueArray = [];
-    for (const k in newValues) {
-        setStrings.push(`${k}=?`);
-        valueArray.push(newValues[k as keyof PlayerRow]);
-    }
-    valueArray.push(name);
-
-    const [res] = await pool.query<ResultSetHeader>(
-        `UPDATE players SET ${setStrings.join(",")} WHERE playerName=?;`,
-        valueArray
-    );
-    return res.affectedRows > 0;
-};
-
-/**
- * Remove player entry.
- * @param name
- * @returns true if it was deleted, false if it didn't exist.
- * @throws Error if DB operation fails for whatever reason.
- */
-const deletePlayer = async (name: string): Promise<boolean> => {
-    const [deleteResult] = await pool.query<ResultSetHeader>(`DELETE FROM players WHERE playerName=?;`, [name]);
-    if (deleteResult.affectedRows) return true;
-    return false;
-};
-
-export const playerDb = {
-    getPlayer,
-    getPlayers,
-    createPlayer,
-    updatePlayer,
-    deletePlayer,
-};
-
-/**
- * Get player entry.
- * @param name
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPointHistoryEntry = async (timestamp: number, playerName: string): Promise<PointHistoryRow | undefined> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM pointHistory WHERE timestamp=? AND playerName=?;`, [
-        timestamp,
-        playerName,
-    ]);
-    return result.length == 1 ? (result[0] as PointHistoryRow) : undefined;
-};
-
-/**
- * Get all player entries.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPointHistory = async (): Promise<PointHistoryRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(`SELECT * FROM pointHistory;`);
-    return result as PointHistoryRow[];
-};
-
-/**
- * Get last history entries.
- * @param limit How many entries to get.
- * @param pageOffset Pagination page offset.
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPointHistoryEntryPage = async (limit = 50, pageOffset = 0): Promise<PointHistoryRow[]> => {
-    const [result] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM pointHistory ORDER BY timestamp DESC LIMIT ? OFFSET ?;`,
-        [limit, pageOffset * limit]
-    );
-    return result as PointHistoryRow[];
-};
-
-/**
- * Get history entries by filter.
- * @param filter
- * @param limit
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const getPointHistoryEntrySearch = async (
-    filter: {
-        name?: string;
-        timeStart?: number;
-        timeEnd?: number;
-    },
-    limit = 150
-): Promise<PointHistoryRow[]> => {
-    const wheres: string[] = [];
-    const values: (string | number)[] = [];
-
-    for (const k in filter) {
-        switch (k) {
-            case "name":
-                wheres.push("playerName LIKE ?");
-                values.push(`%${filter[k]}%`);
-                break;
-            case "timeStart":
-                wheres.push("timestamp>?");
-                values.push(filter[k]!);
-                break;
-            case "timeEnd":
-                wheres.push("timestamp<?");
-                values.push(filter[k]!);
-                break;
-        }
-    }
-
-    let sql = `SELECT * FROM pointHistory`;
-    if (wheres.length) sql += " " + wheres.join(" AND ");
-
-    sql += ` ORDER BY timestamp DESC LIMIT ?;`;
-    values.push(limit);
-
-    const [result] = await pool.query<RowDataPacket[]>(sql, values);
-    return result as PointHistoryRow[];
-};
-
-/**
- * Create new history entry.
- * @param name
- * @param classId
- * @param points
- * @param accountId
- * @returns
- * @throws Error if DB operation fails for whatever reason.
- */
-const createPointHistoryEntry = async (
-    timestamp: number,
-    playerName: string,
-    pointChange: number,
-    newPoints: number,
-    changeType: string,
-    reason?: string
-): Promise<boolean> => {
-    const [existsResult] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM pointHistory WHERE timestamp=? AND playerName=?;`,
-        [timestamp, playerName]
-    );
-    if (existsResult.length == 1) return false;
-
-    const [insertResult] = await pool.query<ResultSetHeader>(
-        `INSERT INTO pointHistory (timestamp, playerName, pointChange, newPoints, changeType, reason) VALUES (?, ?, ?, ?, ?, ?);`,
-        [timestamp, playerName, pointChange, newPoints, changeType, reason]
-    );
-
-    if (insertResult.affectedRows) return true;
-    return false;
-};
-
-/**
- * Remove point history entry.
- * @param name
- * @returns true if it was deleted, false if it didn't exist.
- * @throws Error if DB operation fails for whatever reason.
- */
-const deletePointHistoryEntry = async (id: number): Promise<boolean> => {
-    const [deleteResult] = await pool.query<ResultSetHeader>(`DELETE FROM pointHistory WHERE id=?;`, [id]);
-    if (deleteResult.affectedRows) return true;
-    return false;
-};
-
-export const pointHistoryDb = {
-    getPointHistoryEntry,
-    getPointHistory,
-    getPointHistoryEntryPage,
-    getPointHistoryEntrySearch,
-    createPointHistoryEntry,
-    deletePointHistoryEntry,
 };
