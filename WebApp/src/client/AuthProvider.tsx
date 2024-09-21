@@ -2,6 +2,7 @@ import { useContext, createContext, useState, useEffect } from "react";
 import { config } from "./config";
 import { apiGet, apiPost } from "./serverApi";
 import type { AuthRes, AuthUserRes } from "@/shared/types";
+import { AccPermissions } from "@/shared/permissions";
 
 type AuthUser = {
     name: string;
@@ -11,11 +12,13 @@ type AuthUser = {
 type AuthContextType = {
     user: AuthUser | null;
     logout: () => void;
+    hasPermission: (perm: AccPermissions) => boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     logout: () => {},
+    hasPermission: () => false,
 });
 
 export const useAuthContext = (): AuthContextType => useContext<AuthContextType>(AuthContext);
@@ -32,6 +35,11 @@ const AuthProvider = ({ children }: { children: JSX.Element }): JSX.Element => {
             setAuth(null);
             setUser(null);
         });
+    };
+
+    const hasPermission = (permissions: AccPermissions): boolean => {
+        if (!user) return false;
+        return (user.permissions & AccPermissions.ADMIN) !== 0 || (user.permissions & permissions) === permissions;
     };
 
     const checkLoginAndGetUser = async (): Promise<void> => {
@@ -90,7 +98,7 @@ const AuthProvider = ({ children }: { children: JSX.Element }): JSX.Element => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, logout }}>
+        <AuthContext.Provider value={{ user, logout, hasPermission }}>
             {user ? (
                 children
             ) : authStatus ? (

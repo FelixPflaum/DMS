@@ -1,4 +1,4 @@
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import type { DbDeleteResult, DbInsertCheckedResult, DbRowResult, DbRowsResult, DbUpdateResult } from "../database";
 import { queryDelete, queryInsertChecked, querySelect, querySelectSingle, queryUpdate } from "../database";
 import type { UserRow } from "../types";

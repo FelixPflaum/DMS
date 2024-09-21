@@ -10,7 +10,7 @@ export type ColumnDef<T extends DataType> = {
     canSort?: boolean;
     defaultSort?: SortType;
     customSort?: (a: T, b: T) => number;
-    render?: (rowData: T) => JSX.Element;
+    render?: (rowData: T) => JSX.Element | string;
 };
 export type ActionButtonStyle = "default" | "red";
 export type ActionDef<T> = {

@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import type { UserRow } from "../database/types";
 import { getUser, updateUser } from "../database/tableFunctions/users";
 
@@ -10,20 +10,22 @@ export class AuthUser {
     readonly loginId: string;
     readonly userName: string;
     readonly permissions: AccPermissions;
+    readonly isAdmin: boolean;
 
     constructor(userData: UserRow) {
         this.loginId = userData.loginId;
         this.userName = userData.userName;
         this.permissions = userData.permissions;
+        this.isAdmin = (userData.permissions & AccPermissions.ADMIN) !== 0;
     }
 
     /**
      * Check if user has permissions.
      * @param permissions
-     * @returns true if (all) permission(s) are set.
+     * @returns true if (all) permission(s) are set or user has admin permission.
      */
     hasPermission(permissions: AccPermissions): boolean {
-        return (this.permissions & permissions) === permissions;
+        return this.isAdmin || (this.permissions & permissions) === permissions;
     }
 }
 

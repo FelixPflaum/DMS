@@ -5,14 +5,14 @@ import Tablel from "../components/table/Tablel";
 import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions, getPermissionStrings } from "@/shared/permissions";
 import type { DeleteRes, UserEntry, UserRes } from "@/shared/types";
 
 const UsersPage = (): JSX.Element => {
     const [users, setUsers] = useState<UserEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
-    const canManage = authctx.user && !!(authctx.user.permissions & AccPermissions.USERS_MANAGE);
+    const canManage = authctx.hasPermission(AccPermissions.USERS_MANAGE);
 
     useEffect(() => {
         loadctx.setLoading("fetchusers", "Loading user data...");
@@ -45,7 +45,11 @@ const UsersPage = (): JSX.Element => {
     const columDefs: ColumnDef<UserEntry>[] = [
         { name: "Name", dataKey: "userName", canSort: true },
         { name: "Discord ID", dataKey: "loginId" },
-        { name: "Permissions", dataKey: "permissions" },
+        {
+            name: "Permissions",
+            dataKey: "permissions",
+            render: (rd) => getPermissionStrings(rd.permissions).join(", "),
+        },
     ];
 
     const actions: ActionDef<UserEntry>[] = [

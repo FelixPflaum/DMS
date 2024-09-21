@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import { getUserFromRequest } from "../auth";
 import { send400, send403, send500Db, send401 } from "../util";
 import type { DeleteRes, UpdateRes, UserEntry, UserRes } from "@/shared/types";
@@ -132,7 +132,7 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
         userRes.error = "User doesn't exists!";
     } else {
         const permsChanged = targetUser.permissions ^ permissions;
-        if ((accessingUser.permissions & permsChanged) !== permsChanged) {
+        if (!accessingUser.hasPermission(permsChanged)) {
             return send403(res, "Can't change missing permissions.");
         }
 

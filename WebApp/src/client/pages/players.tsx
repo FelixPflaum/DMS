@@ -5,7 +5,7 @@ import Tablel from "../components/table/Tablel";
 import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import { classData } from "../../shared/wow";
 import type { DeleteRes, PlayerEntry } from "@/shared/types";
 
@@ -13,8 +13,8 @@ const PlayersPage = (): JSX.Element => {
     const [players, setPlayers] = useState<PlayerEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
-    const canManage = authctx.user && !!(authctx.user.permissions & AccPermissions.DATA_MANAGE);
-    //const canDelete = authctx.user && !!(authctx.user.permissions & AccPermissions.DATA_DELETE);
+    const canManage = authctx.hasPermission(AccPermissions.DATA_MANAGE);
+    const canDelete = authctx.hasPermission(AccPermissions.DATA_DELETE);
 
     useEffect(() => {
         loadctx.setLoading("fetchPlayers", "Loading player list...");
@@ -69,10 +69,8 @@ const PlayersPage = (): JSX.Element => {
         { name: "Account", dataKey: "account" },
     ];
 
-    const actions: ActionDef<PlayerEntry>[] = [
-        { name: "Edit", onClick: editUser },
-        { name: "Delete", style: "red", onClick: deleteUser },
-    ];
+    const actions: ActionDef<PlayerEntry>[] = [{ name: "Edit", onClick: editUser }];
+    if (canDelete) actions.push({ name: "Delete", style: "red", onClick: deleteUser });
 
     return (
         <>

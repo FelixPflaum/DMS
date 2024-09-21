@@ -1,15 +1,17 @@
 import type { FormEventHandler } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextInput from "../components/form/TextInput";
-import NumberInput from "../components/form/NumberInput";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
 import type { UpdateRes, UserEntry, UserRes } from "@/shared/types";
+import PermissionInput from "../components/form/PermissionInput";
+import { AccPermissions } from "@/shared/permissions";
 
 const UserAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
     const [searchParams, _setSearchParams] = useSearchParams();
+    const [permissions, setPermissions] = useState<AccPermissions>(AccPermissions.NONE);
     const navigate = useNavigate();
 
     const idParam = searchParams.get("id");
@@ -17,12 +19,15 @@ const UserAddEditPage = (): JSX.Element => {
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
-    const permInputRef = useRef<HTMLInputElement>(null);
     const submitBtnRef = useRef<HTMLButtonElement>(null);
+
+    const onPermChange = (perms: AccPermissions) => {
+        setPermissions(perms);
+    };
 
     useEffect(() => {
         if (isEdit) {
-            idInputRef.current!.disabled = true;
+            if (idInputRef.current) idInputRef.current.disabled = true;
         } else {
             return;
         }
@@ -35,9 +40,9 @@ const UserAddEditPage = (): JSX.Element => {
                 navigate("/users");
                 return;
             }
-            idInputRef.current!.value = userRes[0].loginId;
-            nameInputRef.current!.value = userRes[0].userName;
-            permInputRef.current!.value = userRes[0].permissions.toString();
+            if (idInputRef.current) idInputRef.current.value = userRes[0].loginId;
+            if (nameInputRef.current) nameInputRef.current.value = userRes[0].userName;
+            setPermissions(userRes[0].permissions);
         });
     }, []);
 
@@ -46,19 +51,20 @@ const UserAddEditPage = (): JSX.Element => {
 
         const idValue = idInputRef.current?.value;
         const nameValue = nameInputRef.current?.value;
-        const permValue = parseInt(permInputRef.current?.value ?? "x");
-        if (typeof permValue !== "number" || !idValue || !nameValue) return;
+        if (!idValue || !nameValue) return;
 
         const body: UserEntry = {
             loginId: idValue,
             userName: nameValue,
-            permissions: permValue,
+            permissions: permissions,
         };
 
-        submitBtnRef.current!.disabled = true;
+        if (!submitBtnRef.current) return;
+        submitBtnRef.current.disabled = true;
+
         if (isEdit) {
             apiPost<UpdateRes>("/api/users/update/" + idValue, "update user", body).then((updateRes) => {
-                submitBtnRef.current!.disabled = false;
+                if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {
                         alert("User updated.");
@@ -69,7 +75,7 @@ const UserAddEditPage = (): JSX.Element => {
             });
         } else {
             apiPost<UpdateRes>("/api/users/create/", "create user", body).then((updateRes) => {
-                submitBtnRef.current!.disabled = false;
+                if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {
                         alert("User created.");
@@ -88,7 +94,7 @@ const UserAddEditPage = (): JSX.Element => {
             <form onSubmit={onSubmit}>
                 <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17}></TextInput>
                 <TextInput label="Name" inputRef={nameInputRef} required={true} minLen={4}></TextInput>
-                <NumberInput label="Permissions" inputRef={permInputRef} required={true}></NumberInput>
+                <PermissionInput label="Permissions" perms={permissions} onChange={onPermChange}></PermissionInput>
                 <div>
                     <button className="button" ref={submitBtnRef}>
                         Save

@@ -15,3 +15,16 @@
     padding: 0.2em 0.4em;
     width: 15em;
 }
+
+.permInputInputs {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.permInputRow {
+    margin-bottom: 0.05em;
+}
+
+.permInputLabel {
+    margin-left: 0.25em;
+}

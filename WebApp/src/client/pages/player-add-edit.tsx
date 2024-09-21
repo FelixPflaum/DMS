@@ -31,10 +31,10 @@ const PlayerAddEditPage = (): JSX.Element => {
                 navigate("/players");
                 return;
             }
-            nameInputRef.current!.value = res.playerName;
-            classInputRef.current!.value = res.classId.toString();
-            pointInputRef.current!.value = res.points.toString();
-            accountInputRef.current!.value = res.account ?? "";
+            if (nameInputRef.current) nameInputRef.current.value = res.playerName;
+            if (classInputRef.current) classInputRef.current.value = res.classId.toString();
+            if (pointInputRef.current) pointInputRef.current.value = res.points.toString();
+            if (accountInputRef.current) accountInputRef.current.value = res.account ?? "";
         });
     }, []);
 
@@ -54,10 +54,12 @@ const PlayerAddEditPage = (): JSX.Element => {
             account: accValue,
         };
 
-        submitBtnRef.current!.disabled = true;
+        if (!submitBtnRef.current) return;
+        if (submitBtnRef.current) submitBtnRef.current.disabled = true;
+
         if (isEdit) {
             apiPost<UpdateRes>("/api/players/update/" + nameValue, "update player", body).then((updateRes) => {
-                submitBtnRef.current!.disabled = false;
+                if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {
                         alert("player updated.");
@@ -68,7 +70,7 @@ const PlayerAddEditPage = (): JSX.Element => {
             });
         } else {
             apiPost<UpdateRes>("/api/players/create/", "create player", body).then((updateRes) => {
-                submitBtnRef.current!.disabled = false;
+                if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes) {
                     if (updateRes.success) {
                         alert("Player created.");

@@ -1,7 +1,7 @@
 import type { ChatInputCommandInteraction, CacheType, GuildMember } from "discord.js";
 import { BotCommandBase } from "./BotCommandBase";
 import { getConfig } from "../config";
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import { addUser } from "../database/tableFunctions/users";
 import { addAuditEntry } from "../database/tableFunctions/audit";
 

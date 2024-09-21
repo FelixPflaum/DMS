@@ -24,10 +24,11 @@ const AuditPage = (): JSX.Element => {
 
     const loadMore = () => {
         const nextPage = auditLogData.lastPageOffset + 1;
-        loadBtnRef.current!.disabled = true;
+        if (!loadBtnRef.current) return;
+        loadBtnRef.current.disabled = true;
         loadctx.setLoading("auditfetch", "Loading user data...");
         apiGet<AuditRes>("/api/audit/page/" + nextPage, "get audit log").then((auditRes) => {
-            loadBtnRef.current!.disabled = false;
+            if (loadBtnRef.current) loadBtnRef.current.disabled = false;
             loadctx.removeLoading("auditfetch");
             if (auditRes)
                 setAuditLog({

@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { AccPermissions } from "@/shared/enums";
+import { AccPermissions } from "@/shared/permissions";
 import { getUserFromRequest } from "../auth";
 import { send500Db, send401, send403 } from "../util";
 import type { AuditRes } from "@/shared/types";
