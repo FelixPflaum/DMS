@@ -6,11 +6,12 @@ type UserRow = {
     userName: string;
     validUntil: number;
     permissions: number;
+    lastActivity: number;
 };
 
 type AuditRow = {
     id: number;
-    timestamp: string;
+    timestamp: number;
     loginId: string;
     userName: string;
     eventInfo: string;
@@ -25,6 +26,7 @@ type ItemDataRow = {
     itemId: number;
     itemName: string;
     qualityId: number;
+    iconName: string;
 };
 
 type PlayerRow = {
@@ -36,7 +38,7 @@ type PlayerRow = {
 
 type PointHistoryRow = {
     id: number;
-    timestamp: string;
+    timestamp: number;
     playerName: string;
     pointChange: number;
     newPoints: number;
@@ -47,7 +49,7 @@ type PointHistoryRow = {
 type LootHistoryRow = {
     id: number;
     guid: string;
-    timestamp: string;
+    timestamp: number;
     playerName: string;
     itemId: number;
     response: string;

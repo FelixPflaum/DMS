@@ -56,3 +56,23 @@ export const send500Db = (res: Response): void => {
     };
     res.status(500).send(r);
 };
+
+/**
+ * Parses input for int and returns number if successful.
+ * @param input
+ * @returns The number or undefined.
+ */
+export const parseIntIfNumber = (input: unknown): number | undefined => {
+    if (typeof input !== "string") return;
+    const parseResult = parseInt(input);
+    if (typeof parseResult === "number") return parseResult;
+};
+
+/**
+ * Return string if input is string.
+ * @param input
+ * @returns The input string or undefined.
+ */
+export const getStringIfString = (input: unknown): string | undefined => {
+    if (typeof input === "string") return input;
+};

@@ -50,6 +50,14 @@ const UsersPage = (): JSX.Element => {
             dataKey: "permissions",
             render: (rd) => getPermissionStrings(rd.permissions).join(", "),
         },
+        {
+            name: "Last Active",
+            dataKey: "lastActivity",
+            render: (rd) => {
+                const dt = new Date(rd.lastActivity);
+                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+            },
+        },
     ];
 
     const actions: ActionDef<UserEntry>[] = [

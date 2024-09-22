@@ -17,22 +17,25 @@ type AuthUserRes = {
 
 type AuditEntry = {
     id: number;
-    timestamp: string;
+    timestamp: number;
     loginId: string;
     userName: string;
     eventInfo: string;
 };
 
-type AuditRes = {
+type PagedRes<T> = {
     pageOffset: number;
     haveMore: boolean;
-    entries: AuditEntry[];
+    entries: T[];
 };
+
+type AuditRes = PagedRes<AuditEntry>;
 
 type UserEntry = {
     loginId: string;
     userName: string;
     permissions: number;
+    lastActivity: number;
 };
 
 type UserRes = UserEntry[];
@@ -56,7 +59,7 @@ type PlayerEntry = {
 
 type PointHistoryEntry = {
     id: number;
-    timestamp: string;
+    timestamp: number;
     playerName: string;
     pointChange: number;
     newPoints: number;
@@ -64,12 +67,36 @@ type PointHistoryEntry = {
     reason?: string;
 };
 
+type PointHistoryPageRes = PagedRes<PointHistoryEntry>;
+
+type PointHistorySearchInput = {
+    playerName?: string;
+    timeStart?: number;
+    timeEnd?: number;
+};
+
 type LootHistoryEntry = {
     id: number;
     guid: string;
-    timestamp: string;
+    timestamp: number;
     playerName: string;
     itemId: number;
     response: string;
     reverted: number;
+};
+
+type LootHistoryPageRes = PagedRes<LootHistoryEntry>;
+
+type LootHistorySearchInput = {
+    playerName?: string;
+    timeStart?: number;
+    timeEnd?: number;
+    response?: string;
+};
+
+type ItemData = {
+    itemId: number;
+    itemName: string;
+    qualityId: number;
+    iconName: string;
 };

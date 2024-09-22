@@ -5,10 +5,31 @@ import type { ItemDataRow } from "../types";
 import { getSetting, setSetting } from "../tableFunctions/settings";
 import { getAllItems } from "../tableFunctions/itemData";
 
-const url = "https://wago.tools/db2/ItemSparse/csv?branch=wow_classic_era";
+const urlItem = "https://wago.tools/db2/Item/csv?branch=wow_classic_era";
+const urlSparse = "https://wago.tools/db2/ItemSparse/csv?branch=wow_classic_era";
+function getAtlasUrl(build: number): string {
+    return `https://www.townlong-yak.com/framexml/${build}/Helix/ArtTextureID.lua`;
+}
+
+function getAtlasFromString(atlasStr: string, logger: Logger): Record<number, string> {
+    const rgx = new RegExp(`(\\d+)</span>]=<span.+Interface.+/(.+)"</span>`);
+    const lines = atlasStr.split("\n");
+    const atlas: Record<number, string> = {};
+    logger.log("Generating atlas...");
+    let count = 0;
+    for (const line of lines) {
+        const match = line.match(rgx);
+        if (match) {
+            atlas[match[1] as unknown as number] = match[2];
+            count++;
+        }
+    }
+    logger.log("Generated " + count + " atlas entries.");
+    return atlas;
+}
 
 async function getCurrentBuild() {
-    const res = await fetch(url, { method: "HEAD" });
+    const res = await fetch(urlSparse, { method: "HEAD" });
     const disp = res.headers.get("content-disposition");
     if (!disp) return false;
     const buildMatch = disp.match(/filename=".*?\.(\d+)\.csv/);
@@ -38,14 +59,33 @@ async function update(logger: Logger) {
     }
     logger.log("Installed build is " + (settingResult.row?.svalue ?? "none"));
 
-    const res = await fetch(url);
-    if (res.status !== 200) {
-        logger.logError("Could not download item data file.");
+    logger.log("Gettings ItemSparse data");
+    const sparseRes = await fetch(urlSparse);
+    if (sparseRes.status !== 200) {
+        logger.logError("Could not download ItemSparse data file.");
         return;
     }
 
-    const csv = await res.text();
-    const csvMap = readDBCSVtoMap<{ ID: number; Display_lang: string; OverallQualityID: number }>(csv, "ID");
+    logger.log("Gettings Item data");
+    const itemRes = await fetch(urlItem);
+    if (itemRes.status !== 200) {
+        logger.logError("Could not download Item data file.");
+        return;
+    }
+
+    logger.log("Gettings atlas data");
+    const atlasRes = await fetch(getAtlasUrl(currentBuild));
+    if (itemRes.status !== 200) {
+        logger.logError("Could not download atlas data file.");
+        return;
+    }
+    const atlas = getAtlasFromString(await atlasRes.text(), logger);
+
+    const csvItem = await itemRes.text();
+    const csvMapItem = readDBCSVtoMap<{ ID: number; IconFileDataID: number }>(csvItem, "ID");
+
+    const csvSparse = await sparseRes.text();
+    const csvMapItemSparse = readDBCSVtoMap<{ ID: number; Display_lang: string; OverallQualityID: number }>(csvSparse, "ID");
 
     const dbItemsRes = await getAllItems();
     if (dbItemsRes.isError) {
@@ -53,23 +93,36 @@ async function update(logger: Logger) {
         process.exit(1);
     }
 
-    logger.log(`Have ${csvMap.size} items from file.`);
+    logger.log(`Have ${csvMapItemSparse.size} items from file.`);
     logger.log(`Have ${dbItemsRes.rows.length} items from DB.`);
 
     const itemsToInsert: ItemDataRow[] = [];
     const itemsToUpdate: ItemDataRow[] = [];
 
-    for (const newItem of csvMap.values()) {
-        if (!newItem.Display_lang) continue;
+    for (const newItemSparse of csvMapItemSparse.values()) {
+        if (!newItemSparse.Display_lang) continue;
+
+        const itemData = csvMapItem.get(newItemSparse.ID);
+        if (!itemData) throw new Error("Item data for item missing! " + newItemSparse.ID);
+
+        const itemIconName = itemData.IconFileDataID > 0 ? atlas[itemData.IconFileDataID] : "";
+        if (typeof itemIconName === "undefined")
+            throw new Error(`Item icon ${itemData.IconFileDataID} not in atlas! ` + newItemSparse.ID);
+
         let found = false;
         for (const oldItem of dbItemsRes.rows) {
-            if (oldItem.itemId == newItem.ID) {
+            if (oldItem.itemId == newItemSparse.ID) {
                 found = true;
-                if (oldItem.itemName != newItem.Display_lang || oldItem.qualityId != newItem.OverallQualityID) {
+                if (
+                    oldItem.itemName != newItemSparse.Display_lang ||
+                    oldItem.qualityId != newItemSparse.OverallQualityID ||
+                    oldItem.iconName != itemIconName
+                ) {
                     itemsToUpdate.push({
-                        itemId: newItem.ID,
-                        itemName: newItem.Display_lang,
-                        qualityId: newItem.OverallQualityID,
+                        itemId: newItemSparse.ID,
+                        itemName: newItemSparse.Display_lang,
+                        qualityId: newItemSparse.OverallQualityID,
+                        iconName: itemIconName,
                     });
                 }
                 break;
@@ -77,9 +130,10 @@ async function update(logger: Logger) {
         }
         if (!found)
             itemsToInsert.push({
-                itemId: newItem.ID,
-                itemName: newItem.Display_lang,
-                qualityId: newItem.OverallQualityID,
+                itemId: newItemSparse.ID,
+                itemName: newItemSparse.Display_lang,
+                qualityId: newItemSparse.OverallQualityID,
+                iconName: itemIconName,
             });
     }
 
@@ -88,22 +142,24 @@ async function update(logger: Logger) {
     let count = 0;
     for (const iti of itemsToInsert) {
         count++;
-        await queryDb(`INSERT INTO itemData (itemId, itemName, qualityId) VALUES (?, ?, ?);`, [
+        await queryDb(`INSERT INTO itemData (itemId, itemName, qualityId, iconName) VALUES (?, ?, ?, ?);`, [
             iti.itemId,
             iti.itemName,
             iti.qualityId,
+            iti.iconName,
         ]);
-        if (count % 20 == 0) logger.log(`Inserted ${count} of ${itemsToInsert.length} items.`);
+        if (count % 100 == 0) logger.log(`Inserted ${count} of ${itemsToInsert.length} items.`);
     }
     count = 0;
     for (const itu of itemsToUpdate) {
         count++;
-        await queryDb(`UPDATE itemData SET itemName=?, qualityId=? WHERE itemId=?;`, [
+        await queryDb(`UPDATE itemData SET itemName=?, qualityId=?, iconName=? WHERE itemId=?;`, [
             itu.itemName,
             itu.qualityId,
+            itu.iconName,
             itu.itemId,
         ]);
-        if (count % 20 == 0) logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
+        if (count % 100 == 0) logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
     }
 
     const setRes = await setSetting("itemDbVersion", currentBuild.toString());

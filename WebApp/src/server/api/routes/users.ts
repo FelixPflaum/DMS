@@ -27,6 +27,7 @@ userRouter.get("/user/:loginId", async (req: Request, res: Response): Promise<vo
             loginId: dbRes.row.loginId,
             userName: dbRes.row.userName,
             permissions: dbRes.row.permissions,
+            lastActivity: dbRes.row.lastActivity,
         });
     }
 
@@ -47,6 +48,7 @@ userRouter.get("/list", async (req: Request, res: Response): Promise<void> => {
             loginId: user.loginId,
             userName: user.userName,
             permissions: user.permissions,
+            lastActivity: user.lastActivity,
         });
     }
 

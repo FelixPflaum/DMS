@@ -1,0 +1,10 @@
+.itemIconLink {
+    color: #cccccc;
+    text-decoration: none;
+}
+
+.itemIconLinkIcon {
+    margin-right: 0.25em;
+    vertical-align: bottom;
+    height: 1.2em;
+}

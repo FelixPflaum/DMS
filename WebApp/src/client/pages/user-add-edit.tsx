@@ -57,6 +57,7 @@ const UserAddEditPage = (): JSX.Element => {
             loginId: idValue,
             userName: nameValue,
             permissions: permissions,
+            lastActivity: 0,
         };
 
         if (!submitBtnRef.current) return;

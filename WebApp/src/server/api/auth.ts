@@ -49,10 +49,12 @@ export const getUserFromRequest = async (req: Request): Promise<AuthUser | false
     const now = Date.now();
     const remainingLife = userRow.validUntil - now;
     if (remainingLife <= 0) {
-        await updateUser(loginId, { loginToken: "" });
+        await updateUser(loginId, { loginToken: "", lastActivity: now });
         return false;
     } else if (remainingLife < TOKEN_REFRESH_TIME) {
-        await updateUser(loginId, { validUntil: now + TOKEN_LIFETIME });
+        await updateUser(loginId, { validUntil: now + TOKEN_LIFETIME, lastActivity: now });
+    } else {
+        await updateUser(loginId, { lastActivity: now });
     }
 
     return new AuthUser(userRow);

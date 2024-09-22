@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuthContext = (): AuthContextType => useContext<AuthContextType>(AuthContext);
 
-const AuthProvider = ({ children }: { children: JSX.Element }): JSX.Element => {
+const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): JSX.Element => {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [auth, setAuth] = useState<{ loginId: string; loginToken: string } | null>(null);
     const [authStatus, setAuthStatus] = useState("");

@@ -10,7 +10,7 @@ import type { AuditRow } from "../types";
  */
 export const addAuditEntry = async (loginId: string, userName: string, eventInfo: string): Promise<boolean> => {
     return queryInsert("audit", {
-        timestamp: new Date(),
+        timestamp: Date.now(),
         loginId: loginId,
         userName: userName,
         eventInfo: eventInfo,

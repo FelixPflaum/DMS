@@ -10,11 +10,12 @@ export const creationSqlQueries: string[] = [
         userName VARCHAR(32) DEFAULT '',
         validUntil BIGINT UNSIGNED DEFAULT 0,
         permissions INT UNSIGNED DEFAULT 0,
+        lastActivity BIGINT DEFAULT 0,
         PRIMARY KEY (loginId)
 	);`,
     `CREATE TABLE audit (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        timestamp TIMESTAMP NOT NULL,
+        timestamp BIGINT NOT NULL,
         loginId VARCHAR(18) NOT NULL,
         userName VARCHAR(32) NOT NULL,
         eventInfo VARCHAR(255) NOT NULL,
@@ -30,7 +31,7 @@ export const creationSqlQueries: string[] = [
 	);`,
     `CREATE TABLE pointHistory (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        timestamp TIMESTAMP NOT NULL,
+        timestamp BIGINT NOT NULL,
         playerName VARCHAR(20) NOT NULL,
         pointChange INT NOT NULL,
         newPoints INT NOT NULL,
@@ -44,12 +45,13 @@ export const creationSqlQueries: string[] = [
     `CREATE TABLE lootHistory (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         guid VARCHAR(32) NOT NULL,
-        timestamp TIMESTAMP NOT NULL,
+        timestamp BIGINT NOT NULL,
         playerName VARCHAR(20) NOT NULL,
         itemId INT UNSIGNED NOT NULL,
         response VARCHAR(32) NOT NULL,
         reverted TINYINT(1) NOT NULL,
         PRIMARY KEY (id),
+        KEY (timestamp),
         UNIQUE KEY (guid),
         FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE
 	);`,
@@ -57,6 +59,7 @@ export const creationSqlQueries: string[] = [
         itemId INT UNSIGNED NOT NULL,
         itemName VARCHAR(100) NOT NULL,
         qualityId TINYINT NOT NULL,
+        iconId INT UNSIGNED NOT NULL,
         PRIMARY KEY (itemId),
         KEY (name),
         KEY (quality)

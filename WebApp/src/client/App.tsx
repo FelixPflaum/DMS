@@ -12,7 +12,9 @@ function App(): JSX.Element {
             <LoadOverlayProvider>
                 <Header></Header>
                 <main>
-                    <Suspense fallback={<LoadOverlay text="Loading..."></LoadOverlay>}>{useRoutes(routes)}</Suspense>
+                    <Suspense fallback={<LoadOverlay text="Loading..." isTransparent={true}></LoadOverlay>}>
+                        {useRoutes(routes)}
+                    </Suspense>
                 </main>
             </LoadOverlayProvider>
         </AuthProvider>
