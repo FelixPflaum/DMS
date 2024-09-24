@@ -46,7 +46,7 @@ const AuditPage = (): JSX.Element => {
             dataKey: "timestamp",
             render: (rd) => {
                 const dt = new Date(rd.timestamp);
-                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+                return dt.toLocaleString();
             },
         },
         { name: "Discord ID", dataKey: "loginId" },

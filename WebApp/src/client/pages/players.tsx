@@ -28,6 +28,9 @@ const PlayersPage = (): JSX.Element => {
     const editUser = (playerEntry: PlayerEntry) => {
         navigate("/player-add-edit?name=" + playerEntry.playerName);
     };
+    const viewUser = (playerEntry: PlayerEntry) => {
+        navigate("/profile?name=" + playerEntry.playerName);
+    };
 
     const deleteUser = async (playerEntry: PlayerEntry) => {
         const confirmWord = "UwU";
@@ -69,7 +72,8 @@ const PlayersPage = (): JSX.Element => {
         { name: "Account", dataKey: "account" },
     ];
 
-    const actions: ActionDef<PlayerEntry>[] = [{ name: "Edit", onClick: editUser }];
+    const actions: ActionDef<PlayerEntry>[] = [{ name: "View", onClick: viewUser }];
+    if (canManage) actions.push({ name: "Edit", onClick: editUser });
     if (canDelete) actions.push({ name: "Delete", style: "red", onClick: deleteUser });
 
     return (
@@ -80,13 +84,7 @@ const PlayersPage = (): JSX.Element => {
                     Add New
                 </button>
             ) : null}
-            <Tablel
-                columnDefs={columDefs}
-                data={players}
-                sortCol="playerName"
-                sortDir="asc"
-                actions={canManage ? actions : undefined}
-            ></Tablel>
+            <Tablel columnDefs={columDefs} data={players} sortCol="playerName" sortDir="asc" actions={actions}></Tablel>
         </>
     );
 };

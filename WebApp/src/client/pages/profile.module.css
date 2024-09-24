@@ -1,0 +1,14 @@
+.profilePointHistory,
+.profileLootHistory {
+    display: inline-block;
+}
+
+.profilePointHistory {
+    margin-right: 1.5em;
+}
+
+.profileh3 {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 1em 0 0.5em;
+}

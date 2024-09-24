@@ -7,8 +7,9 @@ import { getAllItems } from "../tableFunctions/itemData";
 
 const urlItem = "https://wago.tools/db2/Item/csv?branch=wow_classic_era";
 const urlSparse = "https://wago.tools/db2/ItemSparse/csv?branch=wow_classic_era";
-function getAtlasUrl(build: number): string {
-    return `https://www.townlong-yak.com/framexml/${build}/Helix/ArtTextureID.lua`;
+function getAtlasUrl(_build: number): string {
+    // Just take current live
+    return `https://www.townlong-yak.com/framexml/era/Helix/ArtTextureID.lua`;
 }
 
 function getAtlasFromString(atlasStr: string, logger: Logger): Record<number, string> {
@@ -105,9 +106,12 @@ async function update(logger: Logger) {
         const itemData = csvMapItem.get(newItemSparse.ID);
         if (!itemData) throw new Error("Item data for item missing! " + newItemSparse.ID);
 
-        const itemIconName = itemData.IconFileDataID > 0 ? atlas[itemData.IconFileDataID] : "";
-        if (typeof itemIconName === "undefined")
-            throw new Error(`Item icon ${itemData.IconFileDataID} not in atlas! ` + newItemSparse.ID);
+        let itemIconName = itemData.IconFileDataID > 0 ? atlas[itemData.IconFileDataID] : "";
+        if (typeof itemIconName === "undefined") {
+            itemIconName = "";
+            logger.log(`Item icon ${itemData.IconFileDataID} not in atlas! ` + newItemSparse.ID);
+            //throw new Error(`Item icon ${itemData.IconFileDataID} not in atlas! ` + newItemSparse.ID);
+        }
 
         let found = false;
         for (const oldItem of dbItemsRes.rows) {

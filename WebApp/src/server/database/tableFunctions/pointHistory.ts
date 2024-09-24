@@ -2,6 +2,7 @@ import type { PointChangeType, PointHistorySearchInput } from "@/shared/types";
 import type { DbDataValue, DbInsertCheckedResult, DbRowsResult } from "../database";
 import { queryInsertChecked, querySelect } from "../database";
 import type { PointHistoryRow } from "../types";
+import type { PoolConnection } from "mysql2/promise";
 
 /**
  * Get history entry page.
@@ -70,7 +71,8 @@ export const createPointHistoryEntry = (
     pointChange: number,
     newPoints: number,
     changeType: PointChangeType,
-    reason?: string
+    reason?: string,
+    conn?: PoolConnection
 ): Promise<DbInsertCheckedResult> => {
     const nonIdFields: Record<string, DbDataValue> = {
         pointChange: pointChange,
@@ -78,5 +80,5 @@ export const createPointHistoryEntry = (
         changeType: changeType,
     };
     if (reason) nonIdFields.reason = reason;
-    return queryInsertChecked("pointHistory", { timestamp: timestamp, playerName: playerName }, nonIdFields);
+    return queryInsertChecked("pointHistory", { timestamp: timestamp, playerName: playerName }, nonIdFields, conn);
 };

@@ -55,7 +55,7 @@ const UsersPage = (): JSX.Element => {
             dataKey: "lastActivity",
             render: (rd) => {
                 const dt = new Date(rd.lastActivity);
-                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+                return dt.toLocaleString();
             },
         },
     ];

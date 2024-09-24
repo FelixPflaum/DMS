@@ -59,6 +59,18 @@ type PlayerEntry = {
 
 type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID";
 
+type ApiPointChangeRequest = {
+    reason: string;
+    change: number;
+};
+
+type ApiPointChangeResult = {
+    success: boolean;
+    error?: string;
+    change: number;
+    newPoints: number;
+};
+
 type PointHistoryEntry = {
     id: number;
     timestamp: number;
@@ -84,6 +96,12 @@ type LootHistoryEntry = {
     playerName: string;
     itemId: number;
     response: string;
+};
+
+type ApiProfileResult = {
+    player: PlayerEntry;
+    pointHistory: PointHistoryEntry[];
+    lootHistory: LootHistoryEntry[];
 };
 
 type LootHistoryPageRes = PagedRes<LootHistoryEntry>;

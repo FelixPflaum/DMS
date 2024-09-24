@@ -58,7 +58,7 @@ const PointHistoryPage = (): JSX.Element => {
             canSort: true,
             render: (rd) => {
                 const dt = new Date(rd.timestamp);
-                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+                return dt.toLocaleString();
             },
         },
         {
@@ -68,7 +68,7 @@ const PointHistoryPage = (): JSX.Element => {
             defaultSort: "asc",
         },
         { name: "Change", dataKey: "pointChange" },
-        { name: "New Points", dataKey: "newPoints" },
+        { name: "New Sanity", dataKey: "newPoints" },
         { name: "Change Type", dataKey: "changeType" },
         { name: "Reason", dataKey: "reason" },
     ];

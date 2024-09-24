@@ -10,7 +10,7 @@ const NumberInput = ({
     required?: boolean;
 }): JSX.Element => {
     const onChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-        event.target.value = event.target.value.replace(/\D/g, "");
+        event.target.value = event.target.value.replace(/^[^-0-9]|(?!^)\D/g, "");
     };
 
     return (

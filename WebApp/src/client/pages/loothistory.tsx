@@ -63,10 +63,10 @@ const LootHistoryPage = (): JSX.Element => {
             canSort: true,
             render: (rd) => {
                 const dt = new Date(rd.timestamp);
-                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+                return dt.toLocaleString();
             },
         },
-        { name: "GUID", dataKey: "guid" },
+        //{ name: "GUID", dataKey: "guid" },
         {
             name: "Player",
             dataKey: "playerName",

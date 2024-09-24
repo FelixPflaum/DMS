@@ -9,6 +9,7 @@ import type {
 } from "../database";
 import { queryDelete, queryInsertChecked, querySelect, querySelectSingle, queryUpdate } from "../database";
 import type { PlayerRow } from "../types";
+import type { PoolConnection } from "mysql2/promise";
 
 /**
  * Get player entry.
@@ -25,6 +26,15 @@ export const getPlayer = (name: string): Promise<DbRowResult<PlayerRow>> => {
  */
 export const getAllPlayers = (): Promise<DbRowsResult<PlayerRow>> => {
     return querySelect<PlayerRow>(`SELECT * FROM players;`);
+};
+
+/**
+ * Get player entries by account.
+ * @param account
+ * @returns
+ */
+export const getPlayersForAccount = (account: string): Promise<DbRowsResult<PlayerRow>> => {
+    return querySelect<PlayerRow>(`SELECT playerName, classId, points, account FROM players WHERE account=?;`, [account]);
 };
 
 /**
@@ -52,8 +62,12 @@ export const createPlayer = (
  * @param newValues PlayerRow with values to update set. Unset values will not change.
  * @returns
  */
-export const updatePlayer = (name: string, newValues: Partial<PlayerRow>): Promise<DbUpdateResult> => {
-    return queryUpdate("players", { playerName: name }, newValues);
+export const updatePlayer = (
+    name: string,
+    newValues: Partial<PlayerRow>,
+    conn?: PoolConnection
+): Promise<DbUpdateResult> => {
+    return queryUpdate("players", { playerName: name }, newValues, conn);
 };
 
 /**

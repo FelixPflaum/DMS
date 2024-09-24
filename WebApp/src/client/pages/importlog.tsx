@@ -35,7 +35,7 @@ const ImportLogViewPage = (): JSX.Element => {
                 <h3>
                     #{log.id} imported by {log.userName}
                 </h3>
-                <h4>{log.timestamp}</h4>
+                <h4>{new Date(log.timestamp).toLocaleString()}</h4>
                 <ImportLogViewer log={log}></ImportLogViewer>
             </>
         );

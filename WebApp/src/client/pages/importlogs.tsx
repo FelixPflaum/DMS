@@ -33,7 +33,7 @@ const ImportLogsPage = (): JSX.Element => {
             canSort: true,
             render: (rd) => {
                 const dt = new Date(rd.timestamp);
-                return <>{`${dt.toLocaleDateString()} - ${dt.toLocaleTimeString()}`}</>;
+                return dt.toLocaleString();
             },
         },
         { name: "Importer", dataKey: "userName", canSort: true },

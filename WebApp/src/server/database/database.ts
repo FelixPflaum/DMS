@@ -1,4 +1,4 @@
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import mysql from "mysql2/promise";
 import { creationSqlQueries } from "./createSql";
 import { getConfig } from "../config";
@@ -97,8 +97,10 @@ export type DbUpdateResult = DbResult & {
 export const queryUpdate = async (
     table: string,
     idFields: Record<string, DbDataValue>,
-    fields: Record<string, DbDataValue>
+    fields: Record<string, DbDataValue>,
+    conn?: PoolConnection
 ): Promise<DbUpdateResult> => {
+    const db = conn ?? pool;
     const idKeys: string[] = [];
     const idValues: DbDataValue[] = [];
     for (const key in idFields) {
@@ -115,7 +117,7 @@ export const queryUpdate = async (
 
     const sqlQuery = `UPDATE ${table} SET ${setKeys.join("=? ,")}=? WHERE ${idKeys.join("=? AND ")}=?;`;
     try {
-        const [ures] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+        const [ures] = await db.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
         return { affectedRows: ures.affectedRows };
     } catch (error) {
         logger.logError(`DB error for query "${sqlQuery}"`, error);
@@ -214,8 +216,10 @@ export type DbInsertCheckedResult = DbResult & {
 export const queryInsertChecked = async (
     table: string,
     idFields: Record<string, DbDataValue>,
-    fields: Record<string, DbDataValue>
+    fields: Record<string, DbDataValue>,
+    conn?: PoolConnection
 ): Promise<DbInsertCheckedResult> => {
+    const db = conn ?? pool;
     let sqlQuery: string | undefined;
     try {
         const idKeys: string[] = [];
@@ -234,12 +238,12 @@ export const queryInsertChecked = async (
 
         // Check if it exists.
         sqlQuery = `SELECT * FROM ${table} WHERE ${idKeys.join("=? AND ")}=?;`;
-        const [sres] = await pool.query<RowDataPacket[]>(sqlQuery, idValues);
+        const [sres] = await db.query<RowDataPacket[]>(sqlQuery, idValues);
         if (sres.length === 0) {
             // Insert
             const valphs = new Array(idKeys.length + setKeys.length).fill("?");
             sqlQuery = `INSERT INTO ${table} (${setKeys.join(",")}, ${idKeys.join(",")}) VALUES (${valphs.join(",")});`;
-            await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            await db.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
             return { duplicate: false };
         } else {
             return { duplicate: true };
