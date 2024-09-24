@@ -60,7 +60,6 @@ export const getLootHistorySearch = (filter: LootHistorySearchInput, limit = 150
  * @param playerName
  * @param itemId
  * @param response
- * @param reverted
  * @returns
  */
 export const createLootHistoryEntry = (
@@ -68,15 +67,13 @@ export const createLootHistoryEntry = (
     timestamp: number,
     playerName: string,
     itemId: number,
-    response: string,
-    reverted: boolean
+    response: string
 ): Promise<DbInsertCheckedResult> => {
     const nonIdFields: Omit<LootHistoryRow, "id" | "guid"> = {
         timestamp: timestamp,
         playerName: playerName,
         itemId: itemId,
         response: response,
-        reverted: reverted ? 1 : 0,
     };
     return queryInsertChecked("lootHistory", { guid: guid }, nonIdFields);
 };

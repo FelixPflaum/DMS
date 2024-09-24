@@ -3,7 +3,7 @@ export const creationSqlQueries: string[] = [
         skey VARCHAR(20) NOT NULL,
         svalue TEXT NOT NULL,
         PRIMARY KEY (skey)
-	);`,
+    );`,
     `CREATE TABLE users (
         loginId VARCHAR(18) NOT NULL,
         loginToken VARCHAR(32) DEFAULT '',
@@ -12,7 +12,7 @@ export const creationSqlQueries: string[] = [
         permissions INT UNSIGNED DEFAULT 0,
         lastActivity BIGINT DEFAULT 0,
         PRIMARY KEY (loginId)
-	);`,
+    );`,
     `CREATE TABLE audit (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         timestamp BIGINT NOT NULL,
@@ -20,7 +20,7 @@ export const creationSqlQueries: string[] = [
         userName VARCHAR(32) NOT NULL,
         eventInfo VARCHAR(255) NOT NULL,
         PRIMARY KEY (id)
-	);`,
+    );`,
     `CREATE TABLE players (
         playerName VARCHAR(20) NOT NULL,
         classId TINYINT UNSIGNED NOT NULL,
@@ -28,7 +28,7 @@ export const creationSqlQueries: string[] = [
         account VARCHAR(18),
         PRIMARY KEY (playerName),
         FOREIGN KEY (account) REFERENCES users(loginId) ON DELETE SET NULL ON UPDATE CASCADE
-	);`,
+    );`,
     `CREATE TABLE pointHistory (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         timestamp BIGINT NOT NULL,
@@ -41,20 +41,19 @@ export const creationSqlQueries: string[] = [
         UNIQE KEY (timestamp, playerName),
         KEY (changeType),
         FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE
-	);`,
+    );`,
     `CREATE TABLE lootHistory (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         guid VARCHAR(32) NOT NULL,
         timestamp BIGINT NOT NULL,
-        playerName VARCHAR(20) NOT NULL,
+        playerName VARCHAR(20),
         itemId INT UNSIGNED NOT NULL,
         response VARCHAR(32) NOT NULL,
-        reverted TINYINT(1) NOT NULL,
         PRIMARY KEY (id),
         KEY (timestamp),
         UNIQUE KEY (guid),
         FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE
-	);`,
+    );`,
     `CREATE TABLE itemData (
         itemId INT UNSIGNED NOT NULL,
         itemName VARCHAR(100) NOT NULL,
@@ -63,5 +62,13 @@ export const creationSqlQueries: string[] = [
         PRIMARY KEY (itemId),
         KEY (name),
         KEY (quality)
-	);`,
+    );`,
+    `CREATE TABLE importLogs (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        timestamp BIGINT NOT NULL,
+        user VARCHAR(18),
+        logData TEXT NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (user) REFERENCES users(loginId) ON UPDATE CASCADE ON DELETE SET NULL
+    );`,
 ];

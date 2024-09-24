@@ -57,13 +57,15 @@ type PlayerEntry = {
     account?: string;
 };
 
+type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID";
+
 type PointHistoryEntry = {
     id: number;
     timestamp: number;
     playerName: string;
     pointChange: number;
     newPoints: number;
-    changeType: string;
+    changeType: PointChangeType;
     reason?: string;
 };
 
@@ -82,7 +84,6 @@ type LootHistoryEntry = {
     playerName: string;
     itemId: number;
     response: string;
-    reverted: number;
 };
 
 type LootHistoryPageRes = PagedRes<LootHistoryEntry>;
@@ -99,4 +100,71 @@ type ItemData = {
     itemName: string;
     qualityId: number;
     iconName: string;
+};
+
+type AddonPointHistoryEntry = {
+    timeStamp: number; // Unix timestamp
+    playerName: string;
+    change: number;
+    newPoints: number;
+    type: PointChangeType;
+    reason?: string; // Misc data for type.
+};
+
+type AddonPlayerEntry = {
+    playerName: string;
+    classId: number;
+    points: number;
+};
+
+type AddonLootHistoryEntry = {
+    guid: string; // Unique identifier for this loot distribution.
+    timeStamp: number; // Unix timestamp of the award time.
+    playerName: string; // The player the item was awarded to.
+    itemId: number;
+    response: string; // The response / award reason in the format {id,rgb_hexcolor}displayString
+};
+
+type AddonExport = {
+    time: number;
+    minTimestamp: number;
+    players: AddonPlayerEntry[];
+    pointHistory: AddonPointHistoryEntry[];
+    lootHistory: AddonLootHistoryEntry[];
+};
+
+type ImportLog = {
+    players: {
+        new: AddonPlayerEntry;
+        old?: PlayerEntry;
+    }[];
+    lootHistory: {
+        // make obj so it's easy to change later if needed
+        new: AddonLootHistoryEntry;
+    }[];
+    pointHistory: {
+        // make obj so it's easy to change later if needed
+        new: AddonPointHistoryEntry;
+    }[];
+};
+
+type ApiImportResult = {
+    error?: string;
+    log?: ImportLog;
+};
+
+type ApiImportLogEntry = {
+    id: number;
+    timestamp: number;
+    user: string;
+    logData: string;
+    userName: string;
+};
+
+type ApiImportLogListResult = {
+    logs: ApiImportLogEntry[];
+};
+
+type ApiExportResult = {
+    export: string;
 };

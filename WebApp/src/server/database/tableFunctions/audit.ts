@@ -9,12 +9,14 @@ import type { AuditRow } from "../types";
  * @param eventInfo
  */
 export const addAuditEntry = async (loginId: string, userName: string, eventInfo: string): Promise<boolean> => {
-    return queryInsert("audit", {
-        timestamp: Date.now(),
-        loginId: loginId,
-        userName: userName,
-        eventInfo: eventInfo,
-    });
+    return (
+        (await queryInsert("audit", {
+            timestamp: Date.now(),
+            loginId: loginId,
+            userName: userName,
+            eventInfo: eventInfo,
+        })) != 0
+    );
 };
 
 /**
@@ -23,6 +25,6 @@ export const addAuditEntry = async (loginId: string, userName: string, eventInfo
  * @param pageOffset Pagination page offset.
  * @returns
  */
-export const getAuditPage = async (limit = 50, pageOffset = 0): Promise<DbRowsResult<AuditRow>> => {
+export const getAuditPage = (limit = 50, pageOffset = 0): Promise<DbRowsResult<AuditRow>> => {
     return querySelect<AuditRow>(`SELECT * FROM audit ORDER BY id DESC LIMIT ? OFFSET ?;`, [limit, pageOffset * limit]);
 };

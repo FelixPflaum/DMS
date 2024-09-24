@@ -15,7 +15,7 @@ import type { PlayerRow } from "../types";
  * @param name
  * @returns
  */
-export const getPlayer = async (name: string): Promise<DbRowResult<PlayerRow>> => {
+export const getPlayer = (name: string): Promise<DbRowResult<PlayerRow>> => {
     return querySelectSingle<PlayerRow>(`SELECT * FROM players WHERE playerName=?;`, [name]);
 };
 
@@ -23,7 +23,7 @@ export const getPlayer = async (name: string): Promise<DbRowResult<PlayerRow>> =
  * Get all player entries.
  * @returns
  */
-export const getAllPlayers = async (): Promise<DbRowsResult<PlayerRow>> => {
+export const getAllPlayers = (): Promise<DbRowsResult<PlayerRow>> => {
     return querySelect<PlayerRow>(`SELECT * FROM players;`);
 };
 
@@ -35,7 +35,7 @@ export const getAllPlayers = async (): Promise<DbRowsResult<PlayerRow>> => {
  * @param accountId
  * @returns
  */
-export const createPlayer = async (
+export const createPlayer = (
     name: string,
     classId: ClassId,
     points: number,
@@ -52,7 +52,7 @@ export const createPlayer = async (
  * @param newValues PlayerRow with values to update set. Unset values will not change.
  * @returns
  */
-export const updatePlayer = async (name: string, newValues: Partial<PlayerRow>): Promise<DbUpdateResult> => {
+export const updatePlayer = (name: string, newValues: Partial<PlayerRow>): Promise<DbUpdateResult> => {
     return queryUpdate("players", { playerName: name }, newValues);
 };
 
@@ -61,6 +61,6 @@ export const updatePlayer = async (name: string, newValues: Partial<PlayerRow>):
  * @param name
  * @returns
  */
-export const deletePlayer = async (name: string): Promise<DbDeleteResult> => {
+export const deletePlayer = (name: string): Promise<DbDeleteResult> => {
     return queryDelete("players", { playerName: name });
 };

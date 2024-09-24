@@ -79,7 +79,6 @@ const LootHistoryPage = (): JSX.Element => {
             render: (rd) => <ItemIconLink itemId={rd.itemId}></ItemIconLink>,
         },
         { name: "Response", dataKey: "response", render: (rd) => <LootResponse dataText={rd.response}></LootResponse> },
-        { name: "Reverted", dataKey: "reverted" },
     ];
 
     return (

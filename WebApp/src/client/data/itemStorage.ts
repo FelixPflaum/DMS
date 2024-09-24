@@ -1,6 +1,8 @@
 import type { ItemData } from "@/shared/types";
 import { apiGet } from "../serverApi";
 
+// TODO: invalidate this on login if needed
+
 let itemStorage: Record<number, ItemData> = {};
 let wasLoaded = false;
 let isLoadingPromise: Promise<boolean> | undefined;

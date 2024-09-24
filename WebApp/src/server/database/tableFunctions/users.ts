@@ -41,7 +41,7 @@ export const getAllUsers = (): Promise<DbRowsResult<UserRow>> => {
  * @param newValues Object with values to update set. Unset value will not change.
  * @returns
  */
-export const updateUser = async (loginId: string, newValues: Partial<UserRow>): Promise<DbUpdateResult> => {
+export const updateUser = (loginId: string, newValues: Partial<UserRow>): Promise<DbUpdateResult> => {
     delete newValues.loginId;
     return queryUpdate("users", { loginId: loginId }, newValues);
 };
@@ -51,6 +51,6 @@ export const updateUser = async (loginId: string, newValues: Partial<UserRow>): 
  * @param loginId
  * @returns true if it was deleted, false if it didn't exist.
  */
-export const removeUser = async (loginId: string): Promise<DbDeleteResult> => {
+export const removeUser = (loginId: string): Promise<DbDeleteResult> => {
     return queryDelete("users", { loginId: loginId });
 };

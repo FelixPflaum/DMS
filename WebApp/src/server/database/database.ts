@@ -29,6 +29,14 @@ export const queryDb = async <T extends mysql.QueryResult>(sql: string, values?:
     return res;
 };
 
+/**
+ * Get a DB connection for manual queries.
+ * @returns
+ */
+export const getConnection = async (): Promise<mysql.PoolConnection> => {
+    return pool.getConnection();
+};
+
 export type DbResult = {
     isError?: boolean;
 };
@@ -169,9 +177,9 @@ export const queryUpdateOrInsert = async (
  * Convenience function that inserts a row.
  * @param table
  * @param fields The fields and their values.
- * @returns true if inserted, false on error
+ * @returns insert id if auto increment table, 1 as fallback, 0 on error
  */
-export const queryInsert = async (table: string, fields: Record<string, DbDataValue>): Promise<boolean> => {
+export const queryInsert = async (table: string, fields: Record<string, DbDataValue>): Promise<number> => {
     let sqlQuery: string | undefined;
     try {
         const keys: string[] = [];
@@ -184,11 +192,11 @@ export const queryInsert = async (table: string, fields: Record<string, DbDataVa
         }
 
         sqlQuery = `INSERT INTO ${table} (${keys.join(",")}) VALUES (${valphs.join(",")});`;
-        await pool.query<ResultSetHeader>(sqlQuery, values);
-        return true;
+        const [resHeader, _fd] = await pool.query<ResultSetHeader>(sqlQuery, values);
+        return resHeader.insertId || 1;
     } catch (error) {
         logger.logError(`DB error for query "${sqlQuery || "--"}"`, error);
-        return false;
+        return 0;
     }
 };
 

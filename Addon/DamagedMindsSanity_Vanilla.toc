@@ -1,9 +1,9 @@
 ## Interface: 11503
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
-## Version: 0.1.0
+## Version: 0.2.0
 ## Notes: 
-## SavedVariables: DMS_Settings, DMS_Database
+## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups
 
 Libs\Ace3\LibStub\LibStub.lua
 Libs\Ace3\CallbackHandler-1.0\CallbackHandler-1.0.xml
@@ -36,6 +36,9 @@ System/Item.lua
 System/Guild.lua
 
 Database/Database.lua
+Database/Base64.lua
+Database/Converters.lua
+Database/ImportExport.lua
 
 Modules/LootSession/Trade.lua
 Modules/LootSession/LootSession.lua

@@ -16,6 +16,6 @@ export const getSetting = (key: string): Promise<DbRowResult<SettingsRow>> => {
  * @param key
  * @returns
  */
-export const setSetting = async (key: string, value: string): Promise<DbUpdateResult> => {
+export const setSetting = (key: string, value: string): Promise<DbUpdateResult> => {
     return queryUpdateOrInsert("settings", { skey: key }, { svalue: value });
 };

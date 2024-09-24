@@ -42,7 +42,7 @@ type PointHistoryRow = {
     playerName: string;
     pointChange: number;
     newPoints: number;
-    changeType: string;
+    changeType: PointChangeType;
     reason?: string;
 };
 
@@ -53,5 +53,11 @@ type LootHistoryRow = {
     playerName: string;
     itemId: number;
     response: string;
-    reverted: number;
+};
+
+type ImportLogsRow = {
+    id: number;
+    timestamp: number;
+    user: string;
+    logData: string;
 };

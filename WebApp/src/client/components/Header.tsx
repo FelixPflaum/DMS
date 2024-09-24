@@ -17,6 +17,7 @@ const Header = (): JSX.Element => {
         "|",
         { text: "Import", path: "/import", permission: AccPermissions.DATA_MANAGE },
         { text: "Export", path: "/export", permission: AccPermissions.DATA_MANAGE },
+        { text: "Import-Logs", path: "/importlogs", permission: AccPermissions.DATA_MANAGE },
     ];
 
     const buttonElems: JSX.Element[] = [];

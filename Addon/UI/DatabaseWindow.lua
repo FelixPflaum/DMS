@@ -18,7 +18,7 @@ local TABLE_ROW_HEIGHT = 18
 local NON_CONTENT_WIDTH = 8
 local NON_CONTENT_HEIGHT = 28
 
----@alias StateKey "player"|"points"|"loot"|"none"
+---@alias StateKey "player"|"points"|"loot"|"none"|"imexport"
 
 local mainWindow ---@type DbWindow
 local state = "none" ---@type StateKey
@@ -337,12 +337,10 @@ end
 local function CreateLootFilter(parent, onChange)
     ---@class (exact) DBWindowLootFilter
     ---@field frame WoWFrame
-    ---@field showReverted boolean
     ---@field classesSelected table<integer,boolean>
     ---@field responsesSelected table<string,boolean>
     local lootFilter = {
         frame = CreateFrame("Frame", nil, parent),
-        showReverted = false,
         classesSelected = {},
         responsesSelected = {},
     }
@@ -370,14 +368,6 @@ local function CreateLootFilter(parent, onChange)
 
     local dropdownMenu = MSA_DropDownMenu_Create("DMSLootFilterDropdown", UIParent)
     local info = { text = "text not set" } ---@type MSA_InfoTable
-
-    ---@param key string
-    local function ChangeOther(_, key)
-        if key == "showreverted" then
-            lootFilter.showReverted = not lootFilter.showReverted
-        end
-        onChange()
-    end
 
     for _, v in ipairs(Env.classList) do
         lootFilter.classesSelected[v.id] = true
@@ -423,14 +413,6 @@ local function CreateLootFilter(parent, onChange)
             info.notCheckable = true
             info.hasArrow = true
             info.value = "CLASS"
-            MSA_DropDownMenu_AddButton(info, 1)
-
-            wipe(info)
-            info.text = L["Show reverted"]
-            info.isNotRadio = true
-            info.checked = lootFilter.showReverted
-            info.func = ChangeOther
-            info.arg1 = "showreverted"
             MSA_DropDownMenu_AddButton(info, 1)
 
             wipe(info)
@@ -843,7 +825,7 @@ end
 local function UpdatePlayerTable()
     ---@type ST_DataMinimal[]
     local dataTable = {}
-    for _, v in pairs(Env.Database.players) do
+    for _, v in pairs(Env.Database.db.players) do
         local rowData = { v.classId, v.playerName, v.points } ---@type any[]
         table.insert(dataTable, rowData)
     end
@@ -929,7 +911,7 @@ end
 local function UpdatePointsHistoryTable()
     ---@type ST_DataMinimal[]
     local dataTable = {}
-    for _, v in ipairs(Env.Database.pointHistory) do
+    for _, v in ipairs(Env.Database.db.pointHistory) do
         local rowData = { v.timeStamp, v.playerName, v.change, v.newPoints, v.type, v.reason } ---@type any[]
         table.insert(dataTable, rowData)
     end
@@ -1023,23 +1005,12 @@ local function CellUpdateLootResponse(rowFrame, cellFrame, data, cols, row, real
     end
 end
 
----Display a red "yes" if revert state is true.
----@type ST_CellUpdateFunc
-local function CellUpdateReverted(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
-    if not fShow then return end
-    local reverted = data[realrow][column] ---@type boolean
-    if reverted then
-        cellFrame.text:SetText("|cFFFF8888" .. L["Yes"] .. "|r")
-    else
-        cellFrame.text:SetText("")
-    end
-end
 
 local function UpdateLootHistoryTable()
     ---@type ST_DataMinimal[]
     local dataTable = {}
-    for _, v in ipairs(Env.Database.lootHistory) do
-        local rowData = { v.timeStamp, v.playerName, v.itemId, v.itemId, v.response, v.reverted } ---@type any[]
+    for _, v in ipairs(Env.Database.db.lootHistory) do
+        local rowData = { v.timeStamp, v.playerName, v.itemId, v.itemId, v.response } ---@type any[]
         table.insert(dataTable, rowData)
     end
     lootHistoryTable:SetData(dataTable, true)
@@ -1057,7 +1028,6 @@ Env:OnAddonLoaded(function()
         { name = "",            width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateItemIcon },
         { name = L["Item"],     width = 175,              DoCellUpdate = CellUpdateItemId },
         { name = L["Response"], width = 100,              DoCellUpdate = CellUpdateLootResponse },
-        { name = L["Reverted"], width = 60,               DoCellUpdate = CellUpdateReverted },
     }, 20, TABLE_ROW_HEIGHT, nil, mainWindow)
 
     lootHistoryTable:SetFilter(function(_, rowData)
@@ -1065,7 +1035,6 @@ Env:OnAddonLoaded(function()
         local playerEntry = Env.Database:GetPlayer(playerName)
         if not Filter.Date:IsTimestampInRange(rowData[1]) or
             not Filter.Name:IsMatching(playerName) or
-            (rowData[6] and not Filter.Loot.showReverted) or
             (playerEntry and not Filter.Loot.classesSelected[playerEntry.classId]) or
             (rowData[5] and rowData[5] ~= "" and not Filter.Loot:IsResponseSelected(rowData[5], true)) then
             return false
@@ -1085,6 +1054,95 @@ Env.Database.OnLootHistoryEntryChanged:RegisterCallback(function(entryGuid)
     if mainWindow:IsShown() and state == "loot" then
         UpdateLootHistoryTable()
     end
+end)
+
+---------------------------------------------------------------------------
+--- Import/Export DB tab (TODO: backups)
+---------------------------------------------------------------------------
+
+-- Setup loot history DB tab.
+Env:OnAddonLoaded(function()
+    local ief = CreateFrame("Frame", nil, mainWindow)
+
+    local headingExport = ief:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    headingExport:SetText(L["Export"])
+    headingExport:SetPoint("TOPLEFT", 10, -10)
+
+    local timeFrameLabel = ief:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    timeFrameLabel:SetPoint("TOPLEFT", headingExport, "BOTTOMLEFT", 0, -15)
+    timeFrameLabel:SetText(L["Timeframe"])
+
+    local timeFrameDropdown = Env.UI.CreateMSADropdown(ief)
+    timeFrameDropdown:SetPoint("LEFT", timeFrameLabel, "RIGHT", 15, 0)
+    timeFrameDropdown:SetWidth(100)
+    local days = 84600;
+    timeFrameDropdown:SetEntries({
+        { displayText = L["%d days"]:format(30),  value = 30 * days },
+        { displayText = L["%d days"]:format(60),  value = 60 * days },
+        { displayText = L["%d days"]:format(120), value = 120 * days },
+        { displayText = L["%d days"]:format(365), value = 365 * days },
+    })
+    timeFrameDropdown:SetSelected(60 * days)
+
+    local buttonExport = CreateFrame("Button", nil, ief, "UIPanelButtonTemplate")
+    buttonExport:SetText(L["Create Export"])
+    buttonExport:SetWidth(buttonExport:GetTextWidth() + 30)
+    buttonExport:SetPoint("TOPLEFT", timeFrameLabel, "BOTTOMLEFT", 0, -15)
+
+    local exportBox = CreateFrame("EditBox", nil, ief, "InputBoxTemplate")
+    exportBox:SetAutoFocus(false)
+    exportBox:SetFontObject(ChatFontNormal)
+    exportBox:SetScript("OnEscapePressed", EditBox_ClearFocus)
+    exportBox:SetScript("OnEnterPressed", EditBox_ClearFocus)
+    exportBox:SetTextInsets(0, 0, 3, 3)
+    exportBox:SetPoint("LEFT", buttonExport, "RIGHT", 10, 0)
+    exportBox:SetHeight(19)
+    exportBox:SetWidth(200)
+    exportBox:SetScript("OnCursorChanged", function(frame, ...)
+        exportBox:HighlightText()
+    end)
+
+    buttonExport:SetScript("OnClick", function()
+        local maxAge = timeFrameDropdown.selectedValue ---@type integer
+        local export = Env.CreateExportString(maxAge)
+        exportBox:SetText(export);
+    end)
+
+    local headingImport = ief:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    headingImport:SetText(L["Import"])
+    headingImport:SetPoint("TOPLEFT", buttonExport, "BOTTOMLEFT", 0, -30)
+
+    local importBox = CreateFrame("EditBox", nil, ief, "InputBoxTemplate")
+    importBox:SetAutoFocus(false)
+    importBox:SetFontObject(ChatFontNormal)
+    importBox:SetScript("OnEscapePressed", EditBox_ClearFocus)
+    importBox:SetScript("OnEnterPressed", EditBox_ClearFocus)
+    importBox:SetTextInsets(0, 0, 3, 3)
+    importBox:SetPoint("TOPLEFT", headingImport, "BOTTOMLEFT", 0, -15)
+    importBox:SetHeight(19)
+    importBox:SetWidth(200)
+
+    local buttonImport = CreateFrame("Button", nil, ief, "UIPanelButtonTemplate")
+    buttonImport:SetText(L["Import and overwrite DB"])
+    buttonImport:SetWidth(buttonImport:GetTextWidth() + 30)
+    buttonImport:SetPoint("TOPLEFT", importBox, "BOTTOMLEFT", 0, -10)
+
+    local importResult = ief:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    importResult:SetPoint("LEFT", buttonImport, "RIGHT", 10, 0)
+
+    buttonImport:SetScript("OnClick", function()
+        local input = importBox:GetText()
+        if input == "" then return end
+        local error = Env.ImportDataFromWeb(input)
+        importResult:SetText(L["Data was imported!"]);
+        if error then
+            importResult:SetText(L["Error: "] .. error);
+        end
+    end)
+
+    ief:SetSize(pointHistoryTable.frame:GetWidth() - 25, pointHistoryTable.frame:GetHeight() - 25)
+
+    AddTab("imexport", ief, L["Import/Export"], function() end, 0)
 end)
 
 ---------------------------------------------------------------------------

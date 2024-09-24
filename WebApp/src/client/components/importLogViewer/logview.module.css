@@ -1,0 +1,19 @@
+.importLogViewTh {
+    padding: 0 0.5em;
+}
+
+.importLogViewTd {
+    padding: 0.2em 0.5em;
+}
+
+.importLogViewTr:nth-child(2n) {
+    background-color: #2b2b2b;
+}
+
+.importLogViewTd.changed {
+    color: #ffa026;
+}
+
+.importLogViewForm {
+    border-collapse: collapse;
+}

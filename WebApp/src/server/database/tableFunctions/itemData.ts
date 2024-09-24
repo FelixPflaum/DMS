@@ -7,7 +7,7 @@ import type { ItemDataRow } from "../types";
  * @param itemId
  * @returns
  */
-export const getItemData = async (itemId: number): Promise<DbRowResult<ItemDataRow>> => {
+export const getItemData = (itemId: number): Promise<DbRowResult<ItemDataRow>> => {
     return querySelectSingle<ItemDataRow>(`SELECT * FROM itemData WHERE itemId=?;`, [itemId]);
 };
 
@@ -16,7 +16,7 @@ export const getItemData = async (itemId: number): Promise<DbRowResult<ItemDataR
  * @param searchTerm
  * @returns
  */
-export const searchItemByName = async (searchTerm: string): Promise<DbRowsResult<ItemDataRow>> => {
+export const searchItemByName = (searchTerm: string): Promise<DbRowsResult<ItemDataRow>> => {
     return querySelect<ItemDataRow>(`SELECT * FROM itemData WHERE itemName LIKE ?;`, ["%" + searchTerm + "%"]);
 };
 
@@ -24,6 +24,6 @@ export const searchItemByName = async (searchTerm: string): Promise<DbRowsResult
  * Get all items.
  * @returns
  */
-export const getAllItems = async (): Promise<DbRowsResult<ItemDataRow>> => {
+export const getAllItems = (): Promise<DbRowsResult<ItemDataRow>> => {
     return querySelect<ItemDataRow>(`SELECT * FROM itemData;`);
 };

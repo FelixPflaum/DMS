@@ -50,7 +50,7 @@ export const apiPost = async <T>(url: string, description: string, body: {} | []
             const json = JSON.parse(resBody) as ErrorRes;
             alert(`Failed to ${description}: ${json.error}`);
         } catch (error) {
-            alert(`Failed to ${description}: ${res.status} | ${body}`);
+            alert(`Failed to ${description}: ${res.status} | ${resBody}`);
         }
         return;
     }

@@ -1,4 +1,4 @@
-import type { PointHistorySearchInput } from "@/shared/types";
+import type { PointChangeType, PointHistorySearchInput } from "@/shared/types";
 import type { DbDataValue, DbInsertCheckedResult, DbRowsResult } from "../database";
 import { queryInsertChecked, querySelect } from "../database";
 import type { PointHistoryRow } from "../types";
@@ -69,7 +69,7 @@ export const createPointHistoryEntry = (
     playerName: string,
     pointChange: number,
     newPoints: number,
-    changeType: string,
+    changeType: PointChangeType,
     reason?: string
 ): Promise<DbInsertCheckedResult> => {
     const nonIdFields: Record<string, DbDataValue> = {
