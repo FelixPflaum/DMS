@@ -5,6 +5,7 @@ local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
+local MAX_IMPORT_AGE = 86400 * 3;
 local RESPONSE_GRACE_PERIOD = 2 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
 
 local function LogDebug(...)
@@ -801,6 +802,25 @@ end
 --- API
 ------------------------------------------------------------------
 
+local LibDialog = LibStub("LibDialog-1.1")
+
+local confirmDialog = {
+    text = "IMPORT IS OLD\n!\n!",
+    on_cancel = function(self, data, reason) end,
+    buttons = {
+        {
+            text = L["Start"],
+            on_click = function(self, target)
+                InitHost(target)
+            end
+        },
+        {
+            text = L["Abort"],
+            on_click = function() end
+        },
+    },
+}
+
 ---Start a new host session.
 ---@param target CommTarget
 ---@return SessionHost|nil
@@ -823,6 +843,15 @@ function Host:Start(target)
         end
     elseif target ~= "self" then
         return nil, L["Invalid host target! Valid values are: %s and %s."]:format("group", "self")
+    end
+
+    local lastImportAge = Env.Database:TimeSinceLastImport()
+    if lastImportAge > MAX_IMPORT_AGE then
+        if not LibDialog:ActiveDialog(confirmDialog) then
+            local dialog = LibDialog:Spawn(confirmDialog, target) ---@type any
+            dialog.text:SetText(L["Last data import is %s old!\n\nAre you sure you want to start the session?"]:format(Env.ToShortTimeUnit(lastImportAge)));
+        end
+        return
     end
 
     LogDebug("Starting host session with target: ", target)

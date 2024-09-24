@@ -1130,13 +1130,19 @@ Env:OnAddonLoaded(function()
     local importResult = ief:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     importResult:SetPoint("LEFT", buttonImport, "RIGHT", 10, 0)
 
+    local importAge = ief:CreateFontString(nil, "OVERLAY", "GameTooltipText")
+    importAge:SetPoint("TOPLEFT", buttonImport, "BOTTOMLEFT", 0, -10)
+    importAge:SetText(L["Last import: %s ago"]:format(Env.ToShortTimeUnit(Env.Database:TimeSinceLastImport())))
+
     buttonImport:SetScript("OnClick", function()
         local input = importBox:GetText()
         if input == "" then return end
         local error = Env.ImportDataFromWeb(input)
-        importResult:SetText(L["Data was imported!"]);
         if error then
             importResult:SetText(L["Error: "] .. error);
+        else
+            importResult:SetText(L["Data was imported!"]);
+            importAge:SetText(L["Last import: %s ago"]:format(Env.ToShortTimeUnit(Env.Database:TimeSinceLastImport())));
         end
     end)
 

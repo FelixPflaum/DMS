@@ -69,7 +69,7 @@ local function Import(data)
     end
     local tab = Env.JsonToTableImport(data:sub(EXPORT_PREFIX:len() + 1, data:len() - EXPORT_SUFFIX:len())) ---@type table<string,any>
 
-    local timeOfExport = tab.time and math.floor(tab.time / 1000) or false
+    local timeOfExport = tab.time and tab.time or false
     if not timeOfExport then
         return L["Import data is missing the time field!"]
     end

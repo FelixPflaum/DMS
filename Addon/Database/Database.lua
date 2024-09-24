@@ -59,6 +59,14 @@ function Env.Database.TimeSinceLastImport()
     return time() - DMS_Database.lastImport
 end
 
+Env:RegisterSlashCommand("resetdatabase", "", function(args)
+    Env:PrintWarn("Resetting database!")
+    Env.Database.db.players = {};
+    Env.Database.db.pointHistory = {};
+    Env.Database.db.lootHistory = {};
+    Env.Database.db.lastImport = 0;
+end)
+
 ------------------------------------------------------------------
 --- Events
 ------------------------------------------------------------------

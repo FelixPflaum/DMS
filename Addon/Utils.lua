@@ -118,3 +118,18 @@ function Env:PrintVerbose(arg1, ...)
     end
     PrintDebug(arg1, ...)
 end
+
+---Returns seconds as days, hour, minutes or seconds, depending on whether input is at least the respective unit.
+---@param seconds number
+---@return string
+function Env.ToShortTimeUnit(seconds)
+    if seconds > 86400 then
+        return math.floor((seconds / 86400) + 0.5) .. "d"
+    elseif seconds > 3600 then
+        return math.floor((seconds / 3600) + 0.5) .. "h"
+    elseif seconds > 60 then
+        return math.floor((seconds / 60) + 0.5) .. "m"
+    else
+        return seconds .. "s"
+    end
+end
