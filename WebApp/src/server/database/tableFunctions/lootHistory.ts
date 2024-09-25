@@ -2,6 +2,7 @@ import type { LootHistorySearchInput } from "@/shared/types";
 import type { DbInsertCheckedResult, DbRowsResult } from "../database";
 import { queryInsertChecked, querySelect } from "../database";
 import type { LootHistoryRow } from "../types";
+import type { PoolConnection } from "mysql2/promise";
 
 /**
  * Get history entry page.
@@ -67,7 +68,8 @@ export const createLootHistoryEntry = (
     timestamp: number,
     playerName: string,
     itemId: number,
-    response: string
+    response: string,
+    conn?: PoolConnection
 ): Promise<DbInsertCheckedResult> => {
     const nonIdFields: Omit<LootHistoryRow, "id" | "guid"> = {
         timestamp: timestamp,
@@ -75,5 +77,5 @@ export const createLootHistoryEntry = (
         itemId: itemId,
         response: response,
     };
-    return queryInsertChecked("lootHistory", { guid: guid }, nonIdFields);
+    return queryInsertChecked("lootHistory", { guid: guid }, nonIdFields, conn);
 };

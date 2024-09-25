@@ -10,6 +10,10 @@ import type {
 } from "../../shared/types";
 import type { FieldPacket, PoolConnection, RowDataPacket } from "mysql2/promise";
 import { makeDataBackup } from "./backup";
+import type { DataExport } from "./export";
+import { createPlayer } from "../database/tableFunctions/players";
+import { createPointHistoryEntry } from "../database/tableFunctions/pointHistory";
+import { createLootHistoryEntry } from "../database/tableFunctions/lootHistory";
 
 // TODO: validate integrity of data.
 // current player state + new point history should add up to be the new player state
@@ -129,13 +133,13 @@ async function updatePointHistory(
  * @param data
  * @returns
  */
-export const importToDatabase = async (data: AddonExport): Promise<{ error?: string; log?: ImportLog }> => {
+export const importAddonExport = async (data: AddonExport): Promise<{ error?: string; log?: ImportLog }> => {
     const conn = await getConnection();
     try {
         conn.query("LOCK TABLES players WRITE, pointHistory WRITE, loothistory WRITE;");
         conn.beginTransaction();
 
-        const backupSuccess = await makeDataBackup(conn, 0, "before_import");
+        const backupSuccess = await makeDataBackup(conn, 0, "before_addon_import");
         if (!backupSuccess) return { error: "Making data backup failed!" };
 
         const playerLog = await updatePlayers(conn, data.players);
@@ -154,6 +158,72 @@ export const importToDatabase = async (data: AddonExport): Promise<{ error?: str
         await conn.rollback();
         logger.logError("Error on DB import.", error);
         return { error: "Internal error." };
+    } finally {
+        await conn.query("UNLOCK TABLES;");
+        conn.release();
+    }
+};
+
+/**
+ * Import addon export into database.
+ * @param data
+ * @returns
+ */
+export const importDataExport = async (data: DataExport): Promise<boolean> => {
+    const conn = await getConnection();
+
+    const rollbackThenFalse = async () => {
+        await conn.rollback();
+        return false;
+    };
+
+    try {
+        conn.query("LOCK TABLES players WRITE, pointHistory WRITE, loothistory WRITE;");
+        conn.beginTransaction();
+
+        const backupSuccess = await makeDataBackup(conn, 0, "before_data_import");
+        if (!backupSuccess) return rollbackThenFalse();
+
+        await conn.query("DELETE FROM players;");
+        await conn.query("DELETE FROM pointHistory;");
+        await conn.query("DELETE FROM loothistory;");
+
+        for (const player of data.players) {
+            const res = await createPlayer(player.playerName, player.classId, player.points, player.account, conn);
+            if (res.isError) return rollbackThenFalse();
+        }
+
+        for (const phist of data.pointHistory) {
+            const res = await createPointHistoryEntry(
+                phist.timestamp,
+                phist.playerName,
+                phist.pointChange,
+                phist.newPoints,
+                phist.changeType,
+                phist.reason,
+                conn
+            );
+            if (res.isError) return rollbackThenFalse();
+        }
+
+        for (const lhist of data.lootHistory) {
+            const res = await createLootHistoryEntry(
+                lhist.guid,
+                lhist.timestamp,
+                lhist.playerName,
+                lhist.itemId,
+                lhist.response,
+                conn
+            );
+            if (res.isError) return rollbackThenFalse();
+        }
+
+        await conn.commit();
+        return true;
+    } catch (error) {
+        await conn.rollback();
+        logger.logError("Error on DB import.", error);
+        return false;
     } finally {
         await conn.query("UNLOCK TABLES;");
         conn.release();

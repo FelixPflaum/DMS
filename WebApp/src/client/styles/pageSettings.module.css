@@ -1,3 +1,23 @@
 .changedInput {
     border: 2px solid #f9b81f;
 }
+
+.fileListWrap {
+    margin-bottom: 0.5em;
+    display: inline-block;
+}
+
+.selectedBackupWrap {
+    border: 2px solid #f96226;
+    padding: 1em;
+    border-radius: 0.2em;
+}
+
+.selectedBackupLabel {
+    font-weight: bold;
+    margin-right: 1em;
+}
+
+.selectedBackupName {
+    margin-right: 1em;
+}

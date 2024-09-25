@@ -4,10 +4,18 @@ import TextInput from "../components/form/TextInput";
 import NumberInput from "../components/form/NumberInput";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
-import type { ApiSetSettingReq, ApiSettingRes, UpdateRes } from "@/shared/types";
+import type {
+    ApiBackupListRes,
+    ApiMakeBackupRes,
+    ApiResponse,
+    ApiSetSettingReq,
+    ApiSettingRes,
+    UpdateRes,
+} from "@/shared/types";
 import StaticFormRow from "../components/form/StaticFormRow";
 import styles from "../styles/pageSettings.module.css";
 import DateTimeInput from "../components/form/DateTimeInput";
+import FileList from "../components/fileList/FileList";
 
 const SettingsPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -24,6 +32,7 @@ const SettingsPage = (): JSX.Element => {
             setLoadedSettings(res);
             setCurrentSettings(res);
         });
+        apiGet<ApiBackupListRes>;
     }, []);
 
     const onInputChange = (key: string, val: string | number) => {
@@ -114,6 +123,81 @@ const SettingsPage = (): JSX.Element => {
         });
     };
 
+    const [backList, setBackupList] = useState<ApiBackupListRes>([]);
+    const [backupPath, setBackupPath] = useState<string[]>([]);
+    const [selectedBackup, setSelectedBackup] = useState<string[] | undefined>();
+
+    const onFileSelect = (file: string) => {
+        if (backupPath.length < 2) {
+            setBackupPath([...backupPath, file]);
+        } else {
+            console.log(file);
+            setSelectedBackup([...backupPath, file]);
+        }
+    };
+
+    const onBack = () => {
+        if (backupPath.length > 0) {
+            setBackupPath(backupPath.slice(0, -1));
+            setSelectedBackup(undefined);
+        }
+    };
+
+    const makeBackup = () => {
+        loadctx.setLoading("makemackup", "Creating backup...");
+        apiPost<ApiMakeBackupRes>("/api/backup/make", "make backup", {}).then((res) => {
+            loadctx.removeLoading("makemackup");
+            if (!res) return;
+            if (res.error) {
+                alert("Could not create backup: " + res.error);
+                return;
+            }
+            alert("Backup created: " + res.file);
+        });
+    };
+
+    const applyBackup = () => {
+        if (!selectedBackup) return;
+        const confirmWord = "YES";
+        const promptRes = prompt(
+            `Really apply backup?\nBackup file: ${selectedBackup[selectedBackup.length - 1]}\n\nThis will remove any changes made since that backup!\n\nEnter ${confirmWord} to confirm.`
+        );
+        if (promptRes && promptRes == confirmWord) {
+            loadctx.setLoading("applybackup", "Applying backup...");
+            apiPost<ApiResponse>("/api/backup/apply", "apply backup", { path: selectedBackup }).then((res) => {
+                loadctx.removeLoading("applybackup");
+                if (!res) return;
+                if (res.error) {
+                    alert("Back failed: " + res.error);
+                    return;
+                }
+                alert("Backup applied!");
+            });
+        }
+    };
+
+    useEffect(() => {
+        loadctx.setLoading("fetchbackuplist", "Loading backup list...");
+        apiGet<ApiBackupListRes>("/api/backup/list/" + backupPath.join("/"), "get backup list").then((res) => {
+            loadctx.removeLoading("fetchbackuplist");
+            if (!res) return;
+            setBackupList(res);
+        });
+        apiGet<ApiBackupListRes>;
+    }, [backupPath]);
+
+    const backupSelection = selectedBackup ? (
+        <div className={styles.selectedBackupWrap}>
+            <span className={styles.selectedBackupLabel}>Selected Backup</span>
+            <span className={styles.selectedBackupName}>{selectedBackup.join("/")}</span>
+            <button className="button" onClick={applyBackup}>
+                Apply Backup (NYI)
+            </button>
+        </div>
+    ) : (
+        <></>
+    );
+
     return (
         <>
             <h1 className="pageHeading">Settings</h1>
@@ -125,6 +209,17 @@ const SettingsPage = (): JSX.Element => {
                     </button>
                 </div>
             </form>
+            <div>
+                <h2 className="pageheading2">Backups</h2>
+                <button className="button" onClick={makeBackup}>
+                    Create New Backup
+                </button>
+                <h3 className="pageheading3">Backup List</h3>
+                <div className={styles.fileListWrap}>
+                    <FileList path={backupPath} files={backList} onBack={onBack} onSelect={onFileSelect}></FileList>
+                </div>
+                {backupSelection}
+            </div>
         </>
     );
 };

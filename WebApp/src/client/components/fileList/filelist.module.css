@@ -1,0 +1,42 @@
+.fileListWrap {
+    display: block;
+    min-width: 15em;
+    border: 1px solid #5d6b7a;
+    border-radius: 0.2em;
+}
+
+.fileListPath {
+    background-color: #5d6b7a;
+    padding: 0.25em;
+}
+
+.fileListPathBackBtn {
+    width: 2em;
+    height: 2em;
+    margin-right: 1em;
+    background: none;
+    border: 1px solid #fff;
+    border-radius: 0.5em;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.fileListPathBackBtn:hover {
+    background-color: #808080;
+}
+
+.fileListList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fileListLi {
+    padding: 0.2em 0.5em;
+    cursor: pointer;
+}
+
+.fileListLi:hover {
+    background-color: #ffffff1f;
+}

@@ -50,11 +50,12 @@ export const createPlayer = (
     name: string,
     classId: ClassId,
     points: number,
-    accountId?: string
+    accountId?: string,
+    conn?: PoolConnection
 ): Promise<DbInsertCheckedResult> => {
     const fields: Record<string, DbDataValue> = { classId: classId, points: points };
     if (accountId) fields.account = accountId;
-    return queryInsertChecked("players", { playerName: name }, fields);
+    return queryInsertChecked("players", { playerName: name }, fields, conn);
 };
 
 /**

@@ -1,8 +1,8 @@
 import type { ConfigDataDynamic } from "@/server/configDynamic";
 import type { ClassId } from "./wow";
 
-type ErrorRes = {
-    error: string;
+type ApiResponse = {
+    error?: string;
 };
 
 type AuthRes = {
@@ -193,3 +193,7 @@ type ApiSettingRes = ConfigDataDynamic;
 type ApiSetSettingReq = {
     changes: { key: string; value: unknown }[];
 };
+
+type ApiBackupListRes = string[];
+
+type ApiMakeBackupRes = ApiResponse & { file: string };

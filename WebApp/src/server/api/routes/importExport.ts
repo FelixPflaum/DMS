@@ -6,7 +6,7 @@ import { send400, send401, send403, send404, send500, send500Db } from "../util"
 import { parseAddonExport } from "@/server/importExport/parseAddonData";
 import type { ApiExportResult, ApiImportLogListResult, ApiImportResult } from "@/shared/types";
 import { addImportLog, getImportLog, getImportLogList } from "@/server/database/tableFunctions/importLogs";
-import { importToDatabase } from "@/server/importExport/importToDb";
+import { importAddonExport } from "@/server/importExport/importToDb";
 import { createExportForAddon } from "@/server/importExport/export";
 import { addAuditEntry } from "@/server/database/tableFunctions/audit";
 
@@ -28,7 +28,7 @@ importExportRouter.post("/import", async (req: Request, res: Response): Promise<
         return;
     }
 
-    const importRes = await importToDatabase(parseResult.data);
+    const importRes = await importAddonExport(parseResult.data);
     if (importRes.error) {
         apiResult.error = importRes.error;
         res.send(apiResult);

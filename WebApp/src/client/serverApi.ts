@@ -1,18 +1,25 @@
-import type { ErrorRes } from "@/shared/types";
+import type { ApiResponse } from "@/shared/types";
 
-/**
- * Post json body using fetch().
- * @param url
- * @param body
- * @returns
- */
-const postJson = (url: string, body: {} | []): Promise<Response> => {
-    return fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
-};
+async function handleApiResonse<T>(res: Response, description: string): Promise<T | undefined> {
+    const body = await res.text();
+    try {
+        const data = JSON.parse(body) as ApiResponse;
+        if (res.status !== 200) {
+            if (data.error) {
+                alert(`Failed to ${description}: ${data.error}`);
+            } else {
+                alert(`Failed to ${description}: ${res.status}\n${body}`);
+            }
+            return;
+        }
+        return data as T;
+    } catch (error) {
+        console.error(error);
+        console.log(body);
+        alert(`API request error: ${res.status} | Error:\n${error}`);
+        return;
+    }
+}
 
 /**
  * Do API get request.
@@ -22,18 +29,7 @@ const postJson = (url: string, body: {} | []): Promise<Response> => {
  */
 export const apiGet = async <T>(url: string, description: string): Promise<T | undefined> => {
     const res = await fetch(url);
-    const body = await res.text();
-    if (res.status !== 200) {
-        try {
-            const json = JSON.parse(body) as ErrorRes;
-            alert(`Failed to ${description}: ${json.error}`);
-        } catch (error) {
-            alert(`Failed to ${description}: ${res.status} | ${body}`);
-        }
-        return;
-    }
-    const data: T = JSON.parse(body);
-    return data;
+    return handleApiResonse(res, description);
 };
 
 /**
@@ -43,17 +39,10 @@ export const apiGet = async <T>(url: string, description: string): Promise<T | u
  * @returns
  */
 export const apiPost = async <T>(url: string, description: string, body: {} | []): Promise<T | undefined> => {
-    const res = await postJson(url, body);
-    const resBody = await res.text();
-    if (res.status !== 200) {
-        try {
-            const json = JSON.parse(resBody) as ErrorRes;
-            alert(`Failed to ${description}: ${json.error}`);
-        } catch (error) {
-            alert(`Failed to ${description}: ${res.status} | ${resBody}`);
-        }
-        return;
-    }
-    const data: T = JSON.parse(resBody);
-    return data;
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    return handleApiResonse(res, description);
 };

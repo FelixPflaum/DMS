@@ -1,6 +1,6 @@
 import type { ApiExportResult } from "@/shared/types";
 import { apiGet } from "../serverApi";
-import styles from "./import.module.css";
+import styles from "../styles/pageImport.module.css";
 import { useRef } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 

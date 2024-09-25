@@ -1,9 +1,9 @@
-import type { ErrorRes } from "@/shared/types";
+import type { ApiResponse } from "@/shared/types";
 import type { Response } from "express";
 
 /** Send 400 */
 export const send400 = (res: Response, reason: string): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: reason,
     };
     res.status(401).send(r);
@@ -11,7 +11,7 @@ export const send400 = (res: Response, reason: string): void => {
 
 /** Send 401 */
 export const send401 = (res: Response): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: "Unauthorized.",
     };
     res.status(401).send(r);
@@ -19,7 +19,7 @@ export const send401 = (res: Response): void => {
 
 /** Send 403 */
 export const send403 = (res: Response, reason = "Missing permissions."): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: reason,
     };
     res.status(403).send(r);
@@ -27,7 +27,7 @@ export const send403 = (res: Response, reason = "Missing permissions."): void =>
 
 /** Send 404 */
 export const send404 = (res: Response, reason = "No found."): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: reason,
     };
     res.status(404).send(r);
@@ -35,7 +35,7 @@ export const send404 = (res: Response, reason = "No found."): void => {
 
 /** Send 429, "Try again later." */
 export const send429 = (res: Response): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: "Try again later.",
     };
     res.status(429).send(r);
@@ -43,7 +43,7 @@ export const send429 = (res: Response): void => {
 
 /** Send 500*/
 export const send500 = (res: Response, reason = "Server error."): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: reason,
     };
     res.status(500).send(r);
@@ -51,7 +51,7 @@ export const send500 = (res: Response, reason = "Server error."): void => {
 
 /** Send 500, DB operation failed.*/
 export const send500Db = (res: Response): void => {
-    const r: ErrorRes = {
+    const r: ApiResponse = {
         error: "DB operation failed.",
     };
     res.status(500).send(r);

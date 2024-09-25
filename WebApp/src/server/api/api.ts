@@ -10,6 +10,7 @@ import { lootHistoryRouter } from "./routes/lootHistory";
 import { itemRouter } from "./routes/items";
 import { importExportRouter } from "./routes/importExport";
 import { settingsRouter } from "./routes/settings";
+import { backupRouter } from "./routes/backup";
 
 const cookieParser = require("cookie-parser");
 const app: Application = express();
@@ -29,6 +30,7 @@ apiRouter.use("/loothistory", lootHistoryRouter);
 apiRouter.use("/items", itemRouter);
 apiRouter.use("/io", importExportRouter);
 apiRouter.use("/settings", settingsRouter);
+apiRouter.use("/backup", backupRouter);
 
 app.use("/api", apiRouter);
 
