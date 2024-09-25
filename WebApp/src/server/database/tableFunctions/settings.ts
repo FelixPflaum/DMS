@@ -1,3 +1,4 @@
+import type { PoolConnection } from "mysql2/promise";
 import type { DbRowResult, DbUpdateResult } from "../database";
 import { querySelectSingle, queryUpdateOrInsert } from "../database";
 import type { SettingsRow } from "../types";
@@ -16,6 +17,6 @@ export const getSetting = (key: string): Promise<DbRowResult<SettingsRow>> => {
  * @param key
  * @returns
  */
-export const setSetting = (key: string, value: string): Promise<DbUpdateResult> => {
-    return queryUpdateOrInsert("settings", { skey: key }, { svalue: value });
+export const setSetting = (key: string, value: string, conn?: PoolConnection): Promise<DbUpdateResult> => {
+    return queryUpdateOrInsert("settings", { skey: key }, { svalue: value }, conn);
 };

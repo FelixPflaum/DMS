@@ -71,11 +71,17 @@ export const querySelectSingle = async <T extends {}>(sql: string, values: DbDat
  * Convenience function for SELECTing multiple rows.
  * @param sql
  * @param values
+ * @param conn
  * @returns A DatabaseResult containing the rows.
  */
-export const querySelect = async <T extends {}>(sql: string, values?: DbDataValue[]): Promise<DbRowsResult<T>> => {
+export const querySelect = async <T extends {}>(
+    sql: string,
+    values?: DbDataValue[],
+    conn?: PoolConnection
+): Promise<DbRowsResult<T>> => {
+    const db = conn ?? pool;
     try {
-        const [res] = await pool.query<RowDataPacket[]>(sql, values);
+        const [res] = await db.query<RowDataPacket[]>(sql, values);
         return { rows: res as T[] };
     } catch (error) {
         logger.logError(`DB error for query "${sql}"`, error);
@@ -135,8 +141,10 @@ export const queryUpdate = async (
 export const queryUpdateOrInsert = async (
     table: string,
     idFields: Record<string, DbDataValue>,
-    fields: Record<string, DbDataValue>
+    fields: Record<string, DbDataValue>,
+    conn?: PoolConnection
 ): Promise<DbUpdateResult> => {
+    const db = conn ?? pool;
     let sqlQuery: string | undefined;
 
     const idKeys: string[] = [];
@@ -156,17 +164,17 @@ export const queryUpdateOrInsert = async (
     try {
         // Check if it exists.
         sqlQuery = `SELECT * FROM ${table} WHERE ${idKeys.join("=? AND ")}=?;`;
-        const [sres] = await pool.query<RowDataPacket[]>(sqlQuery, idValues);
+        const [sres] = await db.query<RowDataPacket[]>(sqlQuery, idValues);
         if (sres.length === 0) {
             // Insert
             const valphs = new Array(idKeys.length + setKeys.length).fill("?");
             sqlQuery = `INSERT INTO ${table} (${Object.keys(fields).join(",")}, ${Object.keys(idFields).join(",")}) VALUES (${valphs.join(",")});`;
-            const [isres] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            const [isres] = await db.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
             return { affectedRows: isres.affectedRows };
         } else {
             // Update
             sqlQuery = `UPDATE ${table} SET ${setKeys.join("=? ,")}=? WHERE ${idKeys.join("=? AND ")}=?;`;
-            const [ures] = await pool.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
+            const [ures] = await db.query<ResultSetHeader>(sqlQuery, [...setValues, ...idValues]);
             return { affectedRows: ures.affectedRows };
         }
     } catch (error) {
@@ -317,6 +325,7 @@ export const checkDb = async (): Promise<boolean> => {
 
         await checkAndUpdateItemDb();
     } catch (error) {
+        await conn.rollback();
         logger.logError("DB check failed.", error);
         return false;
     } finally {

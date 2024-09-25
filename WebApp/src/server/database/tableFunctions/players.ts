@@ -22,10 +22,11 @@ export const getPlayer = (name: string): Promise<DbRowResult<PlayerRow>> => {
 
 /**
  * Get all player entries.
+ * @param conn
  * @returns
  */
-export const getAllPlayers = (): Promise<DbRowsResult<PlayerRow>> => {
-    return querySelect<PlayerRow>(`SELECT * FROM players;`);
+export const getAllPlayers = (conn?: PoolConnection): Promise<DbRowsResult<PlayerRow>> => {
+    return querySelect<PlayerRow>(`SELECT * FROM players;`, undefined, conn);
 };
 
 /**

@@ -18,6 +18,7 @@ const Header = (): JSX.Element => {
     }, []);
 
     const buttons: ({ text: string; path: string; permission?: AccPermissions } | "|")[] = [
+        { text: "Settings", path: "/settings", permission: AccPermissions.SETTINGS_VIEW },
         { text: "Auditlog", path: "/audit", permission: AccPermissions.AUDIT_VIEW },
         { text: "Users", path: "/users", permission: AccPermissions.USERS_VIEW },
         "|",

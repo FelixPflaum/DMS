@@ -6,6 +6,8 @@ export const enum AccPermissions {
     DATA_VIEW = 0x20,
     DATA_MANAGE = 0x40,
     DATA_DELETE = 0x80,
+    SETTINGS_VIEW = 0x10000000,
+    SETTINGS_EDIT = 0x20000000,
     ADMIN = 0x40000000, // bit 31
     ALL = 0x7fffffff, // 32th bit would need |0 for every check :/
 }
@@ -20,6 +22,8 @@ export const permissionData: Record<AccPermissions, { name: string; value: AccPe
     [AccPermissions.DATA_VIEW]: { name: "Data-view", value: AccPermissions.DATA_VIEW },
     [AccPermissions.DATA_MANAGE]: { name: "Data-manage", value: AccPermissions.DATA_MANAGE },
     [AccPermissions.DATA_DELETE]: { name: "Data-delete", value: AccPermissions.DATA_DELETE },
+    [AccPermissions.SETTINGS_VIEW]: { name: "Settings-view", value: AccPermissions.SETTINGS_VIEW },
+    [AccPermissions.SETTINGS_EDIT]: { name: "Settings-edit", value: AccPermissions.SETTINGS_EDIT },
     [AccPermissions.ADMIN]: { name: "Admin", value: AccPermissions.ADMIN },
 };
 

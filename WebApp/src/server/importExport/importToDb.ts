@@ -135,15 +135,14 @@ export const importToDatabase = async (data: AddonExport): Promise<{ error?: str
         conn.query("LOCK TABLES players WRITE, pointHistory WRITE, loothistory WRITE;");
         conn.beginTransaction();
 
+        const backupSuccess = await makeDataBackup(conn, 0, "before_import");
+        if (!backupSuccess) return { error: "Making data backup failed!" };
+
         const playerLog = await updatePlayers(conn, data.players);
         const lootLog = await updateLootHistory(conn, data.lootHistory);
         const pointLog = await updatePointHistory(conn, data.pointHistory);
 
-        const backupSuccess = await makeDataBackup(conn);
-        if (!backupSuccess) return { error: "Making data backup failed!" };
-
         await conn.commit();
-
         return {
             log: {
                 players: playerLog,
@@ -152,10 +151,11 @@ export const importToDatabase = async (data: AddonExport): Promise<{ error?: str
             },
         };
     } catch (error) {
+        await conn.rollback();
         logger.logError("Error on DB import.", error);
         return { error: "Internal error." };
     } finally {
-        conn.query("UNLOCK TABLES;");
+        await conn.query("UNLOCK TABLES;");
         conn.release();
     }
 };

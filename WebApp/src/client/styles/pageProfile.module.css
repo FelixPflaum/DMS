@@ -12,3 +12,8 @@
     font-weight: bold;
     margin: 1em 0 0.5em;
 }
+
+.profileStatLabel {
+    margin-right: 0.5em;
+    font-weight: bold;
+}

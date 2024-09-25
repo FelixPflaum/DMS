@@ -1,3 +1,4 @@
+import type { ConfigDataDynamic } from "@/server/configDynamic";
 import type { ClassId } from "./wow";
 
 type ErrorRes = {
@@ -57,7 +58,7 @@ type PlayerEntry = {
     account?: string;
 };
 
-type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID";
+type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID" | "DECAY";
 
 type ApiPointChangeRequest = {
     reason: string;
@@ -185,4 +186,10 @@ type ApiImportLogListResult = {
 
 type ApiExportResult = {
     export: string;
+};
+
+type ApiSettingRes = ConfigDataDynamic;
+
+type ApiSetSettingReq = {
+    changes: { key: string; value: unknown }[];
 };

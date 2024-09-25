@@ -3,14 +3,25 @@ import styles from "./form.module.css";
 const NumberInput = ({
     label,
     inputRef,
+    value,
+    onChange,
+    onChangeKey,
+    customInputClass,
     required,
 }: {
     label: string;
-    inputRef: React.RefObject<HTMLInputElement>;
+    inputRef?: React.RefObject<HTMLInputElement>;
+    value?: number;
+    onChange?: (key: string, val: number) => void;
+    onChangeKey?: string;
+    customInputClass?: string;
     required?: boolean;
 }): JSX.Element => {
-    const onChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-        event.target.value = event.target.value.replace(/^[^-0-9]|(?!^)\D/g, "");
+    const classes = [styles.input];
+    if (customInputClass) classes.push(customInputClass);
+
+    const _onChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+        if (onChange) onChange(onChangeKey ?? "", parseFloat(event.target.value) || 0);
     };
 
     return (
@@ -18,7 +29,15 @@ const NumberInput = ({
             <label className={styles.inputLabel} htmlFor={label}>
                 {label}
             </label>
-            <input className={styles.input} id={label} ref={inputRef} onChange={onChange} required={required}></input>
+            <input
+                type="number"
+                className={classes.join(" ")}
+                id={label}
+                ref={inputRef}
+                value={value}
+                onChange={_onChange}
+                required={required}
+            ></input>
         </div>
     );
 };

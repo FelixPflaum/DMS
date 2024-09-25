@@ -1,6 +1,6 @@
 import type { ApiImportResult } from "@/shared/types";
 import { apiPost } from "../serverApi";
-import styles from "./import.module.css";
+import styles from "../styles/import.module.css";
 import { useRef } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 

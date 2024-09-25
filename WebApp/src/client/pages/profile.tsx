@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet } from "../serverApi";
 import type { ApiProfileResult, LootHistoryEntry, PointHistoryEntry } from "@/shared/types";
-import styles from "./profile.module.css";
+import styles from "../styles/pageProfile.module.css";
 import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import ItemIconLink from "../components/item/ItemIconLink";

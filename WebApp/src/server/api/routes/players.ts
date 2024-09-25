@@ -24,6 +24,7 @@ import {
 import { createPointHistoryEntry, getPointHistorySearch } from "@/server/database/tableFunctions/pointHistory";
 import { getConnection } from "@/server/database/database";
 import { getLootHistorySearch } from "@/server/database/tableFunctions/lootHistory";
+import { makeDataBackup } from "@/server/importExport/backup";
 
 export const playerRouter = express.Router();
 
@@ -108,6 +109,12 @@ playerRouter.get("/delete/:playerName", async (req: Request, res: Response): Pro
         deleteResponse.success = false;
         deleteResponse.error = "Player does not exist.";
     } else {
+        const conn = await getConnection();
+        try {
+            await makeDataBackup(conn, 0, "before_delete_" + playerName);
+        } finally {
+            conn.release();
+        }
         const delRes = await deletePlayer(playerName);
         if (delRes.isError) return send500Db(res);
         if (!delRes.affectedRows) {
@@ -255,5 +262,27 @@ playerRouter.get("/self", async (req: Request, res: Response): Promise<void> => 
     const playerRes = await getPlayersForAccount(accessingUser.loginId);
     if (playerRes.isError) return send500Db(res);
     const apiRes: PlayerEntry[] = playerRes.rows;
+    res.send(apiRes);
+});
+
+playerRouter.get("/claim/:playerName", async (req: Request, res: Response): Promise<void> => {
+    const accessingUser = await getUserFromRequest(req);
+    if (!accessingUser) return send401(res);
+    if (!accessingUser.hasPermission(AccPermissions.DATA_VIEW)) return send403(res);
+
+    const playerName = req.params["playerName"];
+    if (!playerName) {
+        return send400(res, "Invalid name.");
+    }
+
+    const playerRes = await getPlayer(playerName);
+    if (playerRes.isError) return send500Db(res);
+    if (!playerRes.row) return send400(res, "Player doesn't exist!");
+    if (playerRes.row.account) return send403(res, "Player is already claimed!");
+
+    const updRes = await updatePlayer(playerName, { account: accessingUser.loginId });
+    if (updRes.isError) return send500Db(res);
+
+    const apiRes: UpdateRes = { success: true };
     res.send(apiRes);
 });

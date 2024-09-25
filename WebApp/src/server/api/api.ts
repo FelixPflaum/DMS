@@ -9,6 +9,7 @@ import { pointHistoryRouter } from "./routes/pointHistory";
 import { lootHistoryRouter } from "./routes/lootHistory";
 import { itemRouter } from "./routes/items";
 import { importExportRouter } from "./routes/importExport";
+import { settingsRouter } from "./routes/settings";
 
 const cookieParser = require("cookie-parser");
 const app: Application = express();
@@ -27,6 +28,7 @@ apiRouter.use("/pointhistory", pointHistoryRouter);
 apiRouter.use("/loothistory", lootHistoryRouter);
 apiRouter.use("/items", itemRouter);
 apiRouter.use("/io", importExportRouter);
+apiRouter.use("/settings", settingsRouter);
 
 app.use("/api", apiRouter);
 

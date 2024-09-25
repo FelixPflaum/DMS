@@ -17,6 +17,7 @@ export type ActionDef<T> = {
     name: string;
     style?: ActionButtonStyle;
     onClick: (rowData: T) => void;
+    shouldShow?: (rowData: T) => boolean;
 };
 
 type TablelProps<T extends DataType> = {
@@ -106,15 +107,17 @@ const Tablel = <T extends DataType>({ columnDefs, data, sortCol, sortDir, action
         if (actions && actions.length > 0) {
             const actionElems: JSX.Element[] = [];
             for (const ae of actions) {
-                actionElems.push(
-                    <button
-                        key={ae.name}
-                        className={`${styles.tableActionButton} ${actionBtnStyleClasses[ae.style ?? "default"]}`}
-                        onClick={() => ae.onClick(rowData)}
-                    >
-                        {ae.name}
-                    </button>
-                );
+                if (!ae.shouldShow || ae.shouldShow(rowData)) {
+                    actionElems.push(
+                        <button
+                            key={ae.name}
+                            className={`${styles.tableActionButton} ${actionBtnStyleClasses[ae.style ?? "default"]}`}
+                            onClick={() => ae.onClick(rowData)}
+                        >
+                            {ae.name}
+                        </button>
+                    );
+                }
             }
             tds.push(
                 <td key="actions" className={`${styles.tableTd} ${styles.tableActions}`}>
