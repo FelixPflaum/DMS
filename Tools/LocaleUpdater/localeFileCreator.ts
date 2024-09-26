@@ -42,19 +42,45 @@ for (const file of files) {
     scanForLtags(file, allStrings);
 }
 
-let lua = `--------------------------------------------------------------------
---- Generated file, do not edit.
---------------------------------------------------------------------
-
----@class AddonEnv
-local Env = select(2, ...)
-
-local L = Env:AddLocalization("enUS")
-`;
-
-for (const str in allStrings) {
-    lua += `L["${str}"] = "${str}"\n`;
+function getExistingStrings(str: string): Record<string, string> {
+    const strings: Record<string, string> = {};
+    const lines = str.split("\n");
+    for (const line of lines) {
+        const match = line.match(/L\["(.*)"\] = "(.*)"/);
+        if (match) {
+            strings[match[1]] = match[2];
+        }
+    }
+    return strings;
 }
 
-writeFileSync(ADDON_DIR + "/Locale/enUS.lua", lua);
-console.log("Wrote enUS.lua.");
+const localeDir = ADDON_DIR + "/Locale";
+const localeFiles = readdirSync(localeDir);
+for (const file of localeFiles) {
+    if (file.startsWith("Local")) continue;
+    const content = readFileSync(join(localeDir, file), "utf-8");
+    const existing = getExistingStrings(content);
+
+    let lua = `---@class AddonEnv
+local Env = select(2, ...)
+    
+local L = Env:AddLocalization("${file.substring(1, file.length - 4)}")\n\n`;
+    
+    let newCount = 0;
+
+    for (const str in allStrings) {
+        if (existing[str]) {
+            lua += `L["${str}"] = "${existing[str]}"\n`;
+            delete existing[str]
+        } else {
+            lua += `L["${str}"] = "${str}"\n`;
+            newCount++;
+        }
+    }
+
+    let removedCount = Object.keys(existing).length;
+    
+    writeFileSync(ADDON_DIR + `/Locale/${file}`, lua);
+
+    console.log(`Wrote ${file}. ${newCount} new entries. ${removedCount} entries no longer exist.`);
+}

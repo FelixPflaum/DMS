@@ -1,4 +1,4 @@
-## Interface: 11503
+## Interface: 11504
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
 ## Version: 0.2.0
