@@ -29,7 +29,7 @@ async function start() {
 
     const bot = new Discordbot(getConfig().discordBotToken);
     bot.registerCommand(new RegisterCommand());
-    //bot.connect(); // TODO: enable again
+    bot.connect();
 
     server.listen(port, () => {
         logger.log(`Started. Listening on port ${port}.`);
