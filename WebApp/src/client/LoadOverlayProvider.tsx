@@ -43,16 +43,13 @@ const LoadOverlayProvider = ({ children }: { children: JSX.Element[] | JSX.Eleme
         if (!overlayList[0]) return setOverlayText("");
         const showIn = overlayList[0].showAt - Date.now();
         if (showIn <= 0) {
-            console.log("Show now", overlayList[0].key);
             setOverlayText(overlayList[0].text);
         } else {
-            console.log("Show in", showIn, overlayList[0].key);
             timer = setTimeout(updateShown, showIn + 1) as unknown as number; // This is browserland
         }
     };
 
     const setLoading = (key: string, text: string, showDelay = DEFAULT_DELAY): void => {
-        console.log("setLoading", key, text);
         const existingPos = overlayList.findIndex((el) => el.key == key);
         if (existingPos === -1) {
             overlayList.push({ key, text, showAt: Date.now() + showDelay });
@@ -64,7 +61,6 @@ const LoadOverlayProvider = ({ children }: { children: JSX.Element[] | JSX.Eleme
     };
 
     const removeLoading = (key: string): void => {
-        console.log("removeLoading", key);
         const existingPos = overlayList.findIndex((el) => el.key == key);
         if (existingPos !== -1) {
             overlayList.splice(existingPos, 1);
