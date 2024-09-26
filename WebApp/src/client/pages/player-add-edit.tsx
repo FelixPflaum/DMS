@@ -5,14 +5,14 @@ import NumberInput from "../components/form/NumberInput";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
-import type { PlayerEntry, UpdateRes } from "@/shared/types";
+import type { ApiPlayerEntry, ApiPlayerRes } from "@/shared/types";
 import PointChangeForm from "../components/PointChangeForm";
 import StaticFormRow from "../components/form/StaticFormRow";
 
 const PlayerAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
     const [searchParams, _setSearchParams] = useSearchParams();
-    const [player, setPlayer] = useState<PlayerEntry | undefined>();
+    const [player, setPlayer] = useState<ApiPlayerEntry | undefined>();
     const navigate = useNavigate();
 
     const nameParam = searchParams.get("name");
@@ -27,18 +27,18 @@ const PlayerAddEditPage = (): JSX.Element => {
     useEffect(() => {
         if (!nameParam) return;
         loadctx.setLoading("fetchplayer", "Loading player data...");
-        apiGet<PlayerEntry>("/api/players/player/" + nameParam, "get player data").then((res) => {
+        apiGet<ApiPlayerRes>("/api/players/player/" + nameParam).then((res) => {
             loadctx.removeLoading("fetchplayer");
-            if (!res) {
-                alert("Player doesn't exist.");
+            if (res.error) {
+                alert("Error: " + res.error);
                 navigate("/players");
                 return;
             }
-            setPlayer(res);
-            if (nameInputRef.current) nameInputRef.current.value = res.playerName;
-            if (classInputRef.current) classInputRef.current.value = res.classId.toString();
-            if (pointInputRef.current) pointInputRef.current.value = res.points.toString();
-            if (accountInputRef.current) accountInputRef.current.value = res.account ?? "";
+            setPlayer(res.player);
+            if (nameInputRef.current) nameInputRef.current.value = res.player.playerName;
+            if (classInputRef.current) classInputRef.current.value = res.player.classId.toString();
+            if (pointInputRef.current) pointInputRef.current.value = res.player.points.toString();
+            if (accountInputRef.current) accountInputRef.current.value = res.player.account ?? "";
         });
     }, []);
 
@@ -51,7 +51,7 @@ const PlayerAddEditPage = (): JSX.Element => {
         const accValue = accountInputRef.current?.value;
         if (typeof classValue !== "number" || typeof pointValue !== "number" || !nameValue) return;
 
-        const body: PlayerEntry = {
+        const body: ApiPlayerEntry = {
             playerName: nameValue,
             classId: classValue,
             points: pointValue,
@@ -62,25 +62,21 @@ const PlayerAddEditPage = (): JSX.Element => {
         if (submitBtnRef.current) submitBtnRef.current.disabled = true;
 
         if (isEdit) {
-            apiPost<UpdateRes>("/api/players/update/" + nameValue, "update player", body).then((updateRes) => {
+            apiPost("/api/players/update/" + nameValue, body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
-                if (updateRes) {
-                    if (updateRes.success) {
-                        alert("player updated.");
-                    } else {
-                        alert("Failed to update player: " + updateRes.error);
-                    }
+                if (updateRes.error) {
+                    alert("Failed to update player: " + updateRes.error);
+                } else {
+                    alert("player updated.");
                 }
             });
         } else {
-            apiPost<UpdateRes>("/api/players/create/", "create player", body).then((updateRes) => {
+            apiPost("/api/players/create/", body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
-                if (updateRes) {
-                    if (updateRes.success) {
-                        alert("Player created.");
-                    } else {
-                        alert("Failed to create player: " + updateRes.error);
-                    }
+                if (updateRes.error) {
+                    alert("Failed to create player: " + updateRes.error);
+                } else {
+                    alert("Player created.");
                 }
             });
         }

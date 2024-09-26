@@ -17,17 +17,14 @@ const ImportPage = (): JSX.Element => {
         const input = textareaRef.current.value;
         if (!input) return;
         statusRef.current!.innerText = "Importing data...";
-        loadctx.setLoading("getexport", "Creating export...");
-        apiPost<ApiImportResult>("/api/io/import", "validate import", { input }).then((res) => {
+        loadctx.setLoading("getexport", "Importing data...");
+        apiPost<ApiImportResult>("/api/io/import", { input }).then((res) => {
             loadctx.removeLoading("getexport");
-            if (!res) return;
             if (res.error) {
                 statusRef.current!.innerText = "VALIDATION ERROR: " + res.error;
-            } else if (res.log) {
+            } else {
                 statusRef.current!.innerText = "Data imported successfully!";
                 inputAreaRef.current!.style.display = "none";
-            } else {
-                statusRef.current!.innerText = "No data!";
             }
         });
     };

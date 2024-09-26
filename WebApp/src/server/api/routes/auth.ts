@@ -2,9 +2,9 @@ import express from "express";
 import type { Request, Response } from "express";
 import { SpamCheck } from "../SpamCheck";
 import { getUserDataFromOauthCode } from "../../discordApi";
-import { getUserFromRequest, generateLoginToken, TOKEN_LIFETIME } from "../auth";
-import { send500Db, send401, send400, send500, send429 } from "../util";
-import type { AuthRes, AuthUserRes } from "@/shared/types";
+import { generateLoginToken, getAuthFromRequest, TOKEN_LIFETIME } from "../auth";
+import { send500Db, send401, send400, send500, send429, sendApiResponse, checkAuth } from "../util";
+import type { ApiAuthRes, ApiAuthUserRes } from "@/shared/types";
 import { getUser, updateUser } from "@/server/database/tableFunctions/users";
 
 export const authRouter = express.Router();
@@ -35,30 +35,32 @@ authRouter.post("/authenticate", async (req: Request, res: Response): Promise<vo
     const updateRes = await updateUser(loginId, { loginToken, validUntil: Date.now() + TOKEN_LIFETIME });
     if (updateRes.isError) send500Db(res);
 
-    const authRes: AuthRes = { loginId, loginToken };
-    res.send(authRes);
+    sendApiResponse<ApiAuthRes>(res, { loginId, loginToken });
 });
 
-authRouter.get("/self", async (req: Request, res: Response): Promise<void> => {
-    const checkRes: AuthUserRes = {
-        loginValid: false,
-        userName: "",
-        permissions: 0,
+authRouter.get("/check", async (req: Request, res: Response): Promise<void> => {
+    const auth = await getAuthFromRequest(req);
+    if (!auth) return send401(res);
+    if (auth.isDbError) return send500Db(res);
+    const apiRes: ApiAuthUserRes = {
+        invalidLogin: true,
+        user: { userName: "", loginId: "", permissions: 0, lastActivity: 0 },
     };
-    const auth = await getUserFromRequest(req);
-    if (auth) {
-        checkRes.loginValid = true;
-        checkRes.userName = auth.userName;
-        checkRes.permissions = auth.permissions;
+    if (auth.user) {
+        apiRes.invalidLogin = false;
+        apiRes.user.userName = auth.user.userName;
+        apiRes.user.loginId = auth.user.loginId;
+        apiRes.user.permissions = auth.user.permissions;
+        apiRes.user.lastActivity = auth.user.lastActivity;
     }
-    res.send(checkRes);
+    sendApiResponse(res, apiRes);
 });
 
 authRouter.get("/logout", async (req: Request, res: Response): Promise<void> => {
-    const auth = await getUserFromRequest(req);
-    if (!auth) return send401(res);
+    const auth = await getAuthFromRequest(req);
+    if (!checkAuth(res, auth)) return;
 
-    const updateRes = await updateUser(auth.loginId, { loginToken: "" });
+    const updateRes = await updateUser(auth.user.loginId, { loginToken: "" });
     if (updateRes.isError) return send500Db(res);
-    res.status(200).end();
+    sendApiResponse(res, true);
 });

@@ -2,21 +2,36 @@ import type { Request } from "express";
 import { AccPermissions } from "@/shared/permissions";
 import type { UserRow } from "../database/types";
 import { getUser, updateUser } from "../database/tableFunctions/users";
+import type { ApiUserEntry } from "@/shared/types";
 
 export const TOKEN_LIFETIME = 7 * 86400 * 1000;
 export const TOKEN_REFRESH_TIME = 3 * 86400 * 1000;
 
-export class AuthUser {
-    readonly loginId: string;
-    readonly userName: string;
-    readonly permissions: AccPermissions;
+const dummyUser: ApiUserEntry = {
+    loginId: "",
+    userName: "",
+    permissions: 0,
+    lastActivity: 0,
+};
+
+export class RequestAuth {
+    readonly validLogin: boolean;
+    readonly isDbError: boolean;
+    readonly user: Readonly<ApiUserEntry> = dummyUser;
     readonly isAdmin: boolean;
 
-    constructor(userData: UserRow) {
-        this.loginId = userData.loginId;
-        this.userName = userData.userName;
-        this.permissions = userData.permissions;
-        this.isAdmin = (userData.permissions & AccPermissions.ADMIN) !== 0;
+    constructor(isDbError: boolean, userData?: UserRow) {
+        this.isDbError = isDbError;
+        this.validLogin = !!userData;
+        if (userData) {
+            this.user = {
+                loginId: userData.loginId,
+                userName: userData.userName,
+                permissions: userData.permissions,
+                lastActivity: userData.lastActivity,
+            };
+        }
+        this.isAdmin = !!userData && (userData.permissions & AccPermissions.ADMIN) !== 0;
     }
 
     /**
@@ -25,39 +40,40 @@ export class AuthUser {
      * @returns true if (all) permission(s) are set or user has admin permission.
      */
     hasPermission(permissions: AccPermissions): boolean {
-        return this.isAdmin || (this.permissions & permissions) === permissions;
+        return this.isAdmin || (this.user.permissions & permissions) === permissions;
     }
 }
 
 /**
  * Check if request provides valid login cookies.
  * @param req The Request object.
- * @returns The user data if valid login data in request, otherwise false.
+ * @returns A RequestAuth instance if login data was provided, otherwise undefined.
  */
-export const getUserFromRequest = async (req: Request): Promise<AuthUser | false> => {
-    if (!req.cookies) return false;
+export const getAuthFromRequest = async (req: Request): Promise<RequestAuth | undefined> => {
+    if (!req.cookies) return;
     const loginId = req.cookies.loginId;
     const loginToken = req.cookies.loginToken;
-    if (!loginId || !loginToken) return false;
+    if (!loginId || !loginToken) return;
 
     const userRes = await getUser(loginId);
-    if (userRes.isError || !userRes.row) return false;
-
-    const userRow = userRes.row;
-    if (!userRow.loginToken || userRow.loginToken != loginToken) return false;
+    if (userRes.isError) return new RequestAuth(true);
+    if (!userRes.row || !userRes.row.loginToken || userRes.row.loginToken != loginToken) {
+        return new RequestAuth(false);
+    }
 
     const now = Date.now();
-    const remainingLife = userRow.validUntil - now;
+    const remainingLife = userRes.row.validUntil - now;
+
     if (remainingLife <= 0) {
         await updateUser(loginId, { loginToken: "", lastActivity: now });
-        return false;
+        return new RequestAuth(false);
     } else if (remainingLife < TOKEN_REFRESH_TIME) {
         await updateUser(loginId, { validUntil: now + TOKEN_LIFETIME, lastActivity: now });
     } else {
         await updateUser(loginId, { lastActivity: now });
     }
 
-    return new AuthUser(userRow);
+    return new RequestAuth(false, userRes.row);
 };
 
 /**

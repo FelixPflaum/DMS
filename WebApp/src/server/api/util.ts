@@ -1,5 +1,45 @@
+import type { AccPermissions } from "@/shared/permissions";
 import type { ApiResponse } from "@/shared/types";
 import type { Response } from "express";
+import type { RequestAuth } from "./auth";
+
+/** Check if auth has valid login and permissions.  */
+export const checkAuth = (res: Response, auth?: RequestAuth, permissions?: AccPermissions): auth is RequestAuth => {
+    if (!auth) {
+        send401(res);
+        return false;
+    }
+    if (auth.isDbError) {
+        send500Db(res);
+        return false;
+    }
+    if (!auth.validLogin) {
+        send401(res);
+        return false;
+    }
+    if (permissions && !auth.hasPermission(permissions)) {
+        send403(res);
+        return false;
+    }
+    return true;
+};
+
+/**
+ * Send api response.
+ * @param res
+ * @param data if string then send as error, if true send default success response, otherwise provide custom response data.
+ */
+export const sendApiResponse = <T extends ApiResponse>(res: Response, data: T | string | true): void => {
+    if (typeof data === "string") {
+        const apires: ApiResponse = { error: data };
+        res.send(apires);
+    } else if (data === true) {
+        const apires: ApiResponse = {};
+        res.send(apires);
+    } else {
+        res.send(data);
+    }
+};
 
 /** Send 400 */
 export const send400 = (res: Response, reason: string): void => {

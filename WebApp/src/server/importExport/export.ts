@@ -5,7 +5,7 @@ import type { AddonExport } from "@/shared/types";
 import { Logger } from "../Logger";
 import { deflateRaw } from "zlib";
 
-const ADDON_IMPORT_PREFIX = "DMSAI";
+const ADDON_IMPORT_PREFIX = "DMSAE";
 const ADDON_IMPORT_SUFFIX = "END";
 
 const logger = new Logger("Exporter");

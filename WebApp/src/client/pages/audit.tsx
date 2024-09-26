@@ -3,43 +3,42 @@ import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import { apiGet } from "../serverApi";
-import type { AuditEntry, AuditRes } from "@/shared/types";
+import type { ApiAuditEntry, ApiAuditPageRes } from "@/shared/types";
 
 const AuditPage = (): JSX.Element => {
-    const [auditLogData, setAuditLog] = useState<{ lastPageOffset: number; data: AuditEntry[]; haveMore: boolean }>({
-        lastPageOffset: 0,
+    const [auditLogData, setAuditLog] = useState<{ lastPageOffset: number; data: ApiAuditEntry[]; haveMore: boolean }>({
+        lastPageOffset: -1,
         data: [],
         haveMore: true,
     });
     const loadctx = useLoadOverlayCtx();
     const loadBtnRef = useRef<HTMLButtonElement>(null);
 
-    useEffect(() => {
-        loadctx.setLoading("auditfetch", "Loading user data...");
-        apiGet<AuditRes>("/api/audit/page/0", "get audit log").then((auditRes) => {
-            loadctx.removeLoading("auditfetch");
-            if (auditRes) setAuditLog({ lastPageOffset: 0, data: auditRes.entries, haveMore: auditRes.haveMore });
-        });
-    }, []);
-
     const loadMore = () => {
         const nextPage = auditLogData.lastPageOffset + 1;
         if (!loadBtnRef.current) return;
         loadBtnRef.current.disabled = true;
-        loadctx.setLoading("auditfetch", "Loading user data...");
-        apiGet<AuditRes>("/api/audit/page/" + nextPage, "get audit log").then((auditRes) => {
+        loadctx.setLoading("auditfetch", "Loading audit log data...");
+        apiGet<ApiAuditPageRes>("/api/audit/page/" + nextPage).then((res) => {
             if (loadBtnRef.current) loadBtnRef.current.disabled = false;
             loadctx.removeLoading("auditfetch");
-            if (auditRes)
+            if (res.error) {
+                alert("Failed to load audit data: " + res.error);
+            } else {
                 setAuditLog({
-                    lastPageOffset: auditRes.pageOffset,
-                    data: auditRes.entries.concat(auditLogData.data),
-                    haveMore: auditRes.haveMore,
+                    lastPageOffset: res.pageOffset,
+                    data: res.entries.concat(auditLogData.data),
+                    haveMore: res.haveMore,
                 });
+            }
         });
     };
 
-    const columDefs: ColumnDef<AuditEntry>[] = [
+    useEffect(() => {
+        loadMore();
+    }, []);
+
+    const columDefs: ColumnDef<ApiAuditEntry>[] = [
         { name: "ID", dataKey: "id" },
         {
             name: "Time",

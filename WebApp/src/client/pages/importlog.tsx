@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
-import type { ApiImportLogEntry } from "@/shared/types";
+import type { ApiImportLogEntry, ApiImportLogRes } from "@/shared/types";
 import { useSearchParams } from "react-router-dom";
 import ImportLogViewer from "../components/importLogViewer/ImportLogViewer";
 
@@ -21,9 +21,10 @@ const ImportLogViewPage = (): JSX.Element => {
 
     useEffect(() => {
         loadctx.setLoading("fetchlog", "Loading log...");
-        apiGet<ApiImportLogEntry>("/api/io/log/" + logId, "get log").then((logRes) => {
+        apiGet<ApiImportLogRes>("/api/io/log/" + logId).then((logRes) => {
             loadctx.removeLoading("fetchlog");
-            if (logRes) setLog(logRes);
+            if (logRes.error) return alert("Failed to load log: " + logRes.error);
+            setLog(logRes.entry);
         });
     }, []);
 

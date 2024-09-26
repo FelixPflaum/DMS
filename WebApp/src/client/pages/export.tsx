@@ -14,9 +14,9 @@ const ExportPage = (): JSX.Element => {
         if (!buttonRef.current || !textRef.current) return;
         textRef.current.value = "";
         loadctx.setLoading("getexport", "Creating export...");
-        apiGet<ApiExportResult>("/api/io/export", "get export").then((res) => {
+        apiGet<ApiExportResult>("/api/io/export").then((res) => {
             loadctx.removeLoading("getexport");
-            if (!res) return;
+            if (res.error) return alert("Failed to get export: " + res.error);
             if (textRef.current) textRef.current.value = res.export;
         });
     };

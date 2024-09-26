@@ -14,9 +14,10 @@ const ImportLogsPage = (): JSX.Element => {
 
     useEffect(() => {
         loadctx.setLoading("fetchlogs", "Loading log list...");
-        apiGet<ApiImportLogListResult>("/api/io/logs", "get log list").then((logsRes) => {
+        apiGet<ApiImportLogListResult>("/api/io/logs").then((logsRes) => {
             loadctx.removeLoading("fetchlogs");
-            if (logsRes) setLogs(logsRes.logs);
+            if (logsRes.error) return alert("Could not load log list: " + logsRes.error);
+            setLogs(logsRes.logs);
         });
     }, []);
 

@@ -6,32 +6,33 @@ import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
 import { AccPermissions, getPermissionStrings } from "@/shared/permissions";
-import type { DeleteRes, UserEntry, UserRes } from "@/shared/types";
+import type { ApiUserEntry, ApiUserListRes } from "@/shared/types";
 
 const UsersPage = (): JSX.Element => {
-    const [users, setUsers] = useState<UserEntry[]>([]);
+    const [users, setUsers] = useState<ApiUserEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
     const canManage = authctx.hasPermission(AccPermissions.USERS_MANAGE);
 
     useEffect(() => {
         loadctx.setLoading("fetchusers", "Loading user data...");
-        apiGet<UserRes>("/api/users/list", "get user list").then((userRes) => {
+        apiGet<ApiUserListRes>("/api/users/list").then((res) => {
             loadctx.removeLoading("fetchusers");
-            if (userRes) setUsers(userRes);
+            if (res.error) return alert("Failed to load user list: " + res.error);
+            setUsers(res.list);
         });
     }, []);
 
     const navigate = useNavigate();
-    const editUser = (userEntry: UserEntry) => {
+    const editUser = (userEntry: ApiUserEntry) => {
         navigate("/user-add-edit?id=" + userEntry.loginId);
     };
 
-    const deleteUser = async (userEntry: UserEntry) => {
+    const deleteUser = async (userEntry: ApiUserEntry) => {
         if (!confirm(`Really delete user ${userEntry.userName}?`)) return;
-        const res = await apiGet<DeleteRes>("/api/users/delete/" + userEntry.loginId, "delete user");
-        if (!res || !res.success) {
-            if (res?.error) alert(res.error);
+        const res = await apiGet("/api/users/delete/" + userEntry.loginId);
+        if (res.error) {
+            alert("Failed to delete user: " + res.error);
             return;
         }
         const delIdx = users.findIndex((x) => x.loginId == userEntry.loginId);
@@ -42,7 +43,7 @@ const UsersPage = (): JSX.Element => {
         }
     };
 
-    const columDefs: ColumnDef<UserEntry>[] = [
+    const columDefs: ColumnDef<ApiUserEntry>[] = [
         { name: "Name", dataKey: "userName", canSort: true },
         { name: "Discord ID", dataKey: "loginId" },
         {
@@ -60,7 +61,7 @@ const UsersPage = (): JSX.Element => {
         },
     ];
 
-    const actions: ActionDef<UserEntry>[] = [
+    const actions: ActionDef<ApiUserEntry>[] = [
         { name: "Edit", onClick: editUser },
         { name: "Delete", style: "red", onClick: deleteUser },
     ];

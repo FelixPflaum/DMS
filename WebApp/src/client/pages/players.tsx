@@ -7,11 +7,11 @@ import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
 import { AccPermissions } from "@/shared/permissions";
 import { classData } from "../../shared/wow";
-import type { DeleteRes, PlayerEntry } from "@/shared/types";
+import type { ApiPlayerEntry, ApiPlayerListRes } from "@/shared/types";
 import styles from "../styles/pagePlayers.module.css";
 
 const PlayersPage = (): JSX.Element => {
-    const [players, setPlayers] = useState<PlayerEntry[]>([]);
+    const [players, setPlayers] = useState<ApiPlayerEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
     const canManage = authctx.hasPermission(AccPermissions.DATA_MANAGE);
@@ -19,31 +19,31 @@ const PlayersPage = (): JSX.Element => {
 
     useEffect(() => {
         loadctx.setLoading("fetchPlayers", "Loading player list...");
-        apiGet<PlayerEntry[]>("/api/players/list", "get player list").then((playersRes) => {
+        apiGet<ApiPlayerListRes>("/api/players/list").then((playersRes) => {
             loadctx.removeLoading("fetchPlayers");
-            if (playersRes) setPlayers(playersRes);
+            if (playersRes.error) alert("Failed to get player list: " + playersRes.error);
+            setPlayers(playersRes.list);
         });
     }, []);
 
     const navigate = useNavigate();
-    const editPlayer = (playerEntry: PlayerEntry) => {
+    const editPlayer = (playerEntry: ApiPlayerEntry) => {
         navigate("/player-add-edit?name=" + playerEntry.playerName);
     };
-    const viewPlayer = (playerEntry: PlayerEntry) => {
+    const viewPlayer = (playerEntry: ApiPlayerEntry) => {
         navigate("/profile?name=" + playerEntry.playerName);
     };
 
-    const deletePlayer = async (playerEntry: PlayerEntry) => {
+    const deletePlayer = async (playerEntry: ApiPlayerEntry) => {
         const confirmWord = "UwU";
         const promptResult = prompt(
             `Really delete player ${playerEntry.playerName}?\nThe complete sanity and loot history of the player will be deleted!\nEnter ${confirmWord} to confirm.`
         );
         if (!promptResult || promptResult != confirmWord) return;
 
-        const res = await apiGet<DeleteRes>("/api/players/delete/" + playerEntry.playerName, "delete player");
-        if (!res || !res.success) {
-            if (res?.error) alert(res.error);
-            return;
+        const res = await apiGet("/api/players/delete/" + playerEntry.playerName);
+        if (res.error) {
+            return alert("Failed to delete player: " + res.error);
         }
         const delIdx = players.findIndex((x) => x.playerName == playerEntry.playerName);
         if (delIdx !== -1) {
@@ -53,19 +53,18 @@ const PlayersPage = (): JSX.Element => {
         }
     };
 
-    const claimPlayer = async (playerEntry: PlayerEntry) => {
+    const claimPlayer = async (playerEntry: ApiPlayerEntry) => {
         const promptResult = confirm(`Really claim ${playerEntry.playerName}?`);
         if (!promptResult) return;
 
-        const res = await apiGet<DeleteRes>("/api/players/claim/" + playerEntry.playerName, "claim player");
-        if (!res || !res.success) {
-            if (res?.error) alert(res.error);
-            return;
+        const res = await apiGet("/api/players/claim/" + playerEntry.playerName);
+        if (res.error) {
+            return alert("Could not claim player: " + res.error);
         }
         alert(playerEntry.playerName + " claimed. Reload page to see effects.");
     };
 
-    const columDefs: ColumnDef<PlayerEntry>[] = [
+    const columDefs: ColumnDef<ApiPlayerEntry>[] = [
         {
             name: "Class",
             dataKey: "classId",
@@ -98,7 +97,7 @@ const PlayersPage = (): JSX.Element => {
         { name: "Account", dataKey: "account" },
     ];
 
-    const actions: ActionDef<PlayerEntry>[] = [
+    const actions: ActionDef<ApiPlayerEntry>[] = [
         { name: "View", onClick: viewPlayer },
         { name: "Claim", onClick: claimPlayer, shouldShow: (rd) => !rd.account },
     ];

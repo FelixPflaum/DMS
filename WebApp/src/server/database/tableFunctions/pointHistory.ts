@@ -1,4 +1,4 @@
-import type { PointChangeType, PointHistorySearchInput } from "@/shared/types";
+import type { PointChangeType, ApiPointHistorySearchInput } from "@/shared/types";
 import type { DbDataValue, DbInsertCheckedResult, DbRowsResult } from "../database";
 import { queryInsertChecked, querySelect } from "../database";
 import type { PointHistoryRow } from "../types";
@@ -24,13 +24,13 @@ export const getPointHistoryPage = (limit = 50, pageOffset = 0): Promise<DbRowsR
  * @returns
  */
 export const getPointHistorySearch = (
-    filter: PointHistorySearchInput,
+    filter: ApiPointHistorySearchInput,
     limit = 150
 ): Promise<DbRowsResult<PointHistoryRow>> => {
     const wheres: string[] = [];
     const values: (string | number)[] = [];
 
-    let k: keyof PointHistorySearchInput;
+    let k: keyof ApiPointHistorySearchInput;
     for (k in filter) {
         if (typeof filter[k as keyof typeof filter] === "undefined") continue;
         switch (k) {

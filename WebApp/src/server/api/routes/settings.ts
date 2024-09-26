@@ -1,7 +1,7 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { getUserFromRequest } from "../auth";
-import { send400, send401, send403, send500, send500Db } from "../util";
+import { getAuthFromRequest } from "../auth";
+import { checkAuth, send400, send500, send500Db, sendApiResponse } from "../util";
 import { AccPermissions } from "@/shared/permissions";
 import {
     checkValueType,
@@ -10,31 +10,28 @@ import {
     isDynamicSettingKey,
     setDynamicSetting,
 } from "@/server/configDynamic";
-import type { ApiSetSettingReq, ApiSettingRes, UpdateRes } from "@/shared/types";
+import type { ApiSetSettingReq, ApiSettingRes } from "@/shared/types";
 import { addAuditEntry } from "@/server/database/tableFunctions/audit";
 
 export const settingsRouter = express.Router();
 
 settingsRouter.get("/get", async (req: Request, res: Response): Promise<void> => {
-    const accessingUser = await getUserFromRequest(req);
-    if (!accessingUser) return send401(res);
-    if (!accessingUser.hasPermission(AccPermissions.SETTINGS_VIEW)) return send403(res);
+    const auth = await getAuthFromRequest(req);
+    if (!checkAuth(res, auth, AccPermissions.SETTINGS_VIEW)) return;
 
     const getRes = await getDynamicSettings();
     if (getRes.dbError) return send500Db(res);
 
-    if (getRes.data) {
-        const apiRes: ApiSettingRes = getRes.data;
-        res.send(apiRes);
-    } else {
+    if (!getRes.data) {
         return send500(res, "Settings DB is corrupted.");
     }
+
+    sendApiResponse<ApiSettingRes>(res, { settings: getRes.data });
 });
 
 settingsRouter.post("/set", async (req: Request, res: Response): Promise<void> => {
-    const user = await getUserFromRequest(req);
-    if (!user) return send401(res);
-    if (!user.hasPermission(AccPermissions.SETTINGS_EDIT)) return send403(res);
+    const auth = await getAuthFromRequest(req);
+    if (!checkAuth(res, auth, AccPermissions.SETTINGS_EDIT)) return;
 
     const data = req.body as Partial<ApiSetSettingReq>;
     if (!data.changes || !Array.isArray(data.changes)) return send400(res, "Invalid data format.");
@@ -52,9 +49,9 @@ settingsRouter.post("/set", async (req: Request, res: Response): Promise<void> =
         changeLogs.push(`${k}: ${curRes.value} -> ${v}`);
     }
     if (changeLogs.length) {
-        const auditLog = `${user.userName} updated settings: ${changeLogs.join(", ")}`;
-        await addAuditEntry(user.loginId, user.userName, auditLog);
+        const auditLog = `${auth.user.userName} updated settings: ${changeLogs.join(", ")}`;
+        await addAuditEntry(auth.user.loginId, auth.user.userName, auditLog);
     }
-    const updateResponse: UpdateRes = { success: true };
-    res.send(updateResponse);
+
+    sendApiResponse(res, true);
 });

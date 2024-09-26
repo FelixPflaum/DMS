@@ -12,6 +12,7 @@ const logger = new Logger("Server");
 const port = 9001;
 const server = createServer();
 server.on("request", apiApp);
+server.setTimeout(30 * 1000);
 
 async function start() {
     if (!(await checkDb())) {

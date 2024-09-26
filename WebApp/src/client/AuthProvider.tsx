@@ -1,16 +1,11 @@
 import { useContext, createContext, useState, useEffect } from "react";
 import { config } from "./config";
 import { apiGet, apiPost } from "./serverApi";
-import type { AuthRes, AuthUserRes } from "@/shared/types";
+import type { ApiAuthRes, ApiAuthUserRes, ApiUserEntry } from "@/shared/types";
 import { AccPermissions } from "@/shared/permissions";
 
-type AuthUser = {
-    name: string;
-    permissions: number;
-};
-
 type AuthContextType = {
-    user: AuthUser | null;
+    user: ApiUserEntry | null;
     logout: () => void;
     hasPermission: (perm: AccPermissions) => boolean;
 };
@@ -24,16 +19,18 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuthContext = (): AuthContextType => useContext<AuthContextType>(AuthContext);
 
 const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): JSX.Element => {
-    const [user, setUser] = useState<AuthUser | null>(null);
+    const [user, setUser] = useState<ApiUserEntry | null>(null);
     const [auth, setAuth] = useState<{ loginId: string; loginToken: string } | null>(null);
     const [authStatus, setAuthStatus] = useState("");
 
     const logout = () => {
-        fetch("/api/auth/logout").then(() => {
-            document.cookie = "loginId=; Max-Age=-1";
-            document.cookie = "loginToken=; Max-Age=-1";
-            setAuth(null);
-            setUser(null);
+        apiGet("/api/auth/logout").then((res) => {
+            if (!res.error || confirm("Error on logout request! Log out in browser only?.\nError: " + res.error)) {
+                document.cookie = "loginId=; Max-Age=-1";
+                document.cookie = "loginToken=; Max-Age=-1";
+                setAuth(null);
+                setUser(null);
+            }
         });
     };
 
@@ -44,11 +41,14 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
 
     const checkLoginAndGetUser = async (): Promise<void> => {
         setAuthStatus("Checking login...");
-        const data = await apiGet<AuthUserRes>("/api/auth/self", "login check");
-        if (data && data.loginValid) {
-            setUser({ name: data.userName, permissions: data.permissions });
-        } else {
+        const data = await apiGet<ApiAuthUserRes>("/api/auth/check");
+        if (data.error) {
+            alert("Login failed: " + data.error);
+        } else if (data.invalidLogin) {
+            alert("Login data expired, logging out.");
             logout();
+        } else {
+            setUser(data.user);
         }
         setAuthStatus("");
     };
@@ -58,8 +58,10 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
         if (alreadyDidRequest) return;
         alreadyDidRequest = true;
         setAuthStatus("Logging in...");
-        const data = await apiPost<AuthRes>("/api/auth/authenticate", "login", { code });
-        if (data) {
+        const data = await apiPost<ApiAuthRes>("/api/auth/authenticate", { code });
+        if (data.error) {
+            alert("Login failed: " + data.error);
+        } else {
             const expDate = new Date();
             expDate.setTime(expDate.getTime() + 30 * 86400 * 1000);
             document.cookie = `loginId=${data.loginId}; path=/; expires=${expDate.toUTCString()}`;

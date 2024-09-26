@@ -3,7 +3,7 @@ import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import { apiGet } from "../serverApi";
-import type { LootHistoryEntry, LootHistoryPageRes } from "@/shared/types";
+import type { ApiLootHistoryEntry, ApiLootHistoryPageRes } from "@/shared/types";
 import LootResponse from "../components/LootResponse";
 import { isItemDataLoaded, loadItemData } from "../data/itemStorage";
 import ItemIconLink from "../components/item/ItemIconLink";
@@ -11,7 +11,7 @@ import ItemIconLink from "../components/item/ItemIconLink";
 const LootHistoryPage = (): JSX.Element => {
     const [historyData, setHistoryData] = useState<{
         lastPageOffset: number;
-        data: LootHistoryEntry[];
+        data: ApiLootHistoryEntry[];
         haveMore: boolean;
     }>({
         lastPageOffset: 0,
@@ -23,14 +23,14 @@ const LootHistoryPage = (): JSX.Element => {
 
     const loadPage = async (page: number): Promise<void> => {
         loadctx.setLoading("fetchLootHistory", "Loading history...");
-        apiGet<LootHistoryPageRes>("/api/loothistory/page/" + page, "get loot history page").then((pageRes) => {
+        apiGet<ApiLootHistoryPageRes>("/api/loothistory/page/" + page).then((pageRes) => {
             loadctx.removeLoading("fetchLootHistory");
-            if (pageRes)
-                setHistoryData({
-                    lastPageOffset: pageRes.pageOffset,
-                    data: pageRes.entries.concat(historyData.data),
-                    haveMore: pageRes.haveMore,
-                });
+            if (pageRes.error) alert("Failed to get loot history page: " + pageRes.error);
+            setHistoryData({
+                lastPageOffset: pageRes.pageOffset,
+                data: pageRes.entries.concat(historyData.data),
+                haveMore: pageRes.haveMore,
+            });
         });
     };
 
@@ -55,7 +55,7 @@ const LootHistoryPage = (): JSX.Element => {
         });
     };
 
-    const columDefs: ColumnDef<LootHistoryEntry>[] = [
+    const columDefs: ColumnDef<ApiLootHistoryEntry>[] = [
         {
             name: "Time",
             dataKey: "timestamp",

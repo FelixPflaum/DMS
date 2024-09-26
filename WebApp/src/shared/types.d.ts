@@ -1,22 +1,14 @@
 import type { ConfigDataDynamic } from "@/server/configDynamic";
 import type { ClassId } from "./wow";
 
-type ApiResponse = {
-    error?: string;
-};
-
-type AuthRes = {
+type ApiUserEntry = {
     loginId: string;
-    loginToken: string;
-};
-
-type AuthUserRes = {
-    loginValid: boolean;
     userName: string;
     permissions: number;
+    lastActivity: number;
 };
 
-type AuditEntry = {
+type ApiAuditEntry = {
     id: number;
     timestamp: number;
     loginId: string;
@@ -24,55 +16,14 @@ type AuditEntry = {
     eventInfo: string;
 };
 
-type PagedRes<T> = {
-    pageOffset: number;
-    haveMore: boolean;
-    entries: T[];
-};
-
-type AuditRes = PagedRes<AuditEntry>;
-
-type UserEntry = {
-    loginId: string;
-    userName: string;
-    permissions: number;
-    lastActivity: number;
-};
-
-type UserRes = UserEntry[];
-
-type DeleteRes = {
-    success: boolean;
-    error?: string;
-};
-
-type UpdateRes = {
-    success: boolean;
-    error?: string;
-};
-
-type PlayerEntry = {
+type ApiPlayerEntry = {
     playerName: string;
     classId: ClassId;
     points: number;
     account?: string;
 };
 
-type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID" | "DECAY";
-
-type ApiPointChangeRequest = {
-    reason: string;
-    change: number;
-};
-
-type ApiPointChangeResult = {
-    success: boolean;
-    error?: string;
-    change: number;
-    newPoints: number;
-};
-
-type PointHistoryEntry = {
+type ApiPointHistoryEntry = {
     id: number;
     timestamp: number;
     playerName: string;
@@ -82,15 +33,7 @@ type PointHistoryEntry = {
     reason?: string;
 };
 
-type PointHistoryPageRes = PagedRes<PointHistoryEntry>;
-
-type PointHistorySearchInput = {
-    playerName?: string;
-    timeStart?: number;
-    timeEnd?: number;
-};
-
-type LootHistoryEntry = {
+type ApiLootHistoryEntry = {
     id: number;
     guid: string;
     timestamp: number;
@@ -99,13 +42,76 @@ type LootHistoryEntry = {
     response: string;
 };
 
-type ApiProfileResult = {
-    player: PlayerEntry;
-    pointHistory: PointHistoryEntry[];
-    lootHistory: LootHistoryEntry[];
+type ApiItemEntry = {
+    itemId: number;
+    itemName: string;
+    qualityId: number;
+    iconName: string;
 };
 
-type LootHistoryPageRes = PagedRes<LootHistoryEntry>;
+type ApiResponse = {
+    error?: string;
+};
+
+type ApiAuthRes = ApiResponse & {
+    loginId: string;
+    loginToken: string;
+};
+
+type ApiAuthUserRes = ApiResponse & {
+    invalidLogin: boolean;
+    user: ApiUserEntry;
+};
+
+type PagedRes<T> = ApiResponse & {
+    pageOffset: number;
+    haveMore: boolean;
+    entries: T[];
+};
+
+type ApiAuditPageRes = PagedRes<ApiAuditEntry>;
+
+type ApiUserRes = ApiResponse & {
+    user: ApiUserEntry;
+};
+
+type ApiUserListRes = ApiResponse & {
+    list: ApiUserEntry[];
+};
+
+type PointChangeType = "ITEM_AWARD" | "ITEM_AWARD_REVERTED" | "PLAYER_ADDED" | "CUSTOM" | "READY" | "RAID" | "DECAY";
+
+type ApiPointChangeRequest = {
+    playerName: string;
+    reason: string;
+    change: number;
+};
+
+type ApiPointChangeResult = ApiResponse & {
+    playerName: string;
+    change: number;
+    newPoints: number;
+};
+
+type ApiPointHistoryPageRes = PagedRes<ApiPointHistoryEntry>;
+
+type ApiPointHistorySearchInput = {
+    playerName?: string;
+    timeStart?: number;
+    timeEnd?: number;
+};
+
+type ApiPointHistorySearchRes = ApiResponse & {
+    list: ApiPointHistoryEntry[];
+};
+
+type ApiProfileResult = ApiResponse & {
+    player: ApiPlayerEntry;
+    pointHistory: ApiPointHistoryEntry[];
+    lootHistory: ApiLootHistoryEntry[];
+};
+
+type ApiLootHistoryPageRes = PagedRes<ApiLootHistoryEntry>;
 
 type LootHistorySearchInput = {
     playerName?: string;
@@ -114,11 +120,8 @@ type LootHistorySearchInput = {
     response?: string;
 };
 
-type ItemData = {
-    itemId: number;
-    itemName: string;
-    qualityId: number;
-    iconName: string;
+type ApiLootHistorySearchRes = ApiResponse & {
+    results: ApiLootHistoryEntry[];
 };
 
 type AddonPointHistoryEntry = {
@@ -155,7 +158,7 @@ type AddonExport = {
 type ImportLog = {
     players: {
         new: AddonPlayerEntry;
-        old?: PlayerEntry;
+        old?: ApiPlayerEntry;
     }[];
     lootHistory: {
         // make obj so it's easy to change later if needed
@@ -167,9 +170,8 @@ type ImportLog = {
     }[];
 };
 
-type ApiImportResult = {
-    error?: string;
-    log?: ImportLog;
+type ApiImportResult = ApiResponse & {
+    log: ImportLog;
 };
 
 type ApiImportLogEntry = {
@@ -180,20 +182,46 @@ type ApiImportLogEntry = {
     userName: string;
 };
 
-type ApiImportLogListResult = {
+type ApiImportLogListResult = ApiResponse & {
     logs: ApiImportLogEntry[];
 };
 
-type ApiExportResult = {
+type ApiImportLogRes = ApiResponse & {
+    entry: ApiImportLogEntry;
+};
+
+type ApiExportResult = ApiResponse & {
     export: string;
 };
 
-type ApiSettingRes = ConfigDataDynamic;
+type ApiDynSettings = ConfigDataDynamic;
+
+type ApiSettingRes = ApiResponse & {
+    settings: ApiDynSettings;
+};
 
 type ApiSetSettingReq = {
     changes: { key: string; value: unknown }[];
 };
 
-type ApiBackupListRes = string[];
+type ApiBackupListRes = ApiResponse & {
+    list: string[];
+};
 
 type ApiMakeBackupRes = ApiResponse & { file: string };
+
+type ApiItemListRes = ApiResponse & {
+    list: ApiItemEntry[];
+};
+
+type ApiPlayerRes = ApiResponse & {
+    player: ApiPlayerEntry;
+};
+
+type ApiPlayerListRes = ApiResponse & {
+    list: ApiPlayerEntry[];
+};
+
+type ApiSelfPlayerRes = ApiResponse & {
+    myChars: ApiPlayerEntry[];
+};

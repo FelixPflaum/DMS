@@ -4,7 +4,7 @@ import TextInput from "../components/form/TextInput";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
-import type { UpdateRes, UserEntry, UserRes } from "@/shared/types";
+import type { ApiUserEntry, ApiUserRes } from "@/shared/types";
 import PermissionInput from "../components/form/PermissionInput";
 import { AccPermissions } from "@/shared/permissions";
 
@@ -33,16 +33,16 @@ const UserAddEditPage = (): JSX.Element => {
         }
 
         loadctx.setLoading("fetchuser", "Loading user data...");
-        apiGet<UserRes>("/api/users/user/" + idParam, "get user data").then((userRes) => {
+        apiGet<ApiUserRes>("/api/users/user/" + idParam).then((userRes) => {
             loadctx.removeLoading("fetchuser");
-            if (!userRes || userRes.length === 0) {
-                alert("User doesn't exist.");
+            if (userRes.error) {
+                alert("Failed to get user data: " + userRes.error);
                 navigate("/users");
                 return;
             }
-            if (idInputRef.current) idInputRef.current.value = userRes[0].loginId;
-            if (nameInputRef.current) nameInputRef.current.value = userRes[0].userName;
-            setPermissions(userRes[0].permissions);
+            if (idInputRef.current) idInputRef.current.value = userRes.user.loginId;
+            if (nameInputRef.current) nameInputRef.current.value = userRes.user.userName;
+            setPermissions(userRes.user.permissions);
         });
     }, []);
 
@@ -53,7 +53,7 @@ const UserAddEditPage = (): JSX.Element => {
         const nameValue = nameInputRef.current?.value;
         if (!idValue || !nameValue) return;
 
-        const body: UserEntry = {
+        const body: ApiUserEntry = {
             loginId: idValue,
             userName: nameValue,
             permissions: permissions,
@@ -64,25 +64,21 @@ const UserAddEditPage = (): JSX.Element => {
         submitBtnRef.current.disabled = true;
 
         if (isEdit) {
-            apiPost<UpdateRes>("/api/users/update/" + idValue, "update user", body).then((updateRes) => {
+            apiPost("/api/users/update/" + idValue, body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
-                if (updateRes) {
-                    if (updateRes.success) {
-                        alert("User updated.");
-                    } else {
-                        alert("Failed to update user: " + updateRes.error);
-                    }
+                if (updateRes.error) {
+                    alert("Failed to update user: " + updateRes.error);
+                } else {
+                    alert("User updated.");
                 }
             });
         } else {
-            apiPost<UpdateRes>("/api/users/create/", "create user", body).then((updateRes) => {
+            apiPost("/api/users/create/", body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
-                if (updateRes) {
-                    if (updateRes.success) {
-                        alert("User created.");
-                    } else {
-                        alert("Failed to create user: " + updateRes.error);
-                    }
+                if (updateRes.error) {
+                    alert("Failed to create user: " + updateRes.error);
+                } else {
+                    alert("User created.");
                 }
             });
         }

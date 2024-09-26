@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet } from "../serverApi";
-import type { ApiProfileResult, LootHistoryEntry, PointHistoryEntry } from "@/shared/types";
+import type { ApiProfileResult, ApiLootHistoryEntry, ApiPointHistoryEntry } from "@/shared/types";
 import styles from "../styles/pageProfile.module.css";
 import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
@@ -20,10 +20,10 @@ const ProfilePage = (): JSX.Element => {
     useEffect(() => {
         if (!nameParam) return;
         loadctx.setLoading("fetchplayerprofile", "Loading profile data...");
-        apiGet<ApiProfileResult>("/api/players/profile/" + nameParam, "get profile").then((res) => {
+        apiGet<ApiProfileResult>("/api/players/profile/" + nameParam).then((res) => {
             loadctx.removeLoading("fetchplayerprofile");
-            if (!res) {
-                alert("Player doesn't exist.");
+            if (res.error) {
+                alert("Couldn't load player: " + res.error);
                 navigate("/players");
                 return;
             }
@@ -31,7 +31,7 @@ const ProfilePage = (): JSX.Element => {
         });
     }, []);
 
-    const columDefsPoints: ColumnDef<PointHistoryEntry>[] = [
+    const columDefsPoints: ColumnDef<ApiPointHistoryEntry>[] = [
         {
             name: "Time",
             dataKey: "timestamp",
@@ -48,7 +48,7 @@ const ProfilePage = (): JSX.Element => {
         { name: "Reason", dataKey: "reason" },
     ];
 
-    const columDefsLoot: ColumnDef<LootHistoryEntry>[] = [
+    const columDefsLoot: ColumnDef<ApiLootHistoryEntry>[] = [
         {
             name: "Time",
             dataKey: "timestamp",

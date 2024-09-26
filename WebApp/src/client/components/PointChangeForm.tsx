@@ -30,27 +30,23 @@ const PointChangeForm = ({
         submitBtnRef.current.disabled = true;
 
         const body: ApiPointChangeRequest = {
+            playerName: playerName,
             change: changeValue,
             reason: reasonValue,
         };
 
         loadctx.setLoading("addpointschange", "Adding point change");
-        apiPost<ApiPointChangeResult>("/api/players/pointchange/" + playerName, "add sanity change", body).then(
-            (updateRes) => {
-                loadctx.removeLoading("addpointschange");
-                if (submitBtnRef.current) submitBtnRef.current.disabled = false;
-                if (updateRes) {
-                    if (updateRes.success) {
-                        alert("Sanity change added.");
-                        if (changeValueInputRef.current) changeValueInputRef.current.value = "";
-                        if (reasonInputRef.current) reasonInputRef.current.value = "";
-                        onChange(updateRes.change, updateRes.newPoints);
-                    } else {
-                        alert("Failed to add sanity change: " + updateRes.error);
-                    }
-                }
+        apiPost<ApiPointChangeResult>("/api/players/pointchange/" + playerName, body).then((res) => {
+            loadctx.removeLoading("addpointschange");
+            if (submitBtnRef.current) submitBtnRef.current.disabled = false;
+            if (res.error) {
+                return alert("Failed to add sanity change: " + res.error);
             }
-        );
+            alert("Sanity change added.");
+            if (changeValueInputRef.current) changeValueInputRef.current.value = "";
+            if (reasonInputRef.current) reasonInputRef.current.value = "";
+            onChange(res.change, res.newPoints);
+        });
         return false;
     };
 

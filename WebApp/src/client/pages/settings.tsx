@@ -4,14 +4,7 @@ import TextInput from "../components/form/TextInput";
 import NumberInput from "../components/form/NumberInput";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
-import type {
-    ApiBackupListRes,
-    ApiMakeBackupRes,
-    ApiResponse,
-    ApiSetSettingReq,
-    ApiSettingRes,
-    UpdateRes,
-} from "@/shared/types";
+import type { ApiBackupListRes, ApiDynSettings, ApiMakeBackupRes, ApiSetSettingReq, ApiSettingRes } from "@/shared/types";
 import StaticFormRow from "../components/form/StaticFormRow";
 import styles from "../styles/pageSettings.module.css";
 import DateTimeInput from "../components/form/DateTimeInput";
@@ -19,20 +12,19 @@ import FileList from "../components/fileList/FileList";
 
 const SettingsPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
-    const [loadedSettings, setLoadedSettings] = useState<ApiSettingRes | undefined>();
-    const [currentSettings, setCurrentSettings] = useState<ApiSettingRes | undefined>();
+    const [loadedSettings, setLoadedSettings] = useState<ApiDynSettings | undefined>();
+    const [currentSettings, setCurrentSettings] = useState<ApiDynSettings | undefined>();
     const submitBtnRef = useRef<HTMLButtonElement>(null);
     const rows: JSX.Element[] = [];
 
     useEffect(() => {
         loadctx.setLoading("fetchsettings", "Loading settings...");
-        apiGet<ApiSettingRes>("/api/settings/get", "get settings data").then((res) => {
+        apiGet<ApiSettingRes>("/api/settings/get").then((res) => {
             loadctx.removeLoading("fetchsettings");
-            if (!res) return;
-            setLoadedSettings(res);
-            setCurrentSettings(res);
+            if (res.error) return alert("Could not load settings data: " + res.error);
+            setLoadedSettings(res.settings);
+            setCurrentSettings(res.settings);
         });
-        apiGet<ApiBackupListRes>;
     }, []);
 
     const onInputChange = (key: string, val: string | number) => {
@@ -40,12 +32,12 @@ const SettingsPage = (): JSX.Element => {
         if (!(key in currentSettings)) return;
         const newSettings = { ...currentSettings };
         // @ts-ignore
-        newSettings[key as keyof ApiSettingRes] = val;
+        newSettings[key as keyof ApiDynSettings] = val;
         setCurrentSettings(newSettings);
     };
 
     if (currentSettings && loadedSettings) {
-        let key: keyof ApiSettingRes;
+        let key: keyof ApiDynSettings;
         for (key in currentSettings) {
             const val = currentSettings[key];
             const isChanged = val != loadedSettings[key];
@@ -95,7 +87,7 @@ const SettingsPage = (): JSX.Element => {
 
         const setReq: ApiSetSettingReq = { changes: [] };
 
-        let settingKey: keyof ApiSettingRes;
+        let settingKey: keyof ApiDynSettings;
         for (settingKey in currentSettings) {
             const valCurrent = currentSettings[settingKey];
             if (valCurrent != loadedSettings[settingKey]) {
@@ -109,13 +101,10 @@ const SettingsPage = (): JSX.Element => {
         if (setReq.changes.length == 0) return;
 
         loadctx.setLoading("setsettings", "Updating settings...");
-        apiPost<UpdateRes>("/api/settings/set", "set settings", setReq).then((res) => {
+        apiPost("/api/settings/set", setReq).then((res) => {
             loadctx.removeLoading("setsettings");
-            if (!res) return;
-            if (!res.success) {
-                let msg = "Updating settings failed: ";
-                if (res.error) msg += res.error;
-                alert(msg);
+            if (res.error) {
+                alert("Updating settings failed: " + res.error);
             } else {
                 alert("Settings updated.");
                 setLoadedSettings({ ...currentSettings });
@@ -123,7 +112,7 @@ const SettingsPage = (): JSX.Element => {
         });
     };
 
-    const [backList, setBackupList] = useState<ApiBackupListRes>([]);
+    const [backList, setBackupList] = useState<string[]>([]);
     const [backupPath, setBackupPath] = useState<string[]>([]);
     const [selectedBackup, setSelectedBackup] = useState<string[] | undefined>();
 
@@ -145,9 +134,8 @@ const SettingsPage = (): JSX.Element => {
 
     const makeBackup = () => {
         loadctx.setLoading("makemackup", "Creating backup...");
-        apiPost<ApiMakeBackupRes>("/api/backup/make", "make backup", {}).then((res) => {
+        apiPost<ApiMakeBackupRes>("/api/backup/make", {}).then((res) => {
             loadctx.removeLoading("makemackup");
-            if (!res) return;
             if (res.error) {
                 alert("Could not create backup: " + res.error);
                 return;
@@ -164,26 +152,25 @@ const SettingsPage = (): JSX.Element => {
         );
         if (promptRes && promptRes == confirmWord) {
             loadctx.setLoading("applybackup", "Applying backup...");
-            apiPost<ApiResponse>("/api/backup/apply", "apply backup", { path: selectedBackup }).then((res) => {
+            apiPost("/api/backup/apply", { path: selectedBackup }).then((res) => {
                 loadctx.removeLoading("applybackup");
-                if (!res) return;
                 if (res.error) {
-                    alert("Back failed: " + res.error);
+                    alert("Backup import failed: " + res.error);
                     return;
                 }
                 alert("Backup applied!");
+                setSelectedBackup(undefined);
             });
         }
     };
 
     useEffect(() => {
         loadctx.setLoading("fetchbackuplist", "Loading backup list...");
-        apiGet<ApiBackupListRes>("/api/backup/list/" + backupPath.join("/"), "get backup list").then((res) => {
+        apiGet<ApiBackupListRes>("/api/backup/list/" + backupPath.join("/")).then((res) => {
             loadctx.removeLoading("fetchbackuplist");
-            if (!res) return;
-            setBackupList(res);
+            if (res.error) return alert("Failed to get backup list: " + res.error);
+            setBackupList(res.list);
         });
-        apiGet<ApiBackupListRes>;
     }, [backupPath]);
 
     const backupSelection = selectedBackup ? (
@@ -191,7 +178,7 @@ const SettingsPage = (): JSX.Element => {
             <span className={styles.selectedBackupLabel}>Selected Backup</span>
             <span className={styles.selectedBackupName}>{selectedBackup.join("/")}</span>
             <button className="button" onClick={applyBackup}>
-                Apply Backup (NYI)
+                Apply Backup
             </button>
         </div>
     ) : (

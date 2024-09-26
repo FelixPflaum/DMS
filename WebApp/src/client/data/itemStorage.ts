@@ -1,16 +1,16 @@
-import type { ItemData } from "@/shared/types";
+import type { ApiItemEntry, ApiItemListRes } from "@/shared/types";
 import { apiGet } from "../serverApi";
 
 // TODO: invalidate this on login if needed
 
-let itemStorage: Record<number, ItemData> = {};
+let itemStorage: Record<number, ApiItemEntry> = {};
 let wasLoaded = false;
 let isLoadingPromise: Promise<boolean> | undefined;
 
 function loadFromLocalStorage(): boolean {
     const data = window.localStorage.getItem("itemData");
     if (data) {
-        itemStorage = JSON.parse(data) as Record<number, ItemData>;
+        itemStorage = JSON.parse(data) as Record<number, ApiItemEntry>;
         wasLoaded = true;
         return true;
     }
@@ -38,13 +38,14 @@ export const loadItemData = async (): Promise<boolean> => {
         resolver = res;
     });
 
-    const itemData = await apiGet<ItemData[]>("/api/items/all", "load item data");
-    if (!itemData) {
+    const itemData = await apiGet<ApiItemListRes>("/api/items/all");
+    if (itemData.error) {
+        alert("Failed to load item data: " + itemData.error);
         resolver!(false);
         return false;
     }
 
-    for (const item of itemData) {
+    for (const item of itemData.list) {
         itemStorage[item.itemId] = item;
     }
 
@@ -60,7 +61,7 @@ export const loadItemData = async (): Promise<boolean> => {
  * @param itemId
  * @returns
  */
-export const getItemData = (itemId: number): ItemData | undefined => {
+export const getItemData = (itemId: number): ApiItemEntry | undefined => {
     return itemStorage[itemId];
 };
 

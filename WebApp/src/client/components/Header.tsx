@@ -4,16 +4,19 @@ import { useAuthContext } from "../AuthProvider";
 import { AccPermissions } from "@/shared/permissions";
 import { useEffect, useState } from "react";
 import { apiGet } from "../serverApi";
-import type { PlayerEntry } from "@/shared/types";
+import type { ApiPlayerEntry, ApiSelfPlayerRes } from "@/shared/types";
 
 const Header = (): JSX.Element => {
-    const [ownChars, setOwnChars] = useState<PlayerEntry[] | undefined>();
+    const [ownChars, setOwnChars] = useState<ApiPlayerEntry[] | undefined>();
     const authctx = useAuthContext();
     if (!authctx.user) return <></>;
 
     useEffect(() => {
-        apiGet<PlayerEntry[]>("/api/players/self", "get own player list").then((playersRes) => {
-            if (playersRes && playersRes.length > 0) setOwnChars(playersRes);
+        apiGet<ApiSelfPlayerRes>("/api/players/self").then((playersRes) => {
+            if (playersRes.error) {
+                return alert("Could not load own player list: " + playersRes.error);
+            }
+            if (playersRes.myChars.length > 0) setOwnChars(playersRes.myChars);
         });
     }, []);
 
@@ -65,7 +68,7 @@ const Header = (): JSX.Element => {
             <div className={styles.headerOwnChars}>{charButtons}</div>
             <div className={styles.headerUserInfo}>
                 <span className={styles.headerUserLabel}>Logged in as:</span>
-                <span className={styles.headerUserName}>{authctx.user.name}</span>
+                <span className={styles.headerUserName}>{authctx.user.userName}</span>
                 <button className={styles.headerButton} onClick={authctx.logout}>
                     Logout
                 </button>
