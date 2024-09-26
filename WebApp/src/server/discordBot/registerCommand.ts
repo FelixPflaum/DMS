@@ -34,32 +34,42 @@ export class RegisterCommand extends BotCommandBase {
             return;
         }
 
-        const roleSettingRes = await getDynamicSetting("discordAllowedRoles");
-        if (roleSettingRes.dbError || !roleSettingRes.value) return;
-        const allwoedRoles = roleSettingRes.value;
-        const hasValidRole = member.roles.cache.some((role) => {
-            for (const allowed of allwoedRoles) {
-                if (allowed == role.name) return true;
-            }
-            return false;
-        });
+        const id = interaction.user.id;
+        const isAdminId = id == getConfig().adminLoginId;
 
-        if (!hasValidRole) {
-            this.replyError(interaction, "You have no valid role.");
-            return;
+        if (!isAdminId) {
+            const roleSettingRes = await getDynamicSetting("discordAllowedRoles");
+            if (roleSettingRes.dbError || !roleSettingRes.value) return;
+            const allwoedRoles = roleSettingRes.value;
+            const hasValidRole = member.roles.cache.some((role) => {
+                for (const allowed of allwoedRoles) {
+                    if (allowed == role.name) return true;
+                }
+                return false;
+            });
+
+            if (!hasValidRole) {
+                this.replyError(interaction, "You have no valid role.");
+                return;
+            }
         }
 
-        const id = interaction.user.id;
         const name =
             (interaction.member as GuildMember | undefined)?.displayName ??
             interaction.user.displayName ??
             interaction.user.username;
-        let perms = AccPermissions.DATA_VIEW;
+        let perms = AccPermissions.NONE;
 
-        const isAdminId = id == getConfig().adminLoginId;
         if (isAdminId) {
             this.logger.log(`Admin account registration: ${id} - ${name}`);
             perms = AccPermissions.ADMIN;
+        } else {
+            const permSettingRes = await getDynamicSetting("defaultPerms");
+            if (permSettingRes.dbError) {
+                this.replyError(interaction, "Database error.");
+                return;
+            }
+            if (permSettingRes.value) perms = permSettingRes.value;
         }
 
         const insertRes = await addUser(id, name, perms);

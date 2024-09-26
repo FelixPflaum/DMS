@@ -10,6 +10,7 @@ export type ConfigDataDynamic = {
     autoDecayDay: number;
     autoDecayHour: number;
     discordAllowedRoles: string[];
+    defaultPerms: number;
 };
 
 const logger = new Logger("DynSettings");
@@ -20,6 +21,7 @@ const defaults: ConfigDataDynamic = {
     autoDecayDay: 3,
     autoDecayHour: 4,
     discordAllowedRoles: ["Admin", "Test123"],
+    defaultPerms: 0,
 };
 
 const callbacks: Partial<Record<keyof ConfigDataDynamic, (() => void)[]>> = {};

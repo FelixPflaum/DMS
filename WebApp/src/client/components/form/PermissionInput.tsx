@@ -6,11 +6,18 @@ const PermissionInput = ({
     label,
     perms,
     onChange,
+    onChangeKey,
+    customInputClass,
 }: {
     label: string;
     perms: AccPermissions;
-    onChange: (perms: AccPermissions) => void;
+    onChange: (key: string, perms: AccPermissions) => void;
+    onChangeKey?: string;
+    customInputClass?: string;
 }): JSX.Element => {
+    const classes = [styles.permInputInputs];
+    if (customInputClass) classes.push(customInputClass);
+
     const inputs: JSX.Element[] = [];
 
     for (const pd of Object.values(permissionData)) {
@@ -22,7 +29,7 @@ const PermissionInput = ({
                     id={id}
                     type="checkbox"
                     checked={(perms & pd.value) !== 0}
-                    onChange={() => onChange(perms ^ pd.value)}
+                    onChange={() => onChange(onChangeKey ?? "", perms ^ pd.value)}
                 ></input>
                 <label className={styles.permInputLabel} htmlFor={id}>
                     {pd.name}
@@ -36,7 +43,7 @@ const PermissionInput = ({
             <label className={styles.inputLabel} htmlFor={label}>
                 {label}
             </label>
-            <div className={styles.permInputInputs}>{inputs}</div>
+            <div className={classes.join(" ")}>{inputs}</div>
         </div>
     );
 };

@@ -10,6 +10,7 @@ import styles from "../styles/pageSettings.module.css";
 import DateTimeInput from "../components/form/DateTimeInput";
 import FileList from "../components/fileList/FileList";
 import StringArrayInput from "../components/form/StringArrayInput";
+import PermissionInput from "../components/form/PermissionInput";
 
 const SettingsPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -64,6 +65,17 @@ const SettingsPage = (): JSX.Element => {
                         onChangeKey={key}
                         onChange={onInputChange}
                     ></DateTimeInput>
+                );
+            } else if (key == "defaultPerms") {
+                rows.push(
+                    <PermissionInput
+                        customInputClass={addedClass}
+                        key={key}
+                        label={key}
+                        perms={val}
+                        onChangeKey={key}
+                        onChange={onInputChange}
+                    ></PermissionInput>
                 );
             } else if (typeof val === "string") {
                 rows.push(

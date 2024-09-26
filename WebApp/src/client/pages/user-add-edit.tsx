@@ -21,7 +21,7 @@ const UserAddEditPage = (): JSX.Element => {
     const nameInputRef = useRef<HTMLInputElement>(null);
     const submitBtnRef = useRef<HTMLButtonElement>(null);
 
-    const onPermChange = (perms: AccPermissions) => {
+    const onPermChange = (_key: string, perms: AccPermissions) => {
         setPermissions(perms);
     };
 
