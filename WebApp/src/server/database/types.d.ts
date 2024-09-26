@@ -27,6 +27,7 @@ type ItemDataRow = {
     itemName: string;
     qualityId: number;
     iconName: string;
+    iconId: number;
 };
 
 type PlayerRow = {
@@ -37,7 +38,7 @@ type PlayerRow = {
 };
 
 type PointHistoryRow = {
-    id: number;
+    guid: string;
     timestamp: number;
     playerName: string;
     pointChange: number;
@@ -47,7 +48,6 @@ type PointHistoryRow = {
 };
 
 type LootHistoryRow = {
-    id: number;
     guid: string;
     timestamp: number;
     playerName: string;

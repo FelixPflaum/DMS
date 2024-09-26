@@ -12,10 +12,7 @@ local function LogDebug(...)
     Env:PrintDebug("Host:", ...)
 end
 
----Create a simple unique identifier.
-local function MakeGuid()
-    return time() .. "-" .. string.format("%08x", math.floor(math.random(0, 0x7FFFFFFF)))
-end
+local MakeGuid = Env.Database.GenerateHistGuid
 
 ------------------------------------------------------------------------------------
 --- Data Structure Types
@@ -805,6 +802,7 @@ end
 local LibDialog = LibStub("LibDialog-1.1")
 
 local confirmDialog = {
+    show_while_dead = true,
     text = "IMPORT IS OLD\n!\n!",
     on_cancel = function(self, data, reason) end,
     buttons = {

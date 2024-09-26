@@ -10,6 +10,7 @@ Env.Database = {}
 ---@alias PointChangeType "ITEM_AWARD"|"ITEM_AWARD_REVERTED"|"PLAYER_ADDED"|"CUSTOM"|"READY"|"RAID"
 
 ---@class (exact) PointHistoryEntry
+---@field guid string Unique identifier for this entry.
 ---@field timeStamp integer -- Unix timestamp.
 ---@field playerName string
 ---@field change integer
@@ -129,6 +130,12 @@ function Env.Database:UpdatePlayerEntry(playerName, classId)
     self.OnPlayerChanged:Trigger(playerName)
 end
 
+---Returns a 16B string in the format <8B time as hex>-<7B random hex>
+---@return string
+function Env.Database.GenerateHistGuid()
+    return string.format("%08x-%07x", time(), math.random(0, 0xFFFFFFF))
+end
+
 ---Add a new entry to the player's point history.
 ---@param playerName string
 ---@param change integer
@@ -138,6 +145,7 @@ end
 local function AddPlayerPointHistory(playerName, change, newPoints, type, reason)
     Env.Database.db.pointHistory[playerName] = Env.Database.db.pointHistory[playerName] or {}
     local newEntry = { ---@type PointHistoryEntry
+        guid = Env.Database.GenerateHistGuid(),
         timeStamp = time(),
         playerName = playerName,
         change = change,

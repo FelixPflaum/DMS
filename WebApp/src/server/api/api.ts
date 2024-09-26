@@ -11,6 +11,11 @@ import { itemRouter } from "./routes/items";
 import { importExportRouter } from "./routes/importExport";
 import { settingsRouter } from "./routes/settings";
 import { backupRouter } from "./routes/backup";
+import { getConfig } from "../config";
+import { Logger } from "../Logger";
+import { existsSync } from "fs";
+
+const logger = new Logger("API");
 
 const cookieParser = require("cookie-parser");
 const app: Application = express();
@@ -33,5 +38,22 @@ apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/backup", backupRouter);
 
 app.use("/api", apiRouter);
+
+if (getConfig().hostClient) {
+    logger.log("Serving client files.");
+
+    const indexPath = process.cwd() + "/build/client/index.html";
+    if (!existsSync(indexPath)) {
+        logger.logError("Can't find index.html at path: " + indexPath);
+        process.exit(1);
+    }
+
+    app.use(express.static("build/client", {}));
+    app.use((req, res, _next) => {
+        res.sendFile(indexPath, (err) => {
+            if (err) logger.logError(`Error serving 404 redirect for path ${req.path}!`, err);
+        });
+    });
+}
 
 export default app;

@@ -1,11 +1,11 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
----@param n string
-local function GetClassIdFromName(n)
+---@param fileName string
+local function GetClassIdFromName(fileName)
     for _, v in ipairs(Env.classList) do
-        if v[1] == n then
-            return v[2]
+        if v.file == fileName then
+            return v.id
         end
     end
     return 1 -- fall back to warrior

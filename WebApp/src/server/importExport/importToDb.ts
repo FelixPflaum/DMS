@@ -104,24 +104,25 @@ async function updatePointHistory(
     // key = time + player
     const dict: Record<string, PointHistoryRow> = {};
     for (const h of dbHistory) {
-        dict[h.timestamp + h.playerName] = h;
+        dict[h.guid] = h;
     }
 
     for (const importEntry of history) {
         const timeStampForDb = importEntry.timeStamp * 1000;
-        const key = timeStampForDb + importEntry.playerName;
-        if (dict[key]) continue;
-        await conn.query(
-            "INSERT INTO `pointhistory` (`timestamp`, `playerName`, `pointChange`, `newPoints`, `changeType`, `reason`) VALUES (?, ?, ?, ?, ?, ?);",
-            [
-                timeStampForDb,
-                importEntry.playerName,
-                importEntry.change,
-                importEntry.newPoints,
-                importEntry.type,
-                importEntry.reason,
-            ]
+        if (dict[importEntry.guid]) continue;
+        const res = await createPointHistoryEntry(
+            {
+                guid: importEntry.guid,
+                timestamp: timeStampForDb,
+                playerName: importEntry.playerName,
+                pointChange: importEntry.change,
+                newPoints: importEntry.newPoints,
+                changeType: importEntry.type,
+                reason: importEntry.reason,
+            },
+            conn
         );
+        if (res.isError) throw new Error("DB error on importing new point hist entry.");
         log.push({ new: importEntry });
     }
 
@@ -195,12 +196,15 @@ export const importDataExport = async (data: DataExport): Promise<boolean> => {
 
         for (const phist of data.pointHistory) {
             const res = await createPointHistoryEntry(
-                phist.timestamp,
-                phist.playerName,
-                phist.pointChange,
-                phist.newPoints,
-                phist.changeType,
-                phist.reason,
+                {
+                    guid: phist.guid,
+                    timestamp: phist.timestamp,
+                    playerName: phist.playerName,
+                    pointChange: phist.pointChange,
+                    newPoints: phist.newPoints,
+                    changeType: phist.changeType,
+                    reason: phist.reason,
+                },
                 conn
             );
             if (res.isError) return rollbackThenFalse();

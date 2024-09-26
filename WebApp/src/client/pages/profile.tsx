@@ -8,6 +8,7 @@ import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import ItemIconLink from "../components/item/ItemIconLink";
 import LootResponse from "../components/LootResponse";
+import { isItemDataLoaded, loadItemData } from "../data/itemStorage";
 
 const ProfilePage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -16,6 +17,15 @@ const ProfilePage = (): JSX.Element => {
     const navigate = useNavigate();
 
     const nameParam = searchParams.get("name");
+
+    const waitForItemData = async () => {
+        if (!isItemDataLoaded()) {
+            loadctx.setLoading("loadItemData", "Loading item data...");
+            await loadItemData();
+            loadctx.removeLoading("loadItemData");
+        }
+        return;
+    };
 
     useEffect(() => {
         if (!nameParam) return;
@@ -27,9 +37,9 @@ const ProfilePage = (): JSX.Element => {
                 navigate("/players");
                 return;
             }
-            setProfile(res);
+            waitForItemData().then(() => setProfile(res));
         });
-    }, []);
+    }, [nameParam]);
 
     const columDefsPoints: ColumnDef<ApiPointHistoryEntry>[] = [
         {

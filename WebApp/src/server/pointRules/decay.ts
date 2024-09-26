@@ -1,5 +1,5 @@
 import { getDynamicSetting, onDynamicSettingChange, setDynamicSetting } from "../configDynamic";
-import { getConnection } from "../database/database";
+import { generateGuid, getConnection } from "../database/database";
 import { addAuditEntry } from "../database/tableFunctions/audit";
 import { getAllPlayers, updatePlayer } from "../database/tableFunctions/players";
 import { createPointHistoryEntry } from "../database/tableFunctions/pointHistory";
@@ -41,12 +41,15 @@ async function applyDecay(mult: number, rescheduleNext = 0): Promise<boolean> {
             if (updRes.isError) return rollbackThenFalse();
 
             const pointRes = await createPointHistoryEntry(
-                now,
-                player.playerName,
-                change,
-                newPoints,
-                "DECAY",
-                `${decayPctString}`,
+                {
+                    guid: generateGuid(),
+                    timestamp: now,
+                    playerName: player.playerName,
+                    pointChange: change,
+                    newPoints: newPoints,
+                    changeType: "DECAY",
+                    reason: `${decayPctString}`,
+                },
                 conn
             );
             if (pointRes.isError) return rollbackThenFalse();
@@ -92,7 +95,7 @@ async function checkDecay() {
         logger.log("Starting automatic decay application...");
 
         const nextTargetTime = new Date();
-        const distToNextTargetDay = ((nextTargetTime.getDay() + autoDecayDayRes.value) % 7) + 1;
+        const distToNextTargetDay = 7 - (((nextTargetTime.getDay() + autoDecayDayRes.value) % 7) + 1);
         nextTargetTime.setDate(nextTargetTime.getDate() + distToNextTargetDay);
         nextTargetTime.setHours(autoDecayHourRes.value);
         nextTargetTime.setMinutes(0);

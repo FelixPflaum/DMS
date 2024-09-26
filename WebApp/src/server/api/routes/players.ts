@@ -23,7 +23,7 @@ import {
     updatePlayer,
 } from "@/server/database/tableFunctions/players";
 import { createPointHistoryEntry, getPointHistorySearch } from "@/server/database/tableFunctions/pointHistory";
-import { getConnection } from "@/server/database/database";
+import { generateGuid, getConnection } from "@/server/database/database";
 import { getLootHistorySearch } from "@/server/database/tableFunctions/lootHistory";
 import { makeDataBackup } from "@/server/importExport/backup";
 
@@ -185,7 +185,18 @@ playerRouter.post("/pointchange", async (req: Request, res: Response): Promise<v
     const conn = await getConnection();
     try {
         conn.beginTransaction();
-        const phRes = await createPointHistoryEntry(Date.now(), playerName, change, newPoints, "CUSTOM", reason, conn);
+        const phRes = await createPointHistoryEntry(
+            {
+                guid: generateGuid(),
+                timestamp: Date.now(),
+                playerName: playerName,
+                pointChange: change,
+                newPoints: newPoints,
+                changeType: "CUSTOM",
+                reason: reason,
+            },
+            conn
+        );
         if (phRes.isError) return send500Db(res);
         const updRes = await updatePlayer(playerName, { points: newPoints }, conn);
         if (updRes.isError) return send500Db(res);
@@ -205,7 +216,7 @@ playerRouter.post("/pointchange", async (req: Request, res: Response): Promise<v
 
 playerRouter.get("/profile/:name", async (req: Request, res: Response): Promise<void> => {
     const auth = await getAuthFromRequest(req);
-    if (!checkAuth(res, auth, AccPermissions.DATA_VIEW)) return;
+    if (!checkAuth(res, auth)) return;
 
     const playerName = req.params["name"];
     if (!playerName) {
@@ -214,7 +225,11 @@ playerRouter.get("/profile/:name", async (req: Request, res: Response): Promise<
 
     const playerRes = await getPlayer(playerName);
     if (playerRes.isError) return send500Db(res);
-    if (!playerRes.row) return send404(res, "Player not found.pointRes");
+    if (!playerRes.row) return send404(res, "Player not found.");
+
+    if (playerRes.row.account != auth.user.loginId && !auth.hasPermission(AccPermissions.DATA_VIEW)) {
+        return send403(res);
+    }
 
     const pointRes = await getPointHistorySearch({ playerName: playerName }, 100);
     if (pointRes.isError) return send500Db(res);
@@ -231,7 +246,7 @@ playerRouter.get("/profile/:name", async (req: Request, res: Response): Promise<
 
 playerRouter.get("/self", async (req: Request, res: Response): Promise<void> => {
     const auth = await getAuthFromRequest(req);
-    if (!checkAuth(res, auth, AccPermissions.DATA_VIEW)) return;
+    if (!checkAuth(res, auth)) return;
     const playerRes = await getPlayersForAccount(auth.user.loginId);
     if (playerRes.isError) return send500Db(res);
     const list: ApiPlayerEntry[] = playerRes.rows;

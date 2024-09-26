@@ -40,6 +40,7 @@ const ImportLogViewer = ({ log }: { log: ApiImportLogEntry }): JSX.Element => {
         pointHist.push(
             <tr key={p.new.timeStamp + p.new.playerName} className={styles.importLogViewTr}>
                 <td className={styles.importLogViewTd}>{p.new.timeStamp}</td>
+                <td className={styles.importLogViewTd}>{p.new.guid}</td>
                 <td className={styles.importLogViewTd}>{p.new.playerName}</td>
                 <td className={styles.importLogViewTd}>{p.new.change}</td>
                 <td className={styles.importLogViewTd}>{p.new.newPoints}</td>
@@ -92,6 +93,7 @@ const ImportLogViewer = ({ log }: { log: ApiImportLogEntry }): JSX.Element => {
                 <thead>
                     <tr>
                         <th className={styles.importLogViewTh}>Time</th>
+                        <th className={styles.importLogViewTh}>GUID</th>
                         <th className={styles.importLogViewTh}>Name</th>
                         <th className={styles.importLogViewTh}>Change</th>
                         <th className={styles.importLogViewTh}>New</th>

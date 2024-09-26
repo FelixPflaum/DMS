@@ -22,7 +22,7 @@
     display: inline-block;
     margin: 0 0.5em;
     border-left: 2px solid #2f2f2f;
-    border-right: 2px solid #2f2f2f;
+
     padding: 0 0.5em;
 }
 
@@ -36,4 +36,13 @@
 .headerUserName {
     margin-right: 0.5em;
     color: #9b9b9b;
+}
+
+.headerSpacer {
+    display: inline-block;
+    width: 1px;
+    height: 1.5em;
+    background-color: #c4c4c4;
+    vertical-align: middle;
+    margin: 0 0.5em;
 }

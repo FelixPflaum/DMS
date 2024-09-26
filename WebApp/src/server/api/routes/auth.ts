@@ -46,7 +46,7 @@ authRouter.get("/check", async (req: Request, res: Response): Promise<void> => {
         invalidLogin: true,
         user: { userName: "", loginId: "", permissions: 0, lastActivity: 0 },
     };
-    if (auth.user) {
+    if (auth.validLogin && auth.user) {
         apiRes.invalidLogin = false;
         apiRes.user.userName = auth.user.userName;
         apiRes.user.loginId = auth.user.loginId;

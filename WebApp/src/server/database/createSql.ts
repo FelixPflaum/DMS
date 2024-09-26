@@ -30,38 +30,36 @@ export const creationSqlQueries: string[] = [
         FOREIGN KEY (account) REFERENCES users(loginId) ON DELETE SET NULL ON UPDATE CASCADE
     );`,
     `CREATE TABLE pointHistory (
-        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        guid VARCHAR(16) NOT NULL,
         timestamp BIGINT NOT NULL,
         playerName VARCHAR(20) NOT NULL,
         pointChange INT NOT NULL,
         newPoints INT NOT NULL,
         changeType VARCHAR(20) NOT NULL,
         reason VARCHAR(100),
-        PRIMARY KEY (id),
-        UNIQE KEY (timestamp, playerName),
+        PRIMARY KEY (guid),
         KEY (changeType),
         FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE
     );`,
     `CREATE TABLE lootHistory (
-        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        guid VARCHAR(32) NOT NULL,
+        guid VARCHAR(16) NOT NULL,
         timestamp BIGINT NOT NULL,
         playerName VARCHAR(20),
         itemId INT UNSIGNED NOT NULL,
         response VARCHAR(32) NOT NULL,
-        PRIMARY KEY (id),
+        PRIMARY KEY (guid),
         KEY (timestamp),
-        UNIQUE KEY (guid),
         FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE
     );`,
     `CREATE TABLE itemData (
         itemId INT UNSIGNED NOT NULL,
-        itemName VARCHAR(100) NOT NULL,
+        itemName VARCHAR(64) NOT NULL,
         qualityId TINYINT NOT NULL,
+        iconName VARCHAR(64) NOT NULL,
         iconId INT UNSIGNED NOT NULL,
         PRIMARY KEY (itemId),
-        KEY (name),
-        KEY (quality)
+        KEY (itemName),
+        KEY (qualityId)
     );`,
     `CREATE TABLE importLogs (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,

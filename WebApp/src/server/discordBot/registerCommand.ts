@@ -56,7 +56,7 @@ export class RegisterCommand extends BotCommandBase {
         const isAdminId = id == getConfig().adminLoginId;
         if (isAdminId) {
             this.logger.log(`Admin account registration: ${id} - ${name}`);
-            perms = AccPermissions.ALL;
+            perms = AccPermissions.ADMIN;
         }
 
         const insertRes = await addUser(id, name, perms);

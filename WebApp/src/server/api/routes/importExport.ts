@@ -14,7 +14,7 @@ export const importExportRouter = express.Router();
 
 importExportRouter.post("/import", async (req: Request, res: Response): Promise<void> => {
     const auth = await getAuthFromRequest(req);
-    if (!checkAuth(res, auth, AccPermissions.DATA_MANAGE)) return;
+    if (!checkAuth(res, auth, AccPermissions.DATA_IMPORT)) return;
 
     if (!req.body.input) return send400(res, "Invalid input data!");
 

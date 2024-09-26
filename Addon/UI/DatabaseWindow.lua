@@ -637,6 +637,7 @@ local function CreateAddPlayerForm(parent)
 
         local rankDropdown = Env.UI.CreateMSADropdown(addAllRankForm, function(entries)
             local ranks = Env.Guild.rankCache
+            wipe(entries)
             for rankIndex = 0, #ranks do
                 if ranks[rankIndex] then
                     table.insert(entries, { displayText = ranks[rankIndex].name, value = rankIndex })

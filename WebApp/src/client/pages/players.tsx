@@ -21,7 +21,7 @@ const PlayersPage = (): JSX.Element => {
         loadctx.setLoading("fetchPlayers", "Loading player list...");
         apiGet<ApiPlayerListRes>("/api/players/list").then((playersRes) => {
             loadctx.removeLoading("fetchPlayers");
-            if (playersRes.error) alert("Failed to get player list: " + playersRes.error);
+            if (playersRes.error) return alert("Failed to get player list: " + playersRes.error);
             setPlayers(playersRes.list);
         });
     }, []);
@@ -56,8 +56,9 @@ const PlayersPage = (): JSX.Element => {
     const claimPlayer = async (playerEntry: ApiPlayerEntry) => {
         const promptResult = confirm(`Really claim ${playerEntry.playerName}?`);
         if (!promptResult) return;
-
+        loadctx.setLoading("claimplayer", "Claiming character...");
         const res = await apiGet("/api/players/claim/" + playerEntry.playerName);
+        loadctx.removeLoading("claimplayer");
         if (res.error) {
             return alert("Could not claim player: " + res.error);
         }

@@ -24,7 +24,7 @@ type ApiPlayerEntry = {
 };
 
 type ApiPointHistoryEntry = {
-    id: number;
+    guid: string;
     timestamp: number;
     playerName: string;
     pointChange: number;
@@ -34,7 +34,6 @@ type ApiPointHistoryEntry = {
 };
 
 type ApiLootHistoryEntry = {
-    id: number;
     guid: string;
     timestamp: number;
     playerName: string;
@@ -47,6 +46,7 @@ type ApiItemEntry = {
     itemName: string;
     qualityId: number;
     iconName: string;
+    iconId: number;
 };
 
 type ApiResponse = {
@@ -97,6 +97,7 @@ type ApiPointHistoryPageRes = PagedRes<ApiPointHistoryEntry>;
 
 type ApiPointHistorySearchInput = {
     playerName?: string;
+    searchName?: string;
     timeStart?: number;
     timeEnd?: number;
 };
@@ -115,6 +116,7 @@ type ApiLootHistoryPageRes = PagedRes<ApiLootHistoryEntry>;
 
 type LootHistorySearchInput = {
     playerName?: string;
+    searchName?: string;
     timeStart?: number;
     timeEnd?: number;
     response?: string;
@@ -125,6 +127,7 @@ type ApiLootHistorySearchRes = ApiResponse & {
 };
 
 type AddonPointHistoryEntry = {
+    guid: string;
     timeStamp: number; // Unix timestamp
     playerName: string;
     change: number;

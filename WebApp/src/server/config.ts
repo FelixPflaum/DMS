@@ -12,6 +12,8 @@ type ConfigData = {
     dbPass: string;
     dbName: string;
     adminLoginId: string;
+    httpPort: number;
+    hostClient: boolean;
 };
 
 const config: ConfigData = {
@@ -26,6 +28,8 @@ const config: ConfigData = {
     dbPass: "",
     dbName: "",
     adminLoginId: "",
+    httpPort: 9001,
+    hostClient: false,
 };
 let loaded = false;
 

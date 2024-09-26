@@ -120,13 +120,15 @@ async function update(logger: Logger) {
                 if (
                     oldItem.itemName != newItemSparse.Display_lang ||
                     oldItem.qualityId != newItemSparse.OverallQualityID ||
-                    oldItem.iconName != itemIconName
+                    oldItem.iconName != itemIconName ||
+                    oldItem.iconId != itemData.IconFileDataID
                 ) {
                     itemsToUpdate.push({
                         itemId: newItemSparse.ID,
                         itemName: newItemSparse.Display_lang,
                         qualityId: newItemSparse.OverallQualityID,
                         iconName: itemIconName,
+                        iconId: itemData.IconFileDataID,
                     });
                 }
                 break;
@@ -138,6 +140,7 @@ async function update(logger: Logger) {
                 itemName: newItemSparse.Display_lang,
                 qualityId: newItemSparse.OverallQualityID,
                 iconName: itemIconName,
+                iconId: itemData.IconFileDataID,
             });
     }
 
@@ -146,25 +149,30 @@ async function update(logger: Logger) {
     let count = 0;
     for (const iti of itemsToInsert) {
         count++;
-        await queryDb(`INSERT INTO itemData (itemId, itemName, qualityId, iconName) VALUES (?, ?, ?, ?);`, [
+        await queryDb(`INSERT INTO itemData (itemId, itemName, qualityId, iconName, iconId) VALUES (?, ?, ?, ?, ?);`, [
             iti.itemId,
             iti.itemName,
             iti.qualityId,
             iti.iconName,
+            iti.iconId,
         ]);
-        if (count % 100 == 0) logger.log(`Inserted ${count} of ${itemsToInsert.length} items.`);
+        if (count % 2000 == 0) logger.log(`Inserted ${count} of ${itemsToInsert.length} items.`);
     }
+    logger.log(`Inserted ${count} of ${itemsToInsert.length} items.`);
+
     count = 0;
     for (const itu of itemsToUpdate) {
         count++;
-        await queryDb(`UPDATE itemData SET itemName=?, qualityId=?, iconName=? WHERE itemId=?;`, [
+        await queryDb(`UPDATE itemData SET itemName=?, qualityId=?, iconName=?, iconId=? WHERE itemId=?;`, [
             itu.itemName,
             itu.qualityId,
             itu.iconName,
+            itu.iconId,
             itu.itemId,
         ]);
-        if (count % 100 == 0) logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
+        if (count % 2000 == 0) logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
     }
+    logger.log(`Updated ${count} of ${itemsToUpdate.length} items.`);
 
     const setRes = await setSetting("itemDbVersion", currentBuild.toString());
     if (setRes.isError) {

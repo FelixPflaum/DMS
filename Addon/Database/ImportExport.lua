@@ -117,6 +117,7 @@ local function Import(data)
         end
         ---@cast importPointHistory any[]
         local exHist = { ---@type PointHistoryEntry
+            guid = "",
             timeStamp = 1,
             playerName = "",
             change = 1,
@@ -220,6 +221,7 @@ Env.ImportDataFromWeb = Import
 local exportDialog = {
     text = "Export",
     on_cancel = function(self, data, source) end,
+    show_while_dead = true,
     editboxes = {
         {
             on_enter_pressed = EditBox_ClearFocus,
@@ -250,6 +252,7 @@ end)
 local lazyValueCache = nil ---@type string|nil
 local importDialog = {
     text = "Import Database",
+    show_while_dead = true,
     on_cancel = function(self, data, source) end,
     editboxes = {
         {

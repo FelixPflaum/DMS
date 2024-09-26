@@ -11,7 +11,7 @@
         "server:build": "node esbuild.mjs",
         "server:build:watch": "node esbuild.mjs --watch",
         "server:dev": "concurrently -n build,serve \"rimraf ./build/server && npm run server:build:watch\" \"wait-on ./build/server/api.js && nodemon --inspect=8229 --legacy-watch --watch ./build/server ./build/server/api.js ./src/server\"",
-        "check": "eslint --ext \".ts,.tsx\" src/"
+        "check": "eslint --ext \".ts,.tsx\" src/ && tsc --noEmit"
     },
     "author": "Felix Pflaum",
     "dependencies": {

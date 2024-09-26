@@ -32,6 +32,10 @@ export const getLootHistorySearch = (filter: LootHistorySearchInput, limit = 150
         if (typeof filter[k as keyof typeof filter] === "undefined") continue;
         switch (k) {
             case "playerName":
+                wheres.push("playerName=?");
+                values.push(filter[k]!);
+                break;
+            case "searchName":
                 wheres.push("playerName LIKE ?");
                 values.push(`%${filter[k]}%`);
                 break;
@@ -42,6 +46,10 @@ export const getLootHistorySearch = (filter: LootHistorySearchInput, limit = 150
             case "timeEnd":
                 wheres.push("timestamp<?");
                 values.push(filter[k]!);
+                break;
+            case "response":
+                wheres.push("response LIKE ?");
+                values.push(`%${filter[k]}%`);
                 break;
         }
     }

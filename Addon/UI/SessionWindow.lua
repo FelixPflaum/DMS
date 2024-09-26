@@ -94,6 +94,7 @@ local function UpdateShownItem()
 end
 
 local dialogData = {
+    show_while_dead = true,
     text = L["Do you want to abort the loot session?"],
     on_cancel = function(self, data, reason) end,
     buttons = {
@@ -906,6 +907,7 @@ end
 Env:OnAddonLoaded(CreateWindow)
 
 local openDialogData = {
+    show_while_dead = true,
     text = L["A loot session started. Do you want to open the session window?"],
     on_cancel = function(self, data, reason) end,
     buttons = {

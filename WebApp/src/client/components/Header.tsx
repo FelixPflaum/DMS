@@ -20,18 +20,21 @@ const Header = (): JSX.Element => {
         });
     }, []);
 
-    const buttons: ({ text: string; path: string; permission?: AccPermissions } | "|")[] = [
-        { text: "Settings", path: "/settings", permission: AccPermissions.SETTINGS_VIEW },
-        { text: "Auditlog", path: "/audit", permission: AccPermissions.AUDIT_VIEW },
-        { text: "Users", path: "/users", permission: AccPermissions.USERS_VIEW },
-        "|",
-        { text: "Players", path: "/players", permission: AccPermissions.DATA_VIEW },
-        { text: "Sanity History", path: "/pointhistory", permission: AccPermissions.DATA_VIEW },
-        { text: "Loot History", path: "/loothistory", permission: AccPermissions.DATA_VIEW },
-        "|",
-        { text: "Import", path: "/import", permission: AccPermissions.DATA_MANAGE },
-        { text: "Export", path: "/export", permission: AccPermissions.DATA_MANAGE },
-        { text: "Import-Logs", path: "/importlogs", permission: AccPermissions.DATA_MANAGE },
+    const buttons: { link?: { text: string; path: string }; elem?: JSX.Element; permission?: AccPermissions }[] = [
+        { link: { text: "Settings", path: "/settings" }, permission: AccPermissions.SETTINGS_VIEW },
+        { link: { text: "Auditlog", path: "/audit" }, permission: AccPermissions.AUDIT_VIEW },
+        { link: { text: "Users", path: "/users" }, permission: AccPermissions.USERS_VIEW },
+        {
+            elem: <span className={styles.headerSpacer}></span>,
+            permission: AccPermissions.USERS_VIEW | AccPermissions.AUDIT_VIEW | AccPermissions.SETTINGS_VIEW,
+        },
+        { link: { text: "Import", path: "/import" }, permission: AccPermissions.DATA_IMPORT },
+        { link: { text: "Export", path: "/export" } },
+        { link: { text: "Import-Logs", path: "/importlogs" }, permission: AccPermissions.DATA_MANAGE },
+        { elem: <span className={styles.headerSpacer}></span> },
+        { link: { text: "Players", path: "/players" }, permission: AccPermissions.DATA_VIEW },
+        { link: { text: "Sanity History", path: "/pointhistory" }, permission: AccPermissions.DATA_VIEW },
+        { link: { text: "Loot History", path: "/loothistory" }, permission: AccPermissions.DATA_VIEW },
     ];
 
     const charButtons: JSX.Element[] = [];
@@ -51,14 +54,16 @@ const Header = (): JSX.Element => {
 
     const buttonElems: JSX.Element[] = [];
     for (const btn of buttons) {
-        if (typeof btn === "string") {
-            buttonElems.push(<span className={styles.headerSpacer}>{btn}</span>);
-        } else if (!btn.permission || authctx.hasPermission(btn.permission)) {
-            buttonElems.push(
-                <Link key={btn.path} className={styles.headerButton} to={btn.path}>
-                    {btn.text}
-                </Link>
-            );
+        if (!btn.permission || authctx.hasPermission(btn.permission)) {
+            if (btn.elem) {
+                buttonElems.push(btn.elem);
+            } else if (btn.link) {
+                buttonElems.push(
+                    <Link key={btn.link.path} className={styles.headerButton} to={btn.link.path}>
+                        {btn.link.text}
+                    </Link>
+                );
+            }
         }
     }
 

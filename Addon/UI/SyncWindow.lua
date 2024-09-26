@@ -53,6 +53,7 @@ Env.Sync.OnSendProgress:RegisterCallback(function(target, state, sent, total)
 end)
 
 local confirmReceiveDialog = {
+    show_while_dead = true,
     text = "-", -- So height is initialized
     on_cancel = function(self, data, source)
         Env.Sync.RespondToProbe(source, false)

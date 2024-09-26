@@ -37,6 +37,7 @@ end
 local itemsNotRolled = {} ---@type SessionClient_Item[]
 
 local areYouSure = {
+    show_while_dead = true,
     text = L["Do you really want to pass on all open rolls?"],
     on_cancel = function(self, data, reason) end,
     buttons = {

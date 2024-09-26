@@ -25,7 +25,7 @@ const LootHistoryPage = (): JSX.Element => {
         loadctx.setLoading("fetchLootHistory", "Loading history...");
         apiGet<ApiLootHistoryPageRes>("/api/loothistory/page/" + page).then((pageRes) => {
             loadctx.removeLoading("fetchLootHistory");
-            if (pageRes.error) alert("Failed to get loot history page: " + pageRes.error);
+            if (pageRes.error) return alert("Failed to get loot history page: " + pageRes.error);
             setHistoryData({
                 lastPageOffset: pageRes.pageOffset,
                 data: pageRes.entries.concat(historyData.data),

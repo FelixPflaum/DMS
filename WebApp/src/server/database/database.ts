@@ -294,6 +294,7 @@ export const queryDelete = async (table: string, idFields: Record<string, DbData
  * @returns
  */
 export const checkDb = async (): Promise<boolean> => {
+    logger.log("Checking DB...");
     const conn = await pool.getConnection();
     try {
         const [existsRes] = await conn.query<RowDataPacket[]>("SHOW TABLES LIKE 'settings'");
@@ -321,6 +322,8 @@ export const checkDb = async (): Promise<boolean> => {
             }
             await conn.commit();
             logger.log("Database updated!");
+        } else {
+            logger.log("Database up to date.");
         }
 
         await checkAndUpdateItemDb();
@@ -333,4 +336,11 @@ export const checkDb = async (): Promise<boolean> => {
     }
 
     return true;
+};
+
+/**
+ * Generate string in the format <8B time as hex>-<7B random hex>
+ */
+export const generateGuid = (): string => {
+    return `${Math.round(Date.now() / 1000).toString(16)}-${Math.round(Math.random() * 0xfffffff).toString(16)}`;
 };

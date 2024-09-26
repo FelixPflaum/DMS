@@ -1,4 +1,4 @@
-import type { PointChangeType, ApiPointHistorySearchInput } from "@/shared/types";
+import type { ApiPointHistorySearchInput } from "@/shared/types";
 import type { DbDataValue, DbInsertCheckedResult, DbRowsResult } from "../database";
 import { queryInsertChecked, querySelect } from "../database";
 import type { PointHistoryRow } from "../types";
@@ -35,6 +35,10 @@ export const getPointHistorySearch = (
         if (typeof filter[k as keyof typeof filter] === "undefined") continue;
         switch (k) {
             case "playerName":
+                wheres.push("playerName=?");
+                values.push(filter[k]!);
+                break;
+            case "searchName":
                 wheres.push("playerName LIKE ?");
                 values.push(`%${filter[k]}%`);
                 break;
@@ -65,20 +69,14 @@ export const getPointHistorySearch = (
  * @param accountId
  * @returns
  */
-export const createPointHistoryEntry = (
-    timestamp: number,
-    playerName: string,
-    pointChange: number,
-    newPoints: number,
-    changeType: PointChangeType,
-    reason?: string,
-    conn?: PoolConnection
-): Promise<DbInsertCheckedResult> => {
+export const createPointHistoryEntry = (data: PointHistoryRow, conn?: PoolConnection): Promise<DbInsertCheckedResult> => {
     const nonIdFields: Record<string, DbDataValue> = {
-        pointChange: pointChange,
-        newPoints: newPoints,
-        changeType: changeType,
+        pointChange: data.pointChange,
+        newPoints: data.newPoints,
+        changeType: data.changeType,
+        timestamp: data.timestamp,
+        playerName: data.playerName,
     };
-    if (reason) nonIdFields.reason = reason;
-    return queryInsertChecked("pointHistory", { timestamp: timestamp, playerName: playerName }, nonIdFields, conn);
+    if (data.reason) nonIdFields.reason = data.reason;
+    return queryInsertChecked("pointHistory", { guid: data.guid }, nonIdFields, conn);
 };

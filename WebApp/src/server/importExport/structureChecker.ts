@@ -17,6 +17,7 @@ const playerItemDef: DataCheckDef = {
 
 const pointHistoryItemDef: DataCheckDef = {
     needsFields: {
+        guid: { type: "string" },
         timeStamp: { type: "number" },
         playerName: { type: "string" },
         change: { type: "number" },

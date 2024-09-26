@@ -89,6 +89,7 @@ export const createExportForAddon = async (minTimestamp = 0): Promise<string | u
         }
         for (const p of exportData.pointHistory) {
             apiExport.pointHistory.push({
+                guid: p.guid,
                 timeStamp: toSecondsTimeStamp(p.timestamp),
                 playerName: p.playerName,
                 change: p.pointChange,
