@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { SpamCheck } from "../SpamCheck";
+import { SpamCheck } from "../spamCheck";
 import { getUserDataFromOauthCode } from "../../discordApi";
 import { generateLoginToken, getAuthFromRequest, TOKEN_LIFETIME } from "../auth";
 import { send500Db, send401, send400, send500, send429, sendApiResponse, checkAuth } from "../util";
