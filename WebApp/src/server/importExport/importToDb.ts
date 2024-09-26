@@ -63,7 +63,7 @@ async function updateLootHistory(conn: PoolConnection, history: AddonLootHistory
     const log: ImportLog["lootHistory"] = [];
     const oldestImport = getOldest(history) * 1000; // Addon is seconds timestamps
 
-    const [dbHistory] = (await conn.query<RowDataPacket[]>(`SELECT * FROM loothistory WHERE timestamp>=?;`, [
+    const [dbHistory] = (await conn.query<RowDataPacket[]>(`SELECT * FROM lootHistory WHERE timestamp>=?;`, [
         oldestImport,
     ])) as [LootHistoryRow[], FieldPacket[]];
 
@@ -75,7 +75,7 @@ async function updateLootHistory(conn: PoolConnection, history: AddonLootHistory
     for (const importEntry of history) {
         if (dict[importEntry.guid]) continue;
         await conn.query(
-            "INSERT INTO `loothistory` (`guid`, `timestamp`, `playerName`, `itemId`, `response`) VALUES (?, ?, ?, ?, ?);",
+            "INSERT INTO `lootHistory` (`guid`, `timestamp`, `playerName`, `itemId`, `response`) VALUES (?, ?, ?, ?, ?);",
             [
                 importEntry.guid,
                 importEntry.timeStamp * 1000,
@@ -97,7 +97,7 @@ async function updatePointHistory(
     const log: ImportLog["pointHistory"] = [];
     const oldestImport = getOldest(history) * 1000; // Addon is seconds timestamps
 
-    const [dbHistory] = (await conn.query<RowDataPacket[]>(`SELECT * FROM pointhistory WHERE timestamp>=?;`, [
+    const [dbHistory] = (await conn.query<RowDataPacket[]>(`SELECT * FROM pointHistory WHERE timestamp>=?;`, [
         oldestImport,
     ])) as [PointHistoryRow[], FieldPacket[]];
 
@@ -137,7 +137,7 @@ async function updatePointHistory(
 export const importAddonExport = async (data: AddonExport): Promise<{ error?: string; log?: ImportLog }> => {
     const conn = await getConnection();
     try {
-        conn.query("LOCK TABLES players WRITE, pointHistory WRITE, loothistory WRITE;");
+        conn.query("LOCK TABLES players WRITE, pointHistory WRITE, lootHistory WRITE;");
         conn.beginTransaction();
 
         const backupSuccess = await makeDataBackup(conn, 0, "before_addon_import");
@@ -179,7 +179,7 @@ export const importDataExport = async (data: DataExport): Promise<boolean> => {
     };
 
     try {
-        conn.query("LOCK TABLES players WRITE, pointHistory WRITE, loothistory WRITE;");
+        conn.query("LOCK TABLES players WRITE, pointHistory WRITE, lootHistory WRITE;");
         conn.beginTransaction();
 
         const backupSuccess = await makeDataBackup(conn, 0, "before_data_import");
@@ -187,7 +187,7 @@ export const importDataExport = async (data: DataExport): Promise<boolean> => {
 
         await conn.query("DELETE FROM players;");
         await conn.query("DELETE FROM pointHistory;");
-        await conn.query("DELETE FROM loothistory;");
+        await conn.query("DELETE FROM lootHistory;");
 
         for (const player of data.players) {
             const res = await createPlayer(player.playerName, player.classId, player.points, player.account, conn);

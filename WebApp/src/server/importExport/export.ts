@@ -27,11 +27,11 @@ export type DataExport = {
  */
 export const createDataExport = async (conn: PoolConnection, minTimestamp = 0): Promise<DataExport> => {
     const [players, _fp] = (await conn.query("SELECT * FROM players")) as [PlayerRow[], FieldPacket[]];
-    const [pointHistory, _fp2] = (await conn.query("SELECT * FROM pointhistory WHERE timestamp>?;", [minTimestamp])) as [
+    const [pointHistory, _fp2] = (await conn.query("SELECT * FROM pointHistory WHERE timestamp>?;", [minTimestamp])) as [
         PointHistoryRow[],
         FieldPacket[],
     ];
-    const [lootHistory, _fp3] = (await conn.query("SELECT * FROM loothistory WHERE timestamp>?;", [minTimestamp])) as [
+    const [lootHistory, _fp3] = (await conn.query("SELECT * FROM lootHistory WHERE timestamp>?;", [minTimestamp])) as [
         LootHistoryRow[],
         FieldPacket[],
     ];
