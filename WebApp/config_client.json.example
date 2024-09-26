@@ -1,3 +1,4 @@
 {
-    "discordClientId": ""
+    "discordClientId": "",
+    "discordRedirectUrl": ""
 }

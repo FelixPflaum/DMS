@@ -9,6 +9,7 @@ export type ConfigDataDynamic = {
     nextAutoDecay: number;
     autoDecayDay: number;
     autoDecayHour: number;
+    discordAllowedRoles: string[];
 };
 
 const logger = new Logger("DynSettings");
@@ -18,6 +19,7 @@ const defaults: ConfigDataDynamic = {
     nextAutoDecay: 0,
     autoDecayDay: 3,
     autoDecayHour: 4,
+    discordAllowedRoles: ["Admin", "Test123"],
 };
 
 const callbacks: Partial<Record<keyof ConfigDataDynamic, (() => void)[]>> = {};
@@ -47,6 +49,14 @@ export const initSettings = async (): Promise<boolean> => {
  * @returns
  */
 export const checkValueType = <T extends keyof ConfigDataDynamic>(key: T, value: unknown): value is ConfigDataDynamic[T] => {
+    if (Array.isArray(defaults[key])) {
+        if (!Array.isArray(value)) return false;
+        const elemType = typeof defaults[key][0];
+        for (const v of value) {
+            if (typeof v !== elemType) return false;
+        }
+        return true;
+    }
     return typeof value === typeof defaults[key];
 };
 

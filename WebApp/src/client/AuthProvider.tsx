@@ -116,7 +116,7 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
                 <div className="centered">
                     <a
                         className="loginButton"
-                        href={`https://discord.com/oauth2/authorize?client_id=${config.discordClientId}&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A9000&scope=identify`}
+                        href={`https://discord.com/oauth2/authorize?client_id=${config.discordClientId}&response_type=code&redirect_uri=${encodeURIComponent(config.discordRedirectUrl)}&scope=identify`}
                     >
                         Login with Discord
                     </a>

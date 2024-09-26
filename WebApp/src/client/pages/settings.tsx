@@ -9,6 +9,7 @@ import StaticFormRow from "../components/form/StaticFormRow";
 import styles from "../styles/pageSettings.module.css";
 import DateTimeInput from "../components/form/DateTimeInput";
 import FileList from "../components/fileList/FileList";
+import StringArrayInput from "../components/form/StringArrayInput";
 
 const SettingsPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -27,7 +28,7 @@ const SettingsPage = (): JSX.Element => {
         });
     }, []);
 
-    const onInputChange = (key: string, val: string | number) => {
+    const onInputChange = (key: string, val: string | number | string[]) => {
         if (!currentSettings) return;
         if (!(key in currentSettings)) return;
         const newSettings = { ...currentSettings };
@@ -42,7 +43,18 @@ const SettingsPage = (): JSX.Element => {
             const val = currentSettings[key];
             const isChanged = val != loadedSettings[key];
             const addedClass = isChanged ? styles.changedInput : "";
-            if (key == "nextAutoDecay") {
+            if (Array.isArray(val)) {
+                rows.push(
+                    <StringArrayInput
+                        customInputClass={addedClass}
+                        key={key}
+                        label={key}
+                        onChangeKey={key}
+                        value={val}
+                        onChange={onInputChange}
+                    ></StringArrayInput>
+                );
+            } else if (key == "nextAutoDecay") {
                 rows.push(
                     <DateTimeInput
                         customInputClass={addedClass}

@@ -4,6 +4,7 @@ import { getConfig } from "../config";
 import { AccPermissions } from "@/shared/permissions";
 import { addUser } from "../database/tableFunctions/users";
 import { addAuditEntry } from "../database/tableFunctions/audit";
+import { getDynamicSetting } from "../configDynamic";
 
 export class RegisterCommand extends BotCommandBase {
     constructor() {
@@ -33,8 +34,10 @@ export class RegisterCommand extends BotCommandBase {
             return;
         }
 
+        const roleSettingRes = await getDynamicSetting("discordAllowedRoles");
+        if (roleSettingRes.dbError || !roleSettingRes.value) return;
+        const allwoedRoles = roleSettingRes.value;
         const hasValidRole = member.roles.cache.some((role) => {
-            const allwoedRoles = getConfig().discordAllowedRoles;
             for (const allowed of allwoedRoles) {
                 if (allowed == role.name) return true;
             }
