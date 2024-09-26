@@ -13,6 +13,7 @@ type ConfigData = {
     dbName: string;
     adminLoginId: string;
     httpPort: number;
+    httpOnlyLocal: boolean;
     hostClient: boolean;
 };
 
@@ -29,6 +30,7 @@ const config: ConfigData = {
     dbName: "",
     adminLoginId: "",
     httpPort: 9001,
+    httpOnlyLocal: true,
     hostClient: false,
 };
 let loaded = false;

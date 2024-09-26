@@ -9,7 +9,8 @@ import { initSettings } from "./configDynamic.ts";
 import { startDecayCheck } from "./pointRules/decay.ts";
 
 const logger = new Logger("Server");
-const port = 9001;
+const port = getConfig().httpPort;
+const localOnly = getConfig().httpOnlyLocal;
 const server = createServer();
 server.on("request", apiApp);
 server.setTimeout(30 * 1000);
@@ -31,9 +32,15 @@ async function start() {
     bot.registerCommand(new RegisterCommand());
     bot.connect();
 
-    server.listen(port, () => {
-        logger.log(`Started. Listening on port ${port}.`);
-    });
+    if (localOnly) {
+        server.listen(port, "localhost", () => {
+            logger.log(`Started. Listening on localhost port ${port}.`);
+        });
+    } else {
+        server.listen(port, () => {
+            logger.log(`Started. Listening on port ${port}.`);
+        });
+    }
 }
 
 start();
