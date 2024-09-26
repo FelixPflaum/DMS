@@ -6,6 +6,7 @@ import { generateLoginToken, getAuthFromRequest, TOKEN_LIFETIME } from "../auth"
 import { send500Db, send401, send400, send500, send429, sendApiResponse, checkAuth } from "../util";
 import type { ApiAuthRes, ApiAuthUserRes } from "@/shared/types";
 import { getUser, updateUser } from "@/server/database/tableFunctions/users";
+import { getSetting } from "@/server/database/tableFunctions/settings";
 
 export const authRouter = express.Router();
 const authSpamCheck = new SpamCheck(2, 60000);
@@ -45,6 +46,7 @@ authRouter.get("/check", async (req: Request, res: Response): Promise<void> => {
     const apiRes: ApiAuthUserRes = {
         invalidLogin: true,
         user: { userName: "", loginId: "", permissions: 0, lastActivity: 0 },
+        itemDbVer: 0,
     };
     if (auth.validLogin && auth.user) {
         apiRes.invalidLogin = false;
@@ -52,6 +54,10 @@ authRouter.get("/check", async (req: Request, res: Response): Promise<void> => {
         apiRes.user.loginId = auth.user.loginId;
         apiRes.user.permissions = auth.user.permissions;
         apiRes.user.lastActivity = auth.user.lastActivity;
+
+        const itemDbVer = await getSetting("itemDbVersion");
+        if (itemDbVer.isError) return send500Db(res);
+        apiRes.itemDbVer = parseInt(itemDbVer.row?.svalue ?? "0") || 0;
     }
     sendApiResponse(res, apiRes);
 });

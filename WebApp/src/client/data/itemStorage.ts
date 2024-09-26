@@ -1,37 +1,50 @@
 import type { ApiItemEntry, ApiItemListRes } from "@/shared/types";
 import { apiGet } from "../serverApi";
 
-// TODO: invalidate this on login if needed
+// TODO: make this not suck this much
 
-let itemStorage: Record<number, ApiItemEntry> = {};
+type ItemStorage = {
+    version: number;
+    items: Record<number, ApiItemEntry>;
+};
+
+const itemStorage: ItemStorage = {
+    items: {},
+    version: 0,
+};
+
 let wasLoaded = false;
 let isLoadingPromise: Promise<boolean> | undefined;
 
 function loadFromLocalStorage(): boolean {
     const data = window.localStorage.getItem("itemData");
     if (data) {
-        itemStorage = JSON.parse(data) as Record<number, ApiItemEntry>;
+        const ld = JSON.parse(data) as ItemStorage;
+        itemStorage.items = ld.items;
+        itemStorage.version = ld.version;
         wasLoaded = true;
         return true;
     }
     return false;
 }
+loadFromLocalStorage();
 
 /**
  * Check if item data is loaded.
+ * @param version If set only return true if data was loaded and its version is same or higher.
  * @returns
  */
-export const isItemDataLoaded = (): boolean => {
-    return wasLoaded;
+export const isItemDataLoaded = (version?: number): boolean => {
+    return wasLoaded && (!version || version <= itemStorage.version);
 };
 
 /**
  * Load item data from API.
+ * @param newVersion If set and larger than 0 will only load data if local version is older.
  * @returns true if data was loaded successfully, false otherwise.
  */
 export const loadItemData = async (): Promise<boolean> => {
     if (isLoadingPromise) return await isLoadingPromise;
-    if (loadFromLocalStorage()) return true;
 
     let resolver: (value: boolean) => void;
     isLoadingPromise = new Promise((res) => {
@@ -46,8 +59,9 @@ export const loadItemData = async (): Promise<boolean> => {
     }
 
     for (const item of itemData.list) {
-        itemStorage[item.itemId] = item;
+        itemStorage.items[item.itemId] = item;
     }
+    itemStorage.version = itemData.version;
 
     wasLoaded = true;
     window.localStorage.setItem("itemData", JSON.stringify(itemStorage));
@@ -62,7 +76,7 @@ export const loadItemData = async (): Promise<boolean> => {
  * @returns
  */
 export const getItemData = (itemId: number): ApiItemEntry | undefined => {
-    return itemStorage[itemId];
+    return itemStorage.items[itemId];
 };
 
 /**

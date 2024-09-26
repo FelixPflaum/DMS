@@ -61,6 +61,7 @@ type ApiAuthRes = ApiResponse & {
 type ApiAuthUserRes = ApiResponse & {
     invalidLogin: boolean;
     user: ApiUserEntry;
+    itemDbVer: number;
 };
 
 type PagedRes<T> = ApiResponse & {
@@ -215,6 +216,7 @@ type ApiMakeBackupRes = ApiResponse & { file: string };
 
 type ApiItemListRes = ApiResponse & {
     list: ApiItemEntry[];
+    version: number;
 };
 
 type ApiPlayerRes = ApiResponse & {

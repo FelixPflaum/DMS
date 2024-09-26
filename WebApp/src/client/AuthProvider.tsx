@@ -3,6 +3,7 @@ import { config } from "./config";
 import { apiGet, apiPost } from "./serverApi";
 import type { ApiAuthRes, ApiAuthUserRes, ApiUserEntry } from "@/shared/types";
 import { AccPermissions } from "@/shared/permissions";
+import { isItemDataLoaded, loadItemData } from "./data/itemStorage";
 
 type AuthContextType = {
     user: ApiUserEntry | null;
@@ -49,6 +50,12 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
             logout();
         } else {
             setUser(data.user);
+
+            // TODO: move this somewhere else
+            if (!isItemDataLoaded(data.itemDbVer)) {
+                console.log("Loading new item data...");
+                loadItemData().then(() => console.log("Item data loaded!"));
+            }
         }
         setAuthStatus("");
     };
