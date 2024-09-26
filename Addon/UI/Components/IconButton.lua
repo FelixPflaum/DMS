@@ -39,7 +39,7 @@ end
 
 ---Show or hide status texture overlay.
 ---@param self IconButon
----@param status "checked"|"roll"|nil
+---@param status "checked"|"roll"|"trash"|nil
 local function ShowStatus(self, status)
     if not status then
         self.OverlayTexStatus:Hide()
@@ -50,6 +50,8 @@ local function ShowStatus(self, status)
         tex = GetImagePath("check_shadow.png")
     elseif status == "roll" then
         tex = GetImagePath("icon_die_trans80.png")
+    elseif status == "trash" then
+        tex = GetImagePath("bars.png")
     end
     self.OverlayTexStatus:SetTexture(tex)
     self.OverlayTexStatus:Show()

@@ -176,6 +176,8 @@ local function UpdateItemSelect()
             btn:ShowStatus("checked")
         elseif item.endTime > time() then
             btn:ShowStatus("roll")
+        elseif item.isGarbage then
+            btn:ShowStatus("trash")
         else
             btn:ShowStatus()
         end
@@ -200,6 +202,15 @@ local function Script_StopRollClick()
     if stoppedItem then
         local _, itemLink = C_Item.GetItemInfo(stoppedItem.itemId)
         Host:SendMessageToTargetChannel(L["Stopped roll for item %s!"]:format(itemLink))
+    end
+end
+
+local function Script_MarkGarbage()
+    if not IsHosting() or not selectedItemGuid then return end
+    local errMsg = Host:TrashItem(selectedItemGuid)
+    MSA_CloseDropDownMenus()
+    if errMsg then
+        Env:PrintError(errMsg)
     end
 end
 
@@ -423,6 +434,14 @@ do
                 info.disabled = isAwarded
                 info.value = "CHANGE_CHOICE"
                 MSA_DropDownMenu_AddButton(info, level)
+
+                if not item.awarded and not item.isGarbage then
+                    wipe(info)
+                    info.text = "|cFF9f9935" .. L["Mark as garbage"] .. "|r"
+                    info.notCheckable = true
+                    info.func = Script_MarkGarbage
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
             else
                 Env:PrintError("Item could not be found when opening context menu!")
             end

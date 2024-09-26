@@ -55,6 +55,7 @@ local MakeGuid = Env.Database.GenerateHistGuid
 ---@field roller UniqueRoller
 ---@field responses table<string, SessionHost_ItemResponse>
 ---@field awarded SessionHost_ItemAwardData?
+---@field markedGarbage boolean
 
 ---@class (exact) SessionHost
 ---@field guid string
@@ -453,6 +454,23 @@ local function MakePointsSnapshot(item)
     return ss
 end
 
+---Mark item as garbage.
+---@param itemGuid string
+---@return string? error
+function Host:TrashItem(itemGuid)
+    local item = items[itemGuid]
+    if not item then return L["Invalid item guid!"] end
+    if item.awarded then return end
+    -- if item.endTime > time() then return L["Item is still being rolled for, not everyone responded!"] end
+    self:DoForEachRelatedItem(item, true, function(relatedItem, isThis)
+        if not relatedItem.markedGarbage then
+            relatedItem.markedGarbage = true;
+            Comm.Send.HMSG_ITEM_UPDATE(relatedItem)
+        end
+    end)
+    UnveilNextItem();
+end
+
 ---Award item to a candidate.
 ---@param itemGuid string
 ---@param candidateName string
@@ -604,14 +622,14 @@ function UnveilNextItem()
 
     for _, item in ipairs(orderedItem) do
         if not item.veiled then
-            if not item.awarded then
+            if not item.awarded and not item.markedGarbage then
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
                 return
             end
         else
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
-            Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
+            Comm.Send.HMSG_ITEM_UPDATE(item)
 
             if not item.parentGuid then
                 for _, v in pairs(item.responses) do
@@ -623,13 +641,13 @@ function UnveilNextItem()
                         if childItem.veiled then
                             LogDebug("Unveil child item because parent was unveiled", childGuid)
                             childItem.veiled = false
-                            Comm.Send.HMSG_ITEM_UNVEIL(childItem.guid)
+                            Comm.Send.HMSG_ITEM_UPDATE(childItem)
                         end
                     end
                 end
             end
 
-            if not item.awarded then
+            if not item.awarded and not item.markedGarbage then
                 LogDebug("Unveiled item is the next to be awarded, not unveiling more.")
                 return
             end
@@ -705,6 +723,7 @@ function Host:ItemAdd(itemId)
             responses = parentItem.responses,
             roller = parentItem.roller,
             parentGuid = parentItem.guid,
+            markedGarbage = parentItem.markedGarbage,
         }
 
         table.insert(parentItem.childGuids, item.guid)
@@ -719,6 +738,7 @@ function Host:ItemAdd(itemId)
             status = "waiting",
             responses = {},
             roller = Env:NewUniqueRoller(),
+            markedGarbage = false,
         }
 
         for name, candidate in pairs(candidates) do
@@ -746,7 +766,7 @@ function Host:ItemAdd(itemId)
 
     if parentItem then
         if not parentItem.veiled then
-            Comm.Send.HMSG_ITEM_UNVEIL(item.guid)
+            Comm.Send.HMSG_ITEM_UPDATE(item)
         end
     else
         UnveilNextItem()

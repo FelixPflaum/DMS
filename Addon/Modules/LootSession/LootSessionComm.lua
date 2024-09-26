@@ -14,11 +14,11 @@ local OPCODES = {
     HMSG_CANDIDATE_UPDATE = 3,
     HMSG_ITEM_ANNOUNCE = 4,
     HMSG_ITEM_RESPONSE_UPDATE = 5,
-    HMSG_ITEM_UNVEIL = 6,
     HMSG_ITEM_ROLL_END = 7,
     HMSG_ITEM_AWARD_UPDATE = 8,
     HMSG_KEEPALIVE = 9,
     HMSG_SESSION_START_RESEND = 10,
+    HMSG_ITEM_UPDATE = 11,
 
     MAX_HMSG = 99,
 
@@ -542,45 +542,55 @@ do
     end
 end
 
--- HMSG_ITEM_UNVEIL
+-- HMSG_ITEM_UPDATE
 do
-    ---@type table<string,boolean>
+    ---@class (exact) Packet_HMSG_ITEM_UPDATE
+    ---@field guid string
+    ---@field isVeiled boolean
+    ---@field isGarbage boolean
+
+    ---@type table<string,Packet_HMSG_ITEM_UPDATE>
     local nextSend = {}
 
     local function SendUpdateBatch()
-        local packet = {} ---@type string[]
-        for itemGuid in pairs(nextSend) do
-            table.insert(packet, itemGuid)
+        local packet = {} ---@type Packet_HMSG_ITEM_UPDATE[]
+        for _, pck in pairs(nextSend) do
+            table.insert(packet, pck)
         end
         wipe(nextSend)
-        LogDebugHtC("Sending batched HMSG_ITEM_UNVEIL, items:", #packet)
-        SendToClients(OPCODES.HMSG_ITEM_UNVEIL, packet)
+        LogDebugHtC("Sending batched HMSG_ITEM_UPDATE, items:", #packet)
+        SendToClients(OPCODES.HMSG_ITEM_UPDATE, packet)
     end
 
-    ---@param itemGuid string
+    ---@param item SessionHost_Item
     ---@param doNotBatch? boolean Do not batch and send immediately.
-    function Sender.HMSG_ITEM_UNVEIL(itemGuid, doNotBatch)
+    function Sender.HMSG_ITEM_UPDATE(item, doNotBatch)
+        local pck = { ---@type Packet_HMSG_ITEM_UPDATE
+            guid = item.guid,
+            isVeiled = item.veiled,
+            isGarbage = item.markedGarbage
+        }
         if doNotBatch then
-            ---@type string[]
-            local singel = { itemGuid }
-            SendToClients(OPCODES.HMSG_ITEM_UNVEIL, singel)
+            ---@type Packet_HMSG_ITEM_UPDATE[]
+            local singel = { pck }
+            SendToClients(OPCODES.HMSG_ITEM_UPDATE, singel)
             return
         end
 
-        nextSend[itemGuid] = true
-        batchTimers:StartUnique("HMSG_ITEM_UNVEIL", 0.2, SendUpdateBatch, nil, true)
+        nextSend[item.guid] = pck
+        batchTimers:StartUnique("HMSG_ITEM_UPDATE", 0.2, SendUpdateBatch, nil, true)
     end
 
-    ---@class CommEvent_HMSG_ITEM_UNVEIL
-    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_UNVEIL, cb:fun(itemGuid:string, sender:string))
-    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_UNVEIL, itemGuid:string, sender:string)
-    Events.HMSG_ITEM_UNVEIL = Env:NewEventEmitter()
+    ---@class CommEvent_HMSG_ITEM_UPDATE
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_ITEM_UPDATE, cb:fun(data:Packet_HMSG_ITEM_UPDATE, sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_ITEM_UPDATE, data:Packet_HMSG_ITEM_UPDATE, sender:string)
+    Events.HMSG_ITEM_UPDATE = Env:NewEventEmitter()
 
-    messageFilter[OPCODES.HMSG_ITEM_UNVEIL] = FilterReceivedOnClient
-    messageHandler[OPCODES.HMSG_ITEM_UNVEIL] = function(data, sender)
-        ---@cast data string[]
-        for _, itemGuid in pairs(data) do
-            Events.HMSG_ITEM_UNVEIL:Trigger(itemGuid, sender)
+    messageFilter[OPCODES.HMSG_ITEM_UPDATE] = FilterReceivedOnClient
+    messageHandler[OPCODES.HMSG_ITEM_UPDATE] = function(data, sender)
+        ---@cast data Packet_HMSG_ITEM_UPDATE[]
+        for _, pck in pairs(data) do
+            Events.HMSG_ITEM_UPDATE:Trigger(pck, sender)
         end
     end
 end

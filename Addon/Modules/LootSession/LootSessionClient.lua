@@ -46,6 +46,7 @@ end
 ---@field childGuids string[]|nil
 ---@field responses table<string, SessionClient_ItemResponse>
 ---@field awarded SessionClient_ItemAwardData?
+---@field isGarbage boolean
 
 ---@class (exact) SessionClient
 ---@field guid string
@@ -191,10 +192,12 @@ Comm.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
     Client.OnItemUpdate:Trigger(item, false)
 end)
 
-Comm.Events.HMSG_ITEM_UNVEIL:RegisterCallback(function(itemGuid, sender)
-    local item = Client.items[itemGuid]
+Comm.Events.HMSG_ITEM_UPDATE:RegisterCallback(function(data, sender)
+    local item = Client.items[data.guid]
     if not item then return end
-    item.veiled = false
+    item.veiled = data.isVeiled
+    item.isGarbage = data.isGarbage
+    LogDebug("item update", tostring(item.veiled), tostring(item.isGarbage))
     Client.OnItemUpdate:Trigger(item, false)
 end)
 
@@ -339,6 +342,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
         endTime = data.endTime,
         responses = {},
         responseSent = false,
+        isGarbage = false,
     }
 
     local gearBuffer = gearReceivedBuffer[newItem.guid]
@@ -393,6 +397,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)
         responses = parentIitem.responses,
         responseSent = false,
         parentGuid = parentIitem.guid,
+        isGarbage = false,
     }
 
     parentIitem.childGuids = parentIitem.childGuids or {}
