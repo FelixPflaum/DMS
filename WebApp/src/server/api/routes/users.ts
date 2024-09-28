@@ -147,7 +147,7 @@ userRouter.post("/create", async (req: Request, res: Response): Promise<void> =>
     if (!userName) return send400(res, "Invalid name.");
     if (typeof permissions !== "number") return send400(res, "Invalid permissions.");
 
-    if (auth.hasPermission(permissions)) {
+    if (!auth.hasPermission(permissions)) {
         return send403(res, "Can't set missing permissions.");
     }
 
