@@ -9,6 +9,7 @@ const TextInput = ({
     customInputClass,
     required,
     minLen,
+    maxLen,
 }: {
     label: string;
     inputRef?: React.RefObject<HTMLInputElement>;
@@ -18,6 +19,7 @@ const TextInput = ({
     customInputClass?: string;
     required?: boolean;
     minLen?: number;
+    maxLen?: number;
 }): JSX.Element => {
     const classes = [styles.input];
     if (customInputClass) classes.push(customInputClass);
@@ -37,6 +39,7 @@ const TextInput = ({
                 ref={inputRef}
                 required={required}
                 minLength={minLen}
+                maxLength={maxLen}
                 value={value}
                 onChange={_onChange}
             ></input>

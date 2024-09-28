@@ -11,9 +11,11 @@ import DateTimeInput from "../components/form/DateTimeInput";
 import FileList from "../components/fileList/FileList";
 import StringArrayInput from "../components/form/StringArrayInput";
 import PermissionInput from "../components/form/PermissionInput";
+import { useToaster } from "../components/toaster/Toaster";
 
 const SettingsPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const [loadedSettings, setLoadedSettings] = useState<ApiDynSettings | undefined>();
     const [currentSettings, setCurrentSettings] = useState<ApiDynSettings | undefined>();
     const submitBtnRef = useRef<HTMLButtonElement>(null);
@@ -128,9 +130,13 @@ const SettingsPage = (): JSX.Element => {
         apiPost("/api/settings/set", setReq).then((res) => {
             loadctx.removeLoading("setsettings");
             if (res.error) {
-                alert("Updating settings failed: " + res.error);
+                toaster.addToast("Settings Update Failed", res.error, "error");
             } else {
-                alert("Settings updated.");
+                toaster.addToast(
+                    "Settings Updated",
+                    `Updated settngs: ${setReq.changes.map((v) => v.key).join(", ")}`,
+                    "success"
+                );
                 setLoadedSettings({ ...currentSettings });
             }
         });
@@ -161,10 +167,10 @@ const SettingsPage = (): JSX.Element => {
         apiPost<ApiMakeBackupRes>("/api/backup/make", {}).then((res) => {
             loadctx.removeLoading("makemackup");
             if (res.error) {
-                alert("Could not create backup: " + res.error);
+                toaster.addToast("Creating Backup Failed", res.error, "error");
                 return;
             }
-            alert("Backup created: " + res.file);
+            toaster.addToast("Backup Created", res.file, "success");
         });
     };
 
@@ -179,10 +185,14 @@ const SettingsPage = (): JSX.Element => {
             apiPost("/api/backup/apply", { path: selectedBackup }).then((res) => {
                 loadctx.removeLoading("applybackup");
                 if (res.error) {
-                    alert("Backup import failed: " + res.error);
+                    toaster.addToast("Backup Import Failed", res.error, "error");
                     return;
                 }
-                alert("Backup applied!");
+                toaster.addToast(
+                    "Backup Applied",
+                    `Data from backup ${selectedBackup[selectedBackup.length - 1]} was loaded.`,
+                    "success"
+                );
                 setSelectedBackup(undefined);
             });
         }
@@ -192,7 +202,7 @@ const SettingsPage = (): JSX.Element => {
         loadctx.setLoading("fetchbackuplist", "Loading backup list...");
         apiGet<ApiBackupListRes>("/api/backup/list/" + backupPath.join("/")).then((res) => {
             loadctx.removeLoading("fetchbackuplist");
-            if (res.error) return alert("Failed to get backup list: " + res.error);
+            if (res.error) return toaster.addToast("Loading Backup List Failed", res.error, "error");
             setBackupList(res.list);
         });
     }, [backupPath]);

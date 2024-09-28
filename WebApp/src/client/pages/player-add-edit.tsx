@@ -8,9 +8,11 @@ import { apiGet, apiPost } from "../serverApi";
 import type { ApiPlayerEntry, ApiPlayerRes } from "@/shared/types";
 import PointChangeForm from "../components/PointChangeForm";
 import StaticFormRow from "../components/form/StaticFormRow";
+import { useToaster } from "../components/toaster/Toaster";
 
 const PlayerAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const [searchParams, _setSearchParams] = useSearchParams();
     const [player, setPlayer] = useState<ApiPlayerEntry | undefined>();
     const navigate = useNavigate();
@@ -30,7 +32,7 @@ const PlayerAddEditPage = (): JSX.Element => {
         apiGet<ApiPlayerRes>("/api/players/player/" + nameParam).then((res) => {
             loadctx.removeLoading("fetchplayer");
             if (res.error) {
-                alert("Error: " + res.error);
+                toaster.addToast("Loading Player Failed", res.error, "error");
                 navigate("/players");
                 return;
             }
@@ -65,18 +67,18 @@ const PlayerAddEditPage = (): JSX.Element => {
             apiPost("/api/players/update/" + nameValue, body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes.error) {
-                    alert("Failed to update player: " + updateRes.error);
+                    toaster.addToast("Updating Player Failed", updateRes.error, "error");
                 } else {
-                    alert("player updated.");
+                    toaster.addToast("Updated Player", `Player ${body.playerName} was updated.`, "success");
                 }
             });
         } else {
             apiPost("/api/players/create/", body).then((updateRes) => {
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes.error) {
-                    alert("Failed to create player: " + updateRes.error);
+                    toaster.addToast("Creating Player Failed", updateRes.error, "error");
                 } else {
-                    alert("Player created.");
+                    toaster.addToast("Created Player", `Player ${body.playerName} was created.`, "success");
                 }
             });
         }

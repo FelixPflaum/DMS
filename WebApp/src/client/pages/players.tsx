@@ -9,8 +9,10 @@ import { AccPermissions } from "@/shared/permissions";
 import { classData } from "../../shared/wow";
 import type { ApiPlayerEntry, ApiPlayerListRes } from "@/shared/types";
 import styles from "../styles/pagePlayers.module.css";
+import { useToaster } from "../components/toaster/Toaster";
 
 const PlayersPage = (): JSX.Element => {
+    const toaster = useToaster();
     const [players, setPlayers] = useState<ApiPlayerEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
@@ -21,7 +23,7 @@ const PlayersPage = (): JSX.Element => {
         loadctx.setLoading("fetchPlayers", "Loading player list...");
         apiGet<ApiPlayerListRes>("/api/players/list").then((playersRes) => {
             loadctx.removeLoading("fetchPlayers");
-            if (playersRes.error) return alert("Failed to get player list: " + playersRes.error);
+            if (playersRes.error) return toaster.addToast("Loading Players Failed", playersRes.error, "error");
             setPlayers(playersRes.list);
         });
     }, []);
@@ -34,16 +36,18 @@ const PlayersPage = (): JSX.Element => {
         navigate("/profile?name=" + playerEntry.playerName);
     };
 
-    const deletePlayer = async (playerEntry: ApiPlayerEntry) => {
+    const deletePlayer = async (playerEntry: ApiPlayerEntry, button: HTMLButtonElement) => {
         const confirmWord = "UwU";
         const promptResult = prompt(
             `Really delete player ${playerEntry.playerName}?\nThe complete sanity and loot history of the player will be deleted!\nEnter ${confirmWord} to confirm.`
         );
         if (!promptResult || promptResult != confirmWord) return;
 
+        button.disabled = true;
         const res = await apiGet("/api/players/delete/" + playerEntry.playerName);
+        button.disabled = false;
         if (res.error) {
-            return alert("Failed to delete player: " + res.error);
+            return toaster.addToast("Player Delete Failed", res.error, "error");
         }
         const delIdx = players.findIndex((x) => x.playerName == playerEntry.playerName);
         if (delIdx !== -1) {
@@ -60,9 +64,9 @@ const PlayersPage = (): JSX.Element => {
         const res = await apiGet("/api/players/claim/" + playerEntry.playerName);
         loadctx.removeLoading("claimplayer");
         if (res.error) {
-            return alert("Could not claim player: " + res.error);
+            return toaster.addToast("Claiming Player Failed", res.error, "error");
         }
-        alert(playerEntry.playerName + " claimed. Reload page to see effects.");
+        toaster.addToast("Player Claimed", playerEntry.playerName + " claimed. Reload page to see effects.", "success");
     };
 
     const columDefs: ColumnDef<ApiPlayerEntry>[] = [

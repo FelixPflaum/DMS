@@ -7,8 +7,10 @@ import type { ApiLootHistoryEntry, ApiLootHistoryPageRes } from "@/shared/types"
 import LootResponse from "../components/LootResponse";
 import { isItemDataLoaded, loadItemData } from "../data/itemStorage";
 import ItemIconLink from "../components/item/ItemIconLink";
+import { useToaster } from "../components/toaster/Toaster";
 
 const LootHistoryPage = (): JSX.Element => {
+    const toaster = useToaster();
     const [historyData, setHistoryData] = useState<{
         lastPageOffset: number;
         data: ApiLootHistoryEntry[];
@@ -25,7 +27,7 @@ const LootHistoryPage = (): JSX.Element => {
         loadctx.setLoading("fetchLootHistory", "Loading history...");
         apiGet<ApiLootHistoryPageRes>("/api/loothistory/page/" + page).then((pageRes) => {
             loadctx.removeLoading("fetchLootHistory");
-            if (pageRes.error) return alert("Failed to get loot history page: " + pageRes.error);
+            if (pageRes.error) return toaster.addToast("Failed To Load More", pageRes.error, "error");
             setHistoryData({
                 lastPageOffset: pageRes.pageOffset,
                 data: pageRes.entries.concat(historyData.data),

@@ -5,16 +5,18 @@ import { AccPermissions } from "@/shared/permissions";
 import { useEffect, useState } from "react";
 import { apiGet } from "../serverApi";
 import type { ApiPlayerEntry, ApiSelfPlayerRes } from "@/shared/types";
+import { useToaster } from "./toaster/Toaster";
 
 const Header = (): JSX.Element => {
     const [ownChars, setOwnChars] = useState<ApiPlayerEntry[] | undefined>();
     const authctx = useAuthContext();
+    const toaster = useToaster();
     if (!authctx.user) return <></>;
 
     useEffect(() => {
         apiGet<ApiSelfPlayerRes>("/api/players/self").then((playersRes) => {
             if (playersRes.error) {
-                return alert("Could not load own player list: " + playersRes.error);
+                return toaster.addToast("Loading Players Failed", playersRes.error, "error");
             }
             if (playersRes.myChars.length > 0) setOwnChars(playersRes.myChars);
         });

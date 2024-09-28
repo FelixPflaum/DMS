@@ -4,6 +4,7 @@ import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import { apiGet } from "../serverApi";
 import type { ApiAuditEntry, ApiAuditPageRes } from "@/shared/types";
+import { useToaster } from "../components/toaster/Toaster";
 
 const AuditPage = (): JSX.Element => {
     const [auditLogData, setAuditLog] = useState<{ lastPageOffset: number; data: ApiAuditEntry[]; haveMore: boolean }>({
@@ -12,6 +13,7 @@ const AuditPage = (): JSX.Element => {
         haveMore: true,
     });
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const loadBtnRef = useRef<HTMLButtonElement>(null);
 
     const loadMore = () => {
@@ -23,7 +25,7 @@ const AuditPage = (): JSX.Element => {
             if (loadBtnRef.current) loadBtnRef.current.disabled = false;
             loadctx.removeLoading("auditfetch");
             if (res.error) {
-                alert("Failed to load audit data: " + res.error);
+                toaster.addToast("Fialed To Load Data", res.error, "error");
             } else {
                 setAuditLog({
                     lastPageOffset: res.pageOffset,

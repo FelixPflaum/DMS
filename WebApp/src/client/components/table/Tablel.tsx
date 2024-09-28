@@ -16,7 +16,7 @@ export type ActionButtonStyle = "default" | "red";
 export type ActionDef<T> = {
     name: string;
     style?: ActionButtonStyle;
-    onClick: (rowData: T) => void;
+    onClick: (rowData: T, button: HTMLButtonElement) => void;
     shouldShow?: (rowData: T) => boolean;
 };
 
@@ -112,7 +112,7 @@ const Tablel = <T extends DataType>({ columnDefs, data, sortCol, sortDir, action
                         <button
                             key={ae.name}
                             className={`${styles.tableActionButton} ${actionBtnStyleClasses[ae.style ?? "default"]}`}
-                            onClick={() => ae.onClick(rowData)}
+                            onClick={(event) => ae.onClick(rowData, event.target as HTMLButtonElement)}
                         >
                             {ae.name}
                         </button>

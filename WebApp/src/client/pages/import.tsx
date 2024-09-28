@@ -3,6 +3,7 @@ import { apiPost } from "../serverApi";
 import styles from "../styles/pageImport.module.css";
 import { useRef } from "react";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
+import { useToaster } from "../components/toaster/Toaster";
 
 const ImportPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -10,6 +11,7 @@ const ImportPage = (): JSX.Element => {
     const submitButtonRef = useRef<HTMLButtonElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const statusRef = useRef<HTMLSpanElement>(null);
+    const toaster = useToaster();
 
     const onSubmit: React.FormEventHandler<HTMLFormElement> = (evt) => {
         evt.preventDefault();
@@ -24,6 +26,7 @@ const ImportPage = (): JSX.Element => {
                 statusRef.current!.innerText = "VALIDATION ERROR: " + res.error;
             } else {
                 statusRef.current!.innerText = "Data imported successfully!";
+                toaster.addToast("Import Successful", "Imported data.", "success");
                 inputAreaRef.current!.style.display = "none";
             }
         });

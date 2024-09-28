@@ -1,0 +1,54 @@
+.toasterArea {
+    display: inline-block;
+    position: fixed;
+    right: 2em;
+    top: 4em;
+}
+
+.toasterToast {
+    background: #444d66;
+    padding: 0.75em;
+    margin-top: 0.5em;
+    border-radius: 0.4em;
+    border-left: 0.5em solid;
+    max-width: 17.5em;
+    position: relative;
+}
+
+.toasterDuration {
+    height: 0.25em;
+    background-color: #667b88;
+    margin: 0.5em -0.75em -0.75em -0.75em;
+}
+
+.toasterTypeInfo {
+    border-color: #4d75c4;
+}
+.toasterTypeSuccess {
+    border-color: #5fc13c;
+}
+.toasterTypeError {
+    border-color: #fb3434;
+}
+
+.toasterHeading {
+    font-weight: bold;
+    margin: 0 1.4em 0.5em 0;
+}
+
+.toasterText {
+    margin: 0;
+}
+
+.toasterClose {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.1em;
+    cursor: pointer;
+    width: 2em;
+    height: 2em;
+}

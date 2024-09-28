@@ -4,8 +4,11 @@ import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import { apiGet } from "../serverApi";
 import type { ApiPointHistoryEntry, ApiPointHistoryPageRes } from "@/shared/types";
+import { useToaster } from "../components/toaster/Toaster";
+import styles from "../styles/pagePointHist.module.css";
 
 const PointHistoryPage = (): JSX.Element => {
+    const toaster = useToaster();
     const [historyData, setHistoryData] = useState<{
         lastPageOffset: number;
         data: ApiPointHistoryEntry[];
@@ -26,7 +29,7 @@ const PointHistoryPage = (): JSX.Element => {
         apiGet<ApiPointHistoryPageRes>("/api/pointhistory/page/" + nextPage).then((pageRes) => {
             if (loadBtnRef.current) loadBtnRef.current.disabled = false;
             loadctx.removeLoading("fetchPointHistory");
-            if (pageRes.error) return alert("Failed to get point history page: " + pageRes.error);
+            if (pageRes.error) return toaster.addToast("Failed Loading More", pageRes.error, "error");
             setHistoryData({
                 lastPageOffset: pageRes.pageOffset,
                 data: pageRes.entries.concat(historyData.data),
@@ -56,7 +59,15 @@ const PointHistoryPage = (): JSX.Element => {
             canSort: true,
             defaultSort: "asc",
         },
-        { name: "Change", dataKey: "pointChange" },
+        {
+            name: "Change",
+            dataKey: "pointChange",
+            render: (rd) => (
+                <span className={rd.pointChange > 0 ? styles.changePositive : styles.changeNegative}>
+                    {rd.pointChange > 0 ? "+" + rd.pointChange : rd.pointChange}
+                </span>
+            ),
+        },
         { name: "New Sanity", dataKey: "newPoints" },
         { name: "Change Type", dataKey: "changeType" },
         { name: "Reason", dataKey: "reason" },

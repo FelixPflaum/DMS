@@ -5,19 +5,22 @@ import Header from "./components/Header";
 import LoadOverlayProvider from "./LoadOverlayProvider";
 import LoadOverlay from "./components/LoadOverlay";
 import AuthProvider from "./AuthProvider";
+import Toaster from "./components/toaster/Toaster";
 
 function App(): JSX.Element {
     return (
-        <AuthProvider>
-            <LoadOverlayProvider>
-                <Header></Header>
-                <main>
-                    <Suspense fallback={<LoadOverlay text="Loading..." isTransparent={true}></LoadOverlay>}>
-                        {useRoutes(routes)}
-                    </Suspense>
-                </main>
-            </LoadOverlayProvider>
-        </AuthProvider>
+        <Toaster>
+            <AuthProvider>
+                <LoadOverlayProvider>
+                    <Header></Header>
+                    <main>
+                        <Suspense fallback={<LoadOverlay text="Loading..." isTransparent={true}></LoadOverlay>}>
+                            {useRoutes(routes)}
+                        </Suspense>
+                    </main>
+                </LoadOverlayProvider>
+            </AuthProvider>
+        </Toaster>
     );
 }
 

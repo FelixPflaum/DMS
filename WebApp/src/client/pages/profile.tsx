@@ -4,14 +4,17 @@ import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet } from "../serverApi";
 import type { ApiProfileResult, ApiLootHistoryEntry, ApiPointHistoryEntry } from "@/shared/types";
 import styles from "../styles/pageProfile.module.css";
+import stylesPh from "../styles/pagePointHist.module.css";
 import type { ColumnDef } from "../components/table/Tablel";
 import Tablel from "../components/table/Tablel";
 import ItemIconLink from "../components/item/ItemIconLink";
 import LootResponse from "../components/LootResponse";
 import { isItemDataLoaded, loadItemData } from "../data/itemStorage";
+import { useToaster } from "../components/toaster/Toaster";
 
 const ProfilePage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const [searchParams, _setSearchParams] = useSearchParams();
     const [profile, setProfile] = useState<ApiProfileResult | undefined>();
     const navigate = useNavigate();
@@ -33,7 +36,7 @@ const ProfilePage = (): JSX.Element => {
         apiGet<ApiProfileResult>("/api/players/profile/" + nameParam).then((res) => {
             loadctx.removeLoading("fetchplayerprofile");
             if (res.error) {
-                alert("Couldn't load player: " + res.error);
+                toaster.addToast("Loading User Failed", res.error, "error");
                 navigate("/players");
                 return;
             }
@@ -52,7 +55,15 @@ const ProfilePage = (): JSX.Element => {
                 return dt.toLocaleString();
             },
         },
-        { name: "Change", dataKey: "pointChange" },
+        {
+            name: "Change",
+            dataKey: "pointChange",
+            render: (rd) => (
+                <span className={rd.pointChange > 0 ? stylesPh.changePositive : stylesPh.changeNegative}>
+                    {rd.pointChange > 0 ? "+" + rd.pointChange : rd.pointChange}
+                </span>
+            ),
+        },
         { name: "New Sanity", dataKey: "newPoints" },
         { name: "Change Type", dataKey: "changeType" },
         { name: "Reason", dataKey: "reason" },

@@ -40,6 +40,14 @@
     background: #3e5d8c;
 }
 
+.actionButtonDefault:disabled {
+    background: #565f6b;
+}
+
 .actionButtonRed {
     background: #8c3e3e;
+}
+
+.actionButtonRed:disabled {
+    background: #8d6969;
 }

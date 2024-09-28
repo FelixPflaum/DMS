@@ -5,17 +5,19 @@ import { apiGet } from "../serverApi";
 import type { ApiImportLogEntry, ApiImportLogRes } from "@/shared/types";
 import { useSearchParams } from "react-router-dom";
 import ImportLogViewer from "../components/importLogViewer/ImportLogViewer";
+import { useToaster } from "../components/toaster/Toaster";
 
 const ImportLogViewPage = (): JSX.Element => {
+    const toaster = useToaster();
     const [log, setLog] = useState<ApiImportLogEntry | null>(null);
     const loadctx = useLoadOverlayCtx();
     const [searchParams, _setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
 
     const idParam = searchParams.get("id");
     const logId = idParam ? parseInt(idParam) : -1;
 
     if (logId === -1) {
-        const navigate = useNavigate();
         navigate("/importlogs");
     }
 
@@ -23,7 +25,11 @@ const ImportLogViewPage = (): JSX.Element => {
         loadctx.setLoading("fetchlog", "Loading log...");
         apiGet<ApiImportLogRes>("/api/io/log/" + logId).then((logRes) => {
             loadctx.removeLoading("fetchlog");
-            if (logRes.error) return alert("Failed to load log: " + logRes.error);
+            if (logRes.error) {
+                toaster.addToast("Failed Loading Importlog", logRes.error, "error");
+                navigate("/importlogs");
+                return;
+            }
             setLog(logRes.entry);
         });
     }, []);

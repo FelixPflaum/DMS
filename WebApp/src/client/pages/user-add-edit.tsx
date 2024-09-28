@@ -7,9 +7,11 @@ import { apiGet, apiPost } from "../serverApi";
 import type { ApiUserEntry, ApiUserRes } from "@/shared/types";
 import PermissionInput from "../components/form/PermissionInput";
 import { AccPermissions } from "@/shared/permissions";
+import { useToaster } from "../components/toaster/Toaster";
 
 const UserAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const [searchParams, _setSearchParams] = useSearchParams();
     const [permissions, setPermissions] = useState<AccPermissions>(AccPermissions.NONE);
     const navigate = useNavigate();
@@ -36,7 +38,7 @@ const UserAddEditPage = (): JSX.Element => {
         apiGet<ApiUserRes>("/api/users/user/" + idParam).then((userRes) => {
             loadctx.removeLoading("fetchuser");
             if (userRes.error) {
-                alert("Failed to get user data: " + userRes.error);
+                toaster.addToast("Loading User Failed", `Could not load data for ${idParam}.`, "error");
                 navigate("/users");
                 return;
             }
@@ -64,21 +66,26 @@ const UserAddEditPage = (): JSX.Element => {
         submitBtnRef.current.disabled = true;
 
         if (isEdit) {
+            loadctx.setLoading("updateuser", "Updating user data...");
             apiPost("/api/users/update/" + idValue, body).then((updateRes) => {
+                loadctx.removeLoading("updateuser");
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes.error) {
-                    alert("Failed to update user: " + updateRes.error);
+                    toaster.addToast("User Update Failed", updateRes.error, "error");
                 } else {
-                    alert("User updated.");
+                    toaster.addToast("User Updated", `User ${body.userName} was updated.`, "success");
                 }
             });
         } else {
+            loadctx.setLoading("updateuser", "Creating user...");
             apiPost("/api/users/create/", body).then((updateRes) => {
+                loadctx.removeLoading("updateuser");
                 if (submitBtnRef.current) submitBtnRef.current.disabled = false;
                 if (updateRes.error) {
-                    alert("Failed to create user: " + updateRes.error);
+                    toaster.addToast("User Creation Failed", updateRes.error, "error");
                 } else {
-                    alert("User created.");
+                    toaster.addToast("User Created", `User ${body.userName} was created.`, "success");
+                    navigate("/users");
                 }
             });
         }
@@ -89,7 +96,7 @@ const UserAddEditPage = (): JSX.Element => {
         <>
             <h1 className="pageHeading">{isEdit ? "Edit" : "Add"} User</h1>
             <form onSubmit={onSubmit}>
-                <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17}></TextInput>
+                <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17} maxLen={18}></TextInput>
                 <TextInput label="Name" inputRef={nameInputRef} required={true} minLen={4}></TextInput>
                 <PermissionInput label="Permissions" perms={permissions} onChange={onPermChange}></PermissionInput>
                 <div>

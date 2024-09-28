@@ -7,18 +7,20 @@ import { apiGet } from "../serverApi";
 import { useAuthContext } from "../AuthProvider";
 import { AccPermissions, getPermissionStrings } from "@/shared/permissions";
 import type { ApiUserEntry, ApiUserListRes } from "@/shared/types";
+import { useToaster } from "../components/toaster/Toaster";
 
 const UsersPage = (): JSX.Element => {
     const [users, setUsers] = useState<ApiUserEntry[]>([]);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
     const canManage = authctx.hasPermission(AccPermissions.USERS_MANAGE);
+    const toaster = useToaster();
 
     useEffect(() => {
         loadctx.setLoading("fetchusers", "Loading user data...");
         apiGet<ApiUserListRes>("/api/users/list").then((res) => {
             loadctx.removeLoading("fetchusers");
-            if (res.error) return alert("Failed to load user list: " + res.error);
+            if (res.error) return toaster.addToast("Failed to load user list", res.error, "error"); //alert("Failed to load user list: " + res.error);
             setUsers(res.list);
         });
     }, []);
@@ -28,18 +30,21 @@ const UsersPage = (): JSX.Element => {
         navigate("/user-add-edit?id=" + userEntry.loginId);
     };
 
-    const deleteUser = async (userEntry: ApiUserEntry) => {
+    const deleteUser = async (userEntry: ApiUserEntry, button: HTMLButtonElement) => {
         if (!confirm(`Really delete user ${userEntry.userName}?`)) return;
+        button.disabled = true;
         const res = await apiGet("/api/users/delete/" + userEntry.loginId);
+        button.disabled = false;
         if (res.error) {
-            alert("Failed to delete user: " + res.error);
+            toaster.addToast("Failed to delete user", res.error, "error");
             return;
         }
         const delIdx = users.findIndex((x) => x.loginId == userEntry.loginId);
         if (delIdx !== -1) {
             const newUsers = [...users];
-            newUsers.splice(delIdx, 1);
+            const del = newUsers.splice(delIdx, 1);
             setUsers(newUsers);
+            toaster.addToast("User Deleted", `User ${del[0].userName} was deleted.`, "success");
         }
     };
 

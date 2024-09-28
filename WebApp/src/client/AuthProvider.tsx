@@ -4,6 +4,7 @@ import { apiGet, apiPost } from "./serverApi";
 import type { ApiAuthRes, ApiAuthUserRes, ApiUserEntry } from "@/shared/types";
 import { AccPermissions } from "@/shared/permissions";
 import { isItemDataLoaded, loadItemData } from "./data/itemStorage";
+import { useToaster } from "./components/toaster/Toaster";
 
 type AuthContextType = {
     user: ApiUserEntry | null;
@@ -23,6 +24,7 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
     const [user, setUser] = useState<ApiUserEntry | null>(null);
     const [auth, setAuth] = useState<{ loginId: string; loginToken: string } | null>(null);
     const [authStatus, setAuthStatus] = useState("");
+    const toaster = useToaster();
 
     const logout = () => {
         apiGet("/api/auth/logout").then((res) => {
@@ -44,9 +46,9 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
         setAuthStatus("Checking login...");
         const data = await apiGet<ApiAuthUserRes>("/api/auth/check");
         if (data.error) {
-            alert("Login failed: " + data.error);
+            toaster.addToast("Login Check Failed", data.error, "error");
         } else if (data.invalidLogin) {
-            alert("Login data expired, logging out.");
+            toaster.addToast("Login Expired", "Login data expired. You need to login again.", "info");
             logout();
         } else {
             setUser(data.user);
@@ -67,7 +69,8 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
         setAuthStatus("Logging in...");
         const data = await apiPost<ApiAuthRes>("/api/auth/authenticate", { code });
         if (data.error) {
-            alert("Login failed: " + data.error);
+            toaster.addToast("Login Failed", data.error, "error");
+            setAuthStatus("Login failed: " + data.error);
         } else {
             const expDate = new Date();
             expDate.setTime(expDate.getTime() + 30 * 86400 * 1000);

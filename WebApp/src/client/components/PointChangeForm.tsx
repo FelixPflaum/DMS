@@ -5,6 +5,7 @@ import TextInput from "./form/TextInput";
 import { apiPost } from "../serverApi";
 import type { ApiPointChangeRequest, ApiPointChangeResult } from "@/shared/types";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
+import { useToaster } from "./toaster/Toaster";
 
 const PointChangeForm = ({
     playerName,
@@ -14,6 +15,7 @@ const PointChangeForm = ({
     onChange: (change: number, newPoints: number) => void;
 }): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
+    const toaster = useToaster();
     const changeValueInputRef = useRef<HTMLInputElement>(null);
     const reasonInputRef = useRef<HTMLInputElement>(null);
     const submitBtnRef = useRef<HTMLButtonElement>(null);
@@ -36,13 +38,13 @@ const PointChangeForm = ({
         };
 
         loadctx.setLoading("addpointschange", "Adding point change");
-        apiPost<ApiPointChangeResult>("/api/players/pointchange/" + playerName, body).then((res) => {
+        apiPost<ApiPointChangeResult>("/api/players/pointchange/", body).then((res) => {
             loadctx.removeLoading("addpointschange");
             if (submitBtnRef.current) submitBtnRef.current.disabled = false;
             if (res.error) {
-                return alert("Failed to add sanity change: " + res.error);
+                return toaster.addToast("Adding Entry Failed", res.error, "error");
             }
-            alert("Sanity change added.");
+            toaster.addToast("Change Added", `Added ${body.change} sanity to ${body.playerName}.`, "success");
             if (changeValueInputRef.current) changeValueInputRef.current.value = "";
             if (reasonInputRef.current) reasonInputRef.current.value = "";
             onChange(res.change, res.newPoints);

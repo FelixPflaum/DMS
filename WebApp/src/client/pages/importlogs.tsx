@@ -5,10 +5,12 @@ import Tablel from "../components/table/Tablel";
 import { useNavigate } from "react-router";
 import { apiGet } from "../serverApi";
 import type { ApiImportLogListResult } from "@/shared/types";
+import { useToaster } from "../components/toaster/Toaster";
 
 type ListLog = ApiImportLogListResult["logs"][0];
 
 const ImportLogsPage = (): JSX.Element => {
+    const toaster = useToaster();
     const [logs, setLogs] = useState<ListLog[]>([]);
     const loadctx = useLoadOverlayCtx();
 
@@ -16,7 +18,7 @@ const ImportLogsPage = (): JSX.Element => {
         loadctx.setLoading("fetchlogs", "Loading log list...");
         apiGet<ApiImportLogListResult>("/api/io/logs").then((logsRes) => {
             loadctx.removeLoading("fetchlogs");
-            if (logsRes.error) return alert("Could not load log list: " + logsRes.error);
+            if (logsRes.error) return toaster.addToast("Loading List Failed", logsRes.error, "error");
             setLogs(logsRes.logs);
         });
     }, []);
