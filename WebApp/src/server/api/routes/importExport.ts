@@ -35,11 +35,15 @@ importExportRouter.post("/import", async (req: Request, res: Response): Promise<
     sendApiResponse<ApiImportResult>(res, { log: log });
 });
 
-importExportRouter.get("/export", async (req: Request, res: Response): Promise<void> => {
+importExportRouter.get("/export/:days", async (req: Request, res: Response): Promise<void> => {
     const auth = await getAuthFromRequest(req);
     if (!checkAuth(res, auth, AccPermissions.DATA_VIEW)) return;
 
-    const exportForAddon = await createExportForAddon();
+    const days = parseInt(req.params.days);
+    if (!days) return send400(res, "Invalid or missing days param!");
+
+    const minTimestamp = Date.now() - days * 86400 * 1000;
+    const exportForAddon = await createExportForAddon(minTimestamp);
     if (!exportForAddon) return send500(res, "Error creating export data!");
     sendApiResponse<ApiExportResult>(res, { export: exportForAddon });
 });

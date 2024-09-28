@@ -5,3 +5,11 @@
     height: 5em;
     margin-bottom: 0.5em;
 }
+
+.exportButton {
+    margin-bottom: 0.5em;
+}
+
+.exportSizeInfo {
+    margin-left: 0.5em;
+}
