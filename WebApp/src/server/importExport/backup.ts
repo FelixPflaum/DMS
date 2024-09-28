@@ -39,7 +39,7 @@ function generateBackupFileName(date: Date, suffix?: string): string {
     const minute = date.getMinutes().toString().padStart(2, "0");
     const second = date.getSeconds().toString().padStart(2, "0");
     suffix = suffix ? "_" + suffix : "";
-    return `${BACKUP_FILE_PREFIX}${year}-${month}-${day}_${hour}.${minute}.${second}${suffix}.json`;
+    return `${BACKUP_FILE_PREFIX}${year}-${month}-${day}__${hour}_${minute}_${second}${suffix}.json`;
 }
 
 async function isFileAccessAllowed(path: string): Promise<boolean> {
