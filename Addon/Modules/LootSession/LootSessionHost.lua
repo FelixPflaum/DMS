@@ -534,11 +534,8 @@ function Host:AwardItem(itemGuid, candidateName)
     }
 
     if not itemResponse.candidate.isFake then
-        if Env.Database:GetLootHistoryEntry(item.guid) then
-            Env.Database:UpdateLootHistoryEntry(item.guid, candidateName, responseUsed)
-        else
-            Env.Database:AddLootHistoryEntry(item.guid, item.endTime, candidateName, item.itemId, responseUsed)
-        end
+        Env.Database:RemoveLootHistoryEntry(item.guid)
+        Env.Database:AddLootHistoryEntry(item.guid, candidateName, item.itemId, responseUsed)
     end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
 
@@ -592,9 +589,7 @@ function Host:RevokeAwardItem(itemGuid, candidateName)
 
     item.awarded = nil
     if not itemResponse.candidate.isFake then
-        if Env.Database:GetLootHistoryEntry(item.guid) then
-            Env.Database:RemoveLootHistoryEntry(item.guid)
-        end
+        Env.Database:RemoveLootHistoryEntry(item.guid)
     end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid)
 

@@ -356,11 +356,10 @@ end
 
 ---Add an entry to the loot history.
 ---@param guid string
----@param timeStamp integer
 ---@param playerName string
 ---@param itemId integer
 ---@param response LootResponse
-function Env.Database:AddLootHistoryEntry(guid, timeStamp, playerName, itemId, response)
+function Env.Database:AddLootHistoryEntry(guid, playerName, itemId, response)
     for _, v in ipairs(self.db.lootHistory) do
         if v.guid == guid then
             error("Tried to add already existing loot entry to loot history! " .. guid)
@@ -369,13 +368,13 @@ function Env.Database:AddLootHistoryEntry(guid, timeStamp, playerName, itemId, r
     end
     local newEntry = { ---@type LootHistoryEntry
         guid = guid,
-        timeStamp = timeStamp,
+        timeStamp = time(),
         playerName = playerName,
         itemId = itemId,
         response = FormatResponseForDb(response),
     }
     table.insert(self.db.lootHistory, newEntry)
-    LogDebug("Added loot history entry", guid, timeStamp, playerName, itemId, response)
+    LogDebug("Added loot history entry", guid, newEntry.timeStamp, playerName, itemId, response)
     self.OnLootHistoryEntryChanged:Trigger(newEntry.guid)
 end
 
