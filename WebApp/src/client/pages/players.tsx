@@ -46,9 +46,16 @@ const PlayersPage = (): JSX.Element => {
         button.disabled = true;
         const res = await apiGet("/api/players/delete/" + playerEntry.playerName);
         button.disabled = false;
+
         if (res.error) {
             return toaster.addToast("Player Delete Failed", res.error, "error");
         }
+        toaster.addToast(
+            "Player Deleted",
+            `Player ${playerEntry.playerName} and all corresponding history entries were deleted.`,
+            "success"
+        );
+
         const delIdx = players.findIndex((x) => x.playerName == playerEntry.playerName);
         if (delIdx !== -1) {
             const newPlayers = [...players];

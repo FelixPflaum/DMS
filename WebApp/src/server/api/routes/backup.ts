@@ -31,10 +31,9 @@ backupRouter.post("/make", async (req: Request, res: Response): Promise<void> =>
     const conn = await getConnection();
     try {
         const fileOrFalse = await makeDataBackup(conn, 0, "manual");
-        const log = `Create manual backup: ${fileOrFalse}`;
-        await addAuditEntry(auth.user.loginId, auth.user.userName, log);
         if (fileOrFalse !== false) {
             apiRes.file = fileOrFalse;
+            await addAuditEntry(auth.user.loginId, auth.user.userName, "Created backup", fileOrFalse);
         } else {
             apiRes.error = "Backup creation failed!";
         }
@@ -65,8 +64,7 @@ backupRouter.post("/apply", async (req: Request, res: Response): Promise<void> =
         return sendApiResponse(res, applyResult);
     }
 
-    const log = `Applied backup: ${path.join("/")}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Applied backup", path.join("/"));
 
     sendApiResponse(res, true);
 });

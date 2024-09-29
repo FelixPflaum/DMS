@@ -81,8 +81,12 @@ playerRouter.post("/create", async (req: Request, res: Response): Promise<void> 
         return sendApiResponse(res, "Player already exists!");
     }
 
-    const log = `Created player ${playerName}, Class: ${classId}, Points: ${points}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    await addAuditEntry(
+        auth.user.loginId,
+        auth.user.userName,
+        "Created player",
+        `Name: ${playerName}, Class: ${classId}, Sanity: ${points}`
+    );
 
     sendApiResponse(res, true);
 });
@@ -112,8 +116,12 @@ playerRouter.get("/delete/:playerName", async (req: Request, res: Response): Pro
         return sendApiResponse(res, "Player did not exist.");
     }
 
-    const log = `Deleted player ${playerName}, Had points: ${getRes.row.points}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    await addAuditEntry(
+        auth.user.loginId,
+        auth.user.userName,
+        "Deleted player",
+        `Name: ${playerName}, Sanity ${getRes.row.points}`
+    );
 
     sendApiResponse(res, true);
 });
@@ -154,8 +162,10 @@ playerRouter.post("/update/:playerName", async (req: Request, res: Response): Pr
         return sendApiResponse(res, "Player does not exist.");
     }
 
-    const log = `Update player ${targetPlayer.playerName} - ${targetPlayer.classId} => ${playerName} - ${classId}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    const changes: string[] = [];
+    if (targetPlayer.classId != classId) changes.push(`Class: ${targetPlayer.classId} -> ${classId}`);
+    if (targetPlayer.playerName != playerName) changes.push(`Name: ${targetPlayer.playerName} -> ${playerName}`);
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Updated player", changes.join(", "));
 
     sendApiResponse(res, true);
 });
@@ -201,8 +211,8 @@ playerRouter.post("/pointchange", async (req: Request, res: Response): Promise<v
         const updRes = await updatePlayer(playerName, { points: newPoints }, conn);
         if (updRes.isError) return send500Db(res);
         conn.commit();
-        const log = `Add player point change: ${targetPlayer.playerName} | Change: ${change} | Points: ${targetPlayer.points} => ${newPoints}`;
-        await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+        const log = `${targetPlayer.playerName} | Change: ${change > 0 ? "+" + change : change} | Sanity: ${targetPlayer.points} => ${newPoints}`;
+        await addAuditEntry(auth.user.loginId, auth.user.userName, "Sanity change", log);
     } finally {
         conn.release();
     }
@@ -269,6 +279,8 @@ playerRouter.get("/claim/:playerName", async (req: Request, res: Response): Prom
 
     const updRes = await updatePlayer(playerName, { account: auth.user.loginId });
     if (updRes.isError) return send500Db(res);
+
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Claimed player", playerName);
 
     sendApiResponse(res, true);
 });

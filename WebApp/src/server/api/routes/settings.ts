@@ -49,8 +49,7 @@ settingsRouter.post("/set", async (req: Request, res: Response): Promise<void> =
         changeLogs.push(`${k}: ${curRes.value} -> ${v}`);
     }
     if (changeLogs.length) {
-        const auditLog = `${auth.user.userName} updated settings: ${changeLogs.join(", ")}`;
-        await addAuditEntry(auth.user.loginId, auth.user.userName, auditLog);
+        await addAuditEntry(auth.user.loginId, auth.user.userName, "Updated settings", changeLogs.join(", "));
     }
 
     sendApiResponse(res, true);

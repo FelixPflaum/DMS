@@ -6,17 +6,29 @@ import type { AuditRow } from "../types";
  * Add new entry to audit log.
  * @param loginId
  * @param userName
- * @param eventInfo
+ * @param event
+ * @param info
  */
-export const addAuditEntry = async (loginId: string, userName: string, eventInfo: string): Promise<boolean> => {
+export const addAuditEntry = async (loginId: string, userName: string, event: string, info: string): Promise<boolean> => {
     return (
         (await queryInsert("audit", {
             timestamp: Date.now(),
             loginId: loginId,
             userName: userName,
-            eventInfo: eventInfo,
+            event: event,
+            info: info,
         })) != 0
     );
+};
+
+/**
+ * Add audit log entry with user <SYSTEM>.
+ * @param event
+ * @param info
+ * @returns
+ */
+export const addSystemAuditEntry = (event: string, info: string): Promise<boolean> => {
+    return addAuditEntry("0", "<SYSTEM>", event, info);
 };
 
 /**

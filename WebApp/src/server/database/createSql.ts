@@ -69,4 +69,6 @@ export const creationSqlQueries: string[] = [
         PRIMARY KEY (id),
         FOREIGN KEY (user) REFERENCES users(loginId) ON UPDATE CASCADE ON DELETE SET NULL
     );`,
+    "ALTER TABLE audit RENAME COLUMN eventInfo TO info;",
+    "ALTER TABLE audit ADD COLUMN event VARCHAR(64) NOT NULL AFTER userName;",
 ];

@@ -3,7 +3,7 @@ import { BotCommandBase } from "./BotCommandBase";
 import { getConfig } from "../config";
 import { AccPermissions } from "@/shared/permissions";
 import { addUser } from "../database/tableFunctions/users";
-import { addAuditEntry } from "../database/tableFunctions/audit";
+import { addSystemAuditEntry } from "../database/tableFunctions/audit";
 import { getDynamicSetting } from "../configDynamic";
 
 export class RegisterCommand extends BotCommandBase {
@@ -79,7 +79,7 @@ export class RegisterCommand extends BotCommandBase {
             this.replyError(interaction, "Registration failed. Account seems to exist already.");
             return;
         }
-        await addAuditEntry("-", "-", `Self registration via bot: ${id} - ${name}, Permissions: ${perms}`);
+        await addSystemAuditEntry("Self registration via bot", `Id: ${id}, Name: ${name}, Permissions: ${perms}`);
         this.replySuccess(interaction, "Registered successfully.");
     }
 }

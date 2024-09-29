@@ -1,6 +1,6 @@
 import { getDynamicSetting, onDynamicSettingChange, setDynamicSetting } from "../configDynamic";
 import { generateGuid, getConnection } from "../database/database";
-import { addAuditEntry } from "../database/tableFunctions/audit";
+import { addSystemAuditEntry } from "../database/tableFunctions/audit";
 import { getAllPlayers, updatePlayer } from "../database/tableFunctions/players";
 import { createPointHistoryEntry } from "../database/tableFunctions/pointHistory";
 import { makeDataBackup } from "../importExport/backup";
@@ -105,11 +105,7 @@ async function checkDecay() {
         const success = await applyDecay(decayMultRes.value, nextTargetTime.getTime());
         if (success) {
             logger.log("Automatic decay successful!");
-            await addAuditEntry(
-                "0",
-                "<SYSTEM>",
-                `Executed automatic decay application successfully. Multi: ${decayMultRes.value}`
-            );
+            await addSystemAuditEntry("Applied Automatic Decay", `Multi: ${decayMultRes.value}. Backup created.`);
         } else {
             logger.logError("Failed on decay application! Retry in an hour.");
             setTimeout(checkDecay, 3600000);

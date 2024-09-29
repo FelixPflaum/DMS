@@ -13,7 +13,8 @@ type ApiAuditEntry = {
     timestamp: number;
     loginId: string;
     userName: string;
-    eventInfo: string;
+    event: string;
+    info: string;
 };
 
 type ApiPlayerEntry = {

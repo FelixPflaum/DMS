@@ -82,8 +82,12 @@ userRouter.get("/delete/:loginId", async (req: Request, res: Response): Promise<
         return sendApiResponse(res, "User did not exist.");
     }
 
-    const log = `Deleted user ${loginId} - ${targetUser.userName}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    await addAuditEntry(
+        auth.user.loginId,
+        auth.user.userName,
+        "Deleted user",
+        `Id: ${loginId}, Name: ${targetUser.userName}`
+    );
 
     sendApiResponse(res, true);
 });
@@ -128,8 +132,11 @@ userRouter.post("/update/:loginId", async (req: Request, res: Response): Promise
         return sendApiResponse(res, "User doesn't exist!");
     }
 
-    const log = `Update user ${targetUser.loginId} - ${targetUser.userName} - ${targetUser.permissions} => ${loginId} - ${userName} - ${permissions}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    const changes: string[] = [];
+    if (targetUser.userName != userName) changes.push(`Id: ${targetUser.userName} -> ${userName}`);
+    if (targetUser.permissions != permissions) changes.push(`Permissions: ${targetUser.permissions} -> ${permissions}`);
+    const log = `${targetUser.loginId} | ${changes.join(", ")}`;
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Updated user", log);
 
     sendApiResponse(res, true);
 });
@@ -157,8 +164,8 @@ userRouter.post("/create", async (req: Request, res: Response): Promise<void> =>
         return sendApiResponse(res, "User already exists!");
     }
 
-    const log = `Created user ${loginId} - ${userName}, Permissions: ${permissions}`;
-    await addAuditEntry(auth.user.loginId, auth.user.userName, log);
+    const log = `Id: ${loginId}, Name: ${userName}, Permissions: ${permissions}`;
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Created user", log);
 
     sendApiResponse(res, true);
 });

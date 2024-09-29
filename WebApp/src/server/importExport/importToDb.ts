@@ -40,12 +40,14 @@ async function updatePlayers(conn: PoolConnection, players: AddonPlayerEntry[]):
     for (const player of players) {
         const existing = dbPlayersDict[player.playerName];
         if (existing) {
-            await conn.query(`UPDATE players SET classId=?, points=? WHERE playerName=?;`, [
-                player.classId,
-                player.points,
-                player.playerName,
-            ]);
-            log.push({ old: existing, new: player });
+            if (player.points != existing.points) {
+                await conn.query(`UPDATE players SET classId=?, points=? WHERE playerName=?;`, [
+                    player.classId,
+                    player.points,
+                    player.playerName,
+                ]);
+                log.push({ old: existing, new: player });
+            }
         } else {
             await conn.query("INSERT INTO players (playerName, classId, points) VALUES (?,?,?);", [
                 player.playerName,

@@ -51,8 +51,9 @@ const AuditPage = (): JSX.Element => {
             },
         },
         { name: "Discord ID", dataKey: "loginId" },
-        { name: "Name", dataKey: "userName" },
-        { name: "Event", dataKey: "eventInfo" },
+        { name: "User", dataKey: "userName" },
+        { name: "Event", dataKey: "event" },
+        { name: "Info", dataKey: "info" },
     ];
 
     return (

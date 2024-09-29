@@ -30,7 +30,7 @@ importExportRouter.post("/import", async (req: Request, res: Response): Promise<
     }
 
     const insertId = await addImportLog(auth.user.loginId, JSON.stringify(log));
-    await addAuditEntry(auth.user.loginId, auth.user.userName, `Imported data. Log id: ${insertId}`);
+    await addAuditEntry(auth.user.loginId, auth.user.userName, "Imported data", `Log id: ${insertId}`);
 
     sendApiResponse<ApiImportResult>(res, { log: log });
 });
