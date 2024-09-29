@@ -41,6 +41,7 @@ local function FillFromGuild()
         return false
     end
     LogDebug("fill guild")
+    wipe(responseList)
     for i = 1, size do
         local name, _, _, _, _, _, _, _, isOnline = GetGuildRosterInfo(i)
         if isOnline then
@@ -60,6 +61,7 @@ local function FillFromGroup()
         return false
     end
     LogDebug("fill group")
+    wipe(responseList)
     for unit in Env.MakeGroupIterator() do
         local name = UnitName(unit)
         responseList[name] = {
