@@ -95,6 +95,20 @@ type ApiPointChangeResult = ApiResponse & {
     newPoints: number;
 };
 
+type ApiMultiPointChangeRequest = {
+    playerNames: string[];
+    reason: string;
+    change: number;
+};
+
+type ApiMultiPointChangeResult = ApiResponse & {
+    change: number;
+    updates: {
+        playerName: string;
+        newPoints: number;
+    }[];
+};
+
 type ApiPointHistoryPageRes = PagedRes<ApiPointHistoryEntry>;
 
 type ApiPointHistorySearchInput = {

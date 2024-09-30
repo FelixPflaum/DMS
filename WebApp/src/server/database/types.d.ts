@@ -1,4 +1,5 @@
 import type { ClassId } from "@/client/typings/wow";
+import type { PointChangeType } from "@/shared/types";
 
 type UserRow = {
     loginId: string;

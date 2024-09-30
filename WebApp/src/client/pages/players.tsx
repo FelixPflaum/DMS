@@ -10,10 +10,12 @@ import { classData } from "../../shared/wow";
 import type { ApiPlayerEntry, ApiPlayerListRes } from "@/shared/types";
 import styles from "../styles/pagePlayers.module.css";
 import { useToaster } from "../components/toaster/Toaster";
+import PointChangeFormMulti from "../components/PointChangeFormMulti";
 
 const PlayersPage = (): JSX.Element => {
     const toaster = useToaster();
     const [players, setPlayers] = useState<ApiPlayerEntry[]>([]);
+    const [showInsertForm, setShowInsertForm] = useState<boolean>(false);
     const loadctx = useLoadOverlayCtx();
     const authctx = useAuthContext();
     const canManage = authctx.hasPermission(AccPermissions.DATA_MANAGE);
@@ -76,6 +78,24 @@ const PlayersPage = (): JSX.Element => {
         toaster.addToast("Player Claimed", playerEntry.playerName + " claimed. Reload page to see effects.", "success");
     };
 
+    const onAddEntriesClick: React.MouseEventHandler<HTMLButtonElement> = (_evt) => {
+        setShowInsertForm(true);
+    };
+
+    const onPointChangeResult = (updates: { playerName: string; newPoints: number }[], change: number) => {
+        if (updates.length == 0 || change == 0) return;
+        const newPointDict: Record<string, number> = {};
+        for (const upt of updates) {
+            newPointDict[upt.playerName] = upt.newPoints;
+        }
+        const newData = [...players];
+        for (const newPlayer of newData) {
+            if (!newPointDict[newPlayer.playerName]) continue;
+            newPlayer.points = newPointDict[newPlayer.playerName];
+        }
+        setPlayers(newData);
+    };
+
     const columDefs: ColumnDef<ApiPlayerEntry>[] = [
         {
             name: "Class",
@@ -120,9 +140,21 @@ const PlayersPage = (): JSX.Element => {
         <>
             <h1 className="pageHeading">Players</h1>
             {canManage ? (
-                <button className="button" onClick={() => navigate("/player-add-edit")}>
-                    Add New
-                </button>
+                <div className="marginBot05">
+                    <button className="button" onClick={() => navigate("/player-add-edit")}>
+                        Add New
+                    </button>
+                    {!showInsertForm ? (
+                        <button className="button" onClick={onAddEntriesClick}>
+                            Add Sanity Changes
+                        </button>
+                    ) : (
+                        <>
+                            <h3>Add sanity changes</h3>
+                            <PointChangeFormMulti onChange={onPointChangeResult}></PointChangeFormMulti>
+                        </>
+                    )}
+                </div>
             ) : null}
             <Tablel columnDefs={columDefs} data={players} sortCol="playerName" sortDir="asc" actions={actions}></Tablel>
         </>

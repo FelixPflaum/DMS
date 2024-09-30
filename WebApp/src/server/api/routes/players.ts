@@ -2,7 +2,7 @@ import express from "express";
 import type { Request, Response } from "express";
 import { AccPermissions } from "@/shared/permissions";
 import { getAuthFromRequest } from "../auth";
-import { send400, send403, send500Db, send404, checkAuth, sendApiResponse } from "../util";
+import { send400, send403, send500Db, send404, checkAuth, sendApiResponse, send500 } from "../util";
 import type {
     ApiPlayerListRes,
     ApiPlayerRes,
@@ -11,6 +11,8 @@ import type {
     ApiProfileResult,
     ApiPlayerEntry,
     ApiSelfPlayerRes,
+    ApiMultiPointChangeRequest,
+    ApiMultiPointChangeResult,
 } from "@/shared/types";
 import { getUser } from "@/server/database/tableFunctions/users";
 import { addAuditEntry } from "@/server/database/tableFunctions/audit";
@@ -26,6 +28,11 @@ import { createPointHistoryEntry, getPointHistorySearch } from "@/server/databas
 import { generateGuid, getConnection } from "@/server/database/database";
 import { getLootHistorySearch } from "@/server/database/tableFunctions/lootHistory";
 import { makeDataBackup } from "@/server/importExport/backup";
+import { Logger } from "@/server/Logger";
+import type { PoolConnection } from "mysql2/promise";
+import type { PlayerRow } from "@/server/database/types";
+
+const logger = new Logger("API Players");
 
 export const playerRouter = express.Router();
 
@@ -222,6 +229,86 @@ playerRouter.post("/pointchange", async (req: Request, res: Response): Promise<v
         change: change,
         newPoints: newPoints,
     });
+});
+
+playerRouter.post("/multipointchange", async (req: Request, res: Response): Promise<void> => {
+    const auth = await getAuthFromRequest(req);
+    if (!checkAuth(res, auth, AccPermissions.DATA_MANAGE)) return;
+
+    const body = req.body as Partial<ApiMultiPointChangeRequest>;
+    const reason = body.reason;
+    const change = body.change;
+    const playerNames = body.playerNames;
+
+    if (typeof reason !== "string" || reason.length < 2) return send400(res, "Invalid reason.");
+    if (typeof change !== "number") return send400(res, "Invalid point change value.");
+    if (!Array.isArray(playerNames) || playerNames.some((v) => typeof v !== "string"))
+        return send400(res, "Invalid name list!");
+
+    let conn: PoolConnection;
+    try {
+        conn = await getConnection();
+    } catch (error) {
+        logger.logError("Error on getting connection for point history multi insert.", error);
+        return send500Db(res);
+    }
+
+    let isSuccess = false;
+    try {
+        await conn.query("LOCK TABLES pointHistory WRITE, players WRITE;");
+        await conn.beginTransaction();
+
+        const targetPlayers: Record<string, PlayerRow> = {};
+        for (const playerName of playerNames) {
+            const targetPlayerRes = await getPlayer(playerName);
+            if (targetPlayerRes.isError) return send500Db(res);
+            const targetPlayer = targetPlayerRes.row;
+            if (!targetPlayer) {
+                return sendApiResponse(res, `Player ${playerName} doesn't exists!`);
+            }
+            targetPlayers[playerName] = targetPlayer;
+        }
+
+        const now = Date.now();
+        const updates: { playerName: string; newPoints: number }[] = [];
+
+        for (const playerName in targetPlayers) {
+            const newPoints = targetPlayers[playerName].points + change;
+            const insertRes = await createPointHistoryEntry(
+                {
+                    guid: generateGuid(),
+                    playerName: playerName,
+                    timestamp: now,
+                    pointChange: change,
+                    newPoints: newPoints,
+                    changeType: "CUSTOM",
+                    reason: reason,
+                },
+                conn
+            );
+            if (insertRes.isError) return send500Db(res);
+            const updateRes = await updatePlayer(playerName, { points: newPoints }, conn);
+            if (updateRes.isError) return send500Db(res);
+            updates.push({ playerName, newPoints });
+        }
+
+        isSuccess = true;
+        await conn.commit();
+        await addAuditEntry(
+            auth.user.loginId,
+            auth.user.userName,
+            "Multi sanity change",
+            `Reason: ${reason}, Change: ${change}, Players: ${updates.map((v) => v.playerName).join(", ")}`
+        );
+        sendApiResponse<ApiMultiPointChangeResult>(res, { change, updates });
+    } catch (error) {
+        logger.logError("Error during point history multi insert.", error);
+        return send500(res, "Error during transaction process.");
+    } finally {
+        if (!isSuccess) await conn.rollback();
+        await conn.query("UNLOCK TABLES;");
+        conn.release();
+    }
 });
 
 playerRouter.get("/profile/:name", async (req: Request, res: Response): Promise<void> => {

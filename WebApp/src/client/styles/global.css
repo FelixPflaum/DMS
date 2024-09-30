@@ -55,3 +55,13 @@ main {
     background: #959088;
     box-shadow: none;
 }
+
+.marginBot05 {
+    margin-bottom: 0.5em;
+}
+
+h3 {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 1em 0 0.5em;
+}
