@@ -32,10 +32,10 @@ async function applyDecay(mult: number, rescheduleNext = 0): Promise<boolean> {
         if (playersRes.isError) throw new Error();
 
         for (const player of playersRes.rows) {
-            const newPoints = Math.round(player.points * mult);
+            const newPoints = Math.floor(player.points * mult);
             const change = newPoints - player.points;
 
-            if (change == 0) continue;
+            if (change >= 0) continue;
 
             const updRes = await updatePlayer(player.playerName, { points: newPoints }, conn);
             if (updRes.isError) return rollbackThenFalse();
