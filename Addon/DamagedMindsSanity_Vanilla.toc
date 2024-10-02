@@ -1,7 +1,7 @@
 ## Interface: 11504
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
-## Version: 0.2.1
+## Version: 0.2.2
 ## Notes: 
 ## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups
 
@@ -48,7 +48,6 @@ Modules/LootSession/LootSessionHost.lua
 Modules/LootSession/Autopass.lua
 Modules/LootSession/LootSessionClient.lua
 Modules/LootSession/LootList.lua
-Modules/Sync/Sync.lua
 
 Modules/Meow.lua
 
@@ -63,8 +62,10 @@ UI/SessionWindow.lua
 UI/LootWindow.lua
 UI/ResponseWindow.lua
 UI/DatabaseWindow.lua
-UI/SyncWindow.lua
 UI/TradeWindow.lua
+
+Modules/Sync/Sync.lua
+Modules/Sync/SyncWindow.lua
 
 Modules/VersionCheck/VersionCheck.lua
 Modules/VersionCheck/VersionCheckWindow.lua

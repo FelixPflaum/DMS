@@ -160,6 +160,10 @@ commHandler[SYNC_OPCODES.PROBE_RECEIVER] = function(sender, data)
     LogDebug("Got probe from", sender, data)
 end
 
+local treatAsValue = {
+    responseButtons = true,
+}
+
 ---@param data table<string, any>
 ---@param settingsTable table<string, any>
 local function ApplySyncData(data, settingsTable)
@@ -171,7 +175,7 @@ local function ApplySyncData(data, settingsTable)
             if stype ~= type(value) then
                 Env:PrintError(("Invalid settings value received! Type for %s does not match."):format(key))
             else
-                if stype == "table" then
+                if not treatAsValue[key] and stype == "table" then
                     ApplySyncData(value, settingsTable[key])
                 else
                     settingsTable[key] = value

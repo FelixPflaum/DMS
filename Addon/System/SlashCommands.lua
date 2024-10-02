@@ -24,7 +24,7 @@ SlashCmdList["DAMAGEDMINDSSANITY"] = function(arg)
     print(addonName .. " " .. L["commands"] .. ":")
     for command, v in pairs(registeredCommands) do
         if v.description ~= "" then
-            print(cmdColor .. "  /" .. command .. "|r - " .. descColor .. v.description)
+            print(cmdColor .. "  " .. command .. "|r - " .. descColor .. v.description)
         end
     end
 end
