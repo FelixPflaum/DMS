@@ -95,7 +95,7 @@ async function checkDecay() {
         logger.log("Starting automatic decay application...");
 
         const nextTargetTime = new Date();
-        const distToNextTargetDay = 7 - (((nextTargetTime.getDay() + autoDecayDayRes.value) % 7) + 1);
+        const distToNextTargetDay = 7 - ((nextTargetTime.getDay() + autoDecayDayRes.value + 1) % 7);
         nextTargetTime.setDate(nextTargetTime.getDate() + distToNextTargetDay);
         nextTargetTime.setHours(autoDecayHourRes.value);
         nextTargetTime.setMinutes(0);
