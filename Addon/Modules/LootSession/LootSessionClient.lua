@@ -361,16 +361,19 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
     Comm.Send.CMSG_ITEM_RECEIVED(newItem.guid)
     LogDebug("Item added", newItem.guid)
 
-    local _, itemLink, _, _, _, _, _, _, _, _, _, classId, subclassId = C_Item.GetItemInfo(newItem.itemId)
-    if ShouldAutopass(itemLink, classId, subclassId) then
-        Client:RespondToItem(newItem.guid, Client.responses:GetAutoPass().id)
-    end
-    Client.OnItemUpdate:Trigger(newItem, false)
+    Env.Item.DoWhenItemInfoReady(newItem.itemId, function(_, itemLink, _, _, _, _, _, _, itemEquipLoc, _, _, classId, subclassId)
+        -- If item is known this will be synchronous and not even show it at all.
+        -- TODO: Delay adding/showing item if it needs to be loaded?
+        -- Item should be cached at this point though, because client should have seen it drop.
+        if ShouldAutopass(itemLink, classId, subclassId) then
+            Client:RespondToItem(newItem.guid, Client.responses:GetAutoPass().id)
+        end
+        Client.OnItemUpdate:Trigger(newItem, false)
 
-    local itemEquipLoc = select(4, C_Item.GetItemInfoInstant(newItem.itemId))
-    local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
-    Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1, current2 })
-    LogDebug("Gear sent", newItem.guid, current1, current2)
+        local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
+        Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1, current2 })
+        LogDebug("Gear sent", newItem.guid, current1, current2)
+    end)
 end)
 
 Comm.Events.HMSG_ITEM_ANNOUNCE_ChildItem:RegisterCallback(function(data, sender)

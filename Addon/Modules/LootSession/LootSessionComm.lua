@@ -403,7 +403,10 @@ end
 
 -- HMSG_SESSION_START_RESEND
 do
-    ---@alias Packet_HMSG_SESSION_START_RESEND {startPck:Packet_HMSG_SESSION_START, candidates:PackedLootCandidate[], items:(Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem)[]}
+    ---@class Packet_HMSG_SESSION_START_RESEND 
+    ---@field startPck Packet_HMSG_SESSION_START
+    ---@field candidates PackedLootCandidate[] 
+    ---@field items (Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem)[]
 
     ---@param guid string
     ---@param responses LootResponse[]

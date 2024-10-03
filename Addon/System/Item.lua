@@ -174,13 +174,13 @@ local INVTYPE_TO_SLOTS = {
 ---@return string? item1Link
 ---@return string? item2Link If slot is ring, weapon, or trinket this will be the 2nd one.
 function Env.Item.GetCurrentlyEquippedItem(invType)
-    local slotOrSloty = INVTYPE_TO_SLOTS[invType]
-    if not slotOrSloty then return end
-    if type(slotOrSloty) == "number" then
-        return GetInventoryItemLink("player", slotOrSloty)
+    local slotOrSlots = INVTYPE_TO_SLOTS[invType]
+    if not slotOrSlots then return end
+    if type(slotOrSlots) == "number" then
+        return GetInventoryItemLink("player", slotOrSlots)
     end
-    local link1 = GetInventoryItemLink("player", slotOrSloty[1])
-    local link2 = GetInventoryItemLink("player", slotOrSloty[2])
+    local link1 = GetInventoryItemLink("player", slotOrSlots[1])
+    local link2 = GetInventoryItemLink("player", slotOrSlots[2])
     return link1, link2
 end
 
