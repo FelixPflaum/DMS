@@ -2,6 +2,7 @@ import { AccPermissions } from "@/shared/permissions";
 import type { DbDeleteResult, DbInsertCheckedResult, DbRowResult, DbRowsResult, DbUpdateResult } from "../database";
 import { queryDelete, queryInsertChecked, querySelect, querySelectSingle, queryUpdate } from "../database";
 import type { UserRow } from "../types";
+import type { PoolConnection } from "mysql2/promise";
 
 /**
  * Create new auth entry.
@@ -29,10 +30,11 @@ export const getUser = (loginId: string): Promise<DbRowResult<UserRow>> => {
 
 /**
  * Get all auth entries.
+ * @param conn
  * @returns
  */
-export const getAllUsers = (): Promise<DbRowsResult<UserRow>> => {
-    return querySelect<UserRow>(`SELECT * FROM users;`);
+export const getAllUsers = (conn?: PoolConnection): Promise<DbRowsResult<UserRow>> => {
+    return querySelect<UserRow>(`SELECT * FROM users;`, undefined, conn);
 };
 
 /**

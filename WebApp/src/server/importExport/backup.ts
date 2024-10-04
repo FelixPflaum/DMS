@@ -159,7 +159,7 @@ export const applyDataBackup = async (path: string[]): Promise<string | true> =>
     const data = await getBackup(year, month, file);
     if (!data) return "No backup found!";
 
-    const success = importDataExport(data);
+    const success = await importDataExport(data);
     if (!success) return "Failed on data import!";
 
     return true;
