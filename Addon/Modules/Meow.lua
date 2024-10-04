@@ -5,12 +5,6 @@ local Env = select(2, ...)
 
 -- TODO: deactivate this lol
 
-local portal = GetCVar("portal")
-local real = GetRealmName()
-if portal ~= "EU" or real ~= "Lone Wolf" then
-    return
-end
-
 ---@param n string
 function GetPath(n)
     return [[Interface\AddOns\]] .. addonName .. [[\Media\]] .. n

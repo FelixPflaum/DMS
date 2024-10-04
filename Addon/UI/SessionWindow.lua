@@ -766,8 +766,8 @@ do
         [TABLE_INDICES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, comparesort = SortCandidate },
         [TABLE_INDICES.RESPONSES] = { name = L["Response"], width = 200, DoCellUpdate = CellUpdateResponse, sort = ScrollingTable.SORT_DSC, comparesort = SortResponse },
         [TABLE_INDICES.ROLL] = { name = L["Roll"], width = 40, DoCellUpdate = CellUpdateShowIfNotZero, sortnext = TABLE_INDICES.NAME },
-        [TABLE_INDICES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.TOTAL },
-        [TABLE_INDICES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.ROLL },
+        [TABLE_INDICES.SANITY] = { name = L["Sanity"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.ROLL },
+        [TABLE_INDICES.TOTAL] = { name = L["Sum"], width = 40, DoCellUpdate = CellUpdatePointsAndTotal, sortnext = TABLE_INDICES.SANITY },
         [TABLE_INDICES.CURRENT_GEAR1] = { name = "E1", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
         [TABLE_INDICES.CURRENT_GEAR2] = { name = "E2", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateGearIcon },
     }
