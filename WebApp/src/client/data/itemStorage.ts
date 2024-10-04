@@ -94,5 +94,7 @@ export const getItemInfoUrl = (itemId: number): string => {
  * @returns
  */
 export const getItemIconUrl = (iconName: string): string => {
+    // TODO: Fix this in DB?
+    iconName = iconName.toLowerCase();
     return `https://wow.zamimg.com/images/wow/icons/small/${iconName}.jpg`;
 };
