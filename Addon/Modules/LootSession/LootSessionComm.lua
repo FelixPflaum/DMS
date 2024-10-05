@@ -184,7 +184,7 @@ local function FilterReceivedOnClient(channel, sender, opcode, data)
             LogDebugHtC("Received", LookupOpcodeName(opcode), "from", sender, "while not having a host")
             if Env.Session.CanUnitStartSession(sender) then
                 Env:PrintWarn(L["A loot session from %s is running, trying to reconnect..."]:format(sender))
-                reconnectMsgBuffer = { src = sender }
+                reconnectMsgBuffer = { src = sender, buf = {} }
                 Comm.Send.CMSG_RESEND_START()
                 HandleMessage(channel, sender, opcode, data) -- Make it buffer this msg
                 return false
@@ -476,9 +476,7 @@ do
         HandleMessage(channel, sender, OPCODES.HMSG_SESSION_START, data.startPck)
         HandleMessage(channel, sender, OPCODES.HMSG_CANDIDATE_UPDATE, data.candidates)
 
-        for _, v in ipairs(data.items) do
-            HandleMessage(channel, sender, OPCODES.HMSG_ITEM_ANNOUNCE, v)
-        end
+        HandleMessage(channel, sender, OPCODES.HMSG_ITEM_ANNOUNCE, data.items)
 
         for _, buffered in ipairs(msgbuf.buf) do
             HandleMessage(buffered.channel, buffered.sender, buffered.opcode, buffered.data)
