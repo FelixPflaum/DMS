@@ -69,13 +69,22 @@ local function GetItemAllowedClassMask(classId, subClassId)
     return classFlags.ALL_CLASSES
 end
 
+-- Map classIds to the default localized name. Needed due to gendered class names using UnitClass().
+local classIdToDefaultLocalized = (function()
+    local list = {} ---@type table<integer, string>
+    for _, v in ipairs(Env.classList) do
+        list[v.id] = v.displayText
+    end
+    return list
+end)()
+
 ---Should we auto pass on the item.
 ---@param itemLink string
 ---@param itemClassId integer
 ---@param itemSubClassId integer
 function Env.Session.ShouldAutopass(itemLink, itemClassId, itemSubClassId)
     -- Check weapon and armor type restrictions
-    local playerClassLocalized, playerClassKey = UnitClass("player")
+    local _, playerClassKey, classId = UnitClass("player")
     if bit.band(GetItemAllowedClassMask(itemClassId, itemSubClassId), classFlags[playerClassKey]) == 0 then
         Env:PrintDebug("Autopassing on",itemLink,"because of item type restrictions.")
         return true
@@ -83,7 +92,7 @@ function Env.Session.ShouldAutopass(itemLink, itemClassId, itemSubClassId)
 
     -- Check class restriction
     local classesString = Env.Item.GetItemClassRestrictionString(itemLink)
-    if classesString and not classesString:find(playerClassLocalized) then
+    if classesString and not classesString:find(classIdToDefaultLocalized[classId]) then
         Env:PrintDebug("Autopassing on",itemLink,"because of class restrictions.")
         return true
     end
