@@ -45,11 +45,14 @@ Env:RegisterEvent("GUILD_ROSTER_UPDATE", function()
     wipe(Guild.memberCache)
     for i = 1, memberCount do
         local name, rankName, rankIndex, _, _, _, _, _, _, _, class = GetGuildRosterInfo(i)
-        if not Guild.rankCache[rankIndex] then
-            Guild.rankCache[rankIndex] = { id = rankIndex, name = rankName }
-            Guild.memberCache[rankIndex] = {}
+        -- TODO: Aparently name can be nil, or rather data isn't actually available at this point? Can't reproduce though.
+        if name then
+            if not Guild.rankCache[rankIndex] then
+                Guild.rankCache[rankIndex] = { id = rankIndex, name = rankName }
+                Guild.memberCache[rankIndex] = {}
+            end
+            table.insert(Guild.memberCache[rankIndex], { name = Ambiguate(name, "short"), classId = GetClassIdFromName(class) })
         end
-        table.insert(Guild.memberCache[rankIndex], { name = Ambiguate(name, "short"), classId = GetClassIdFromName(class) })
     end
     Guild.OnRosterDataUpdate:Trigger()
 end)
