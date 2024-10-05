@@ -309,6 +309,7 @@ end)
 local gearReceivedBuffer = {} ---@type table<string, table<string, string[]>>
 
 Comm.Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:RegisterCallback(function(sender, data)
+    if not Client.isRunning then return end
     local item = Client.items[data.itemGuid]
     if item then
         local itemResponse = item.responses[sender]
