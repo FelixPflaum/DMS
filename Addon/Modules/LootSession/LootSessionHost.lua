@@ -355,7 +355,7 @@ Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
         Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate client not known!")
         return
     end
-    if itemResponse.status == LootStatus.sent then
+    if itemResponse.status == LootStatus.sent or itemResponse.status == LootStatus.unknown then
         itemResponse.status = LootStatus.waitingForResponse
         if not item.veiled then
             Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
@@ -748,7 +748,7 @@ function Host:ItemAdd(itemId)
                 if shouldAck then
                     C_Timer.NewTimer(1, function (t)
                         Comm:FakeSendToHost(candidate.name, function ()
-                            Comm.Send.CMSG_ITEM_RECEIVED(item.guid)
+                            Comm.Send.CMSG_ITEM_RECEIVED(item.guid, true)
                         end)
                     end)
                     if shouldRespond then

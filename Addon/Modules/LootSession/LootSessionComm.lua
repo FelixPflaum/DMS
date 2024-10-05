@@ -5,7 +5,7 @@ local L = Env:GetLocalization()
 local Net = Env.Net
 
 local COMM_SESSION_PREFIX = "DMSS"
-local COMM_VERSION = 1
+local COMM_VERSION = 2
 
 ---@enum Opcode
 local OPCODES = {
@@ -374,9 +374,27 @@ do
     ---@field parentGuid string
     ---@field order integer
 
+    ---@alias HMSG_ITEM_ANNOUNCE_PacketFormat (Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem)[]
+
+    local queued = {} ---@type SessionHost_Item[]
+
+    local function SendQueued()
+        local packet = {} ---@type HMSG_ITEM_ANNOUNCE_PacketFormat
+        local itemCount = 0
+        for _, item in pairs(queued) do
+            table.insert(packet, MakeItemAnnouncePacket(item))
+            itemCount = itemCount + 1
+        end
+        wipe(queued)
+        LogDebugHtC("Sending batched HMSG_ITEM_ANNOUNCE, items:", itemCount)
+        SendToClients(OPCODES.HMSG_ITEM_ANNOUNCE, packet)
+    end
+
     ---@param item SessionHost_Item
     function Sender.HMSG_ITEM_ANNOUNCE(item)
-        SendToClients(OPCODES.HMSG_ITEM_ANNOUNCE, MakeItemAnnouncePacket(item))
+        table.insert(queued, item)
+        -- Batch window can be short, it's just to batch multiple items added at the same time.
+        batchTimers:StartUnique("HMSG_ITEM_ANNOUNCE", 0.1, SendQueued, nil, true)
     end
 
     ---@class CommEvent_HMSG_ITEM_ANNOUNCE
@@ -391,21 +409,24 @@ do
 
     messageFilter[OPCODES.HMSG_ITEM_ANNOUNCE] = FilterReceivedOnClient
     messageHandler[OPCODES.HMSG_ITEM_ANNOUNCE] = function(data, sender)
-        if data.parentGuid then
-            ---@cast data Packet_HMSG_ITEM_ANNOUNCE_ChildItem
-            Events.HMSG_ITEM_ANNOUNCE_ChildItem:Trigger(data, sender)
-        else
-            ---@cast data Packet_HMSG_ITEM_ANNOUNCE
-            Events.HMSG_ITEM_ANNOUNCE:Trigger(data, sender)
+        ---@cast data HMSG_ITEM_ANNOUNCE_PacketFormat
+        for _, individual in ipairs(data) do
+            if individual.parentGuid then
+                ---@cast individual Packet_HMSG_ITEM_ANNOUNCE_ChildItem
+                Events.HMSG_ITEM_ANNOUNCE_ChildItem:Trigger(individual, sender)
+            else
+                ---@cast individual Packet_HMSG_ITEM_ANNOUNCE
+                Events.HMSG_ITEM_ANNOUNCE:Trigger(individual, sender)
+            end
         end
     end
 end
 
 -- HMSG_SESSION_START_RESEND
 do
-    ---@class Packet_HMSG_SESSION_START_RESEND 
+    ---@class Packet_HMSG_SESSION_START_RESEND
     ---@field startPck Packet_HMSG_SESSION_START
-    ---@field candidates PackedLootCandidate[] 
+    ---@field candidates PackedLootCandidate[]
     ---@field items (Packet_HMSG_ITEM_ANNOUNCE|Packet_HMSG_ITEM_ANNOUNCE_ChildItem)[]
 
     ---@param guid string
@@ -711,7 +732,7 @@ function SendToHost(opcode, data)
         local sender = doFakeSend
         local delay = 0.5 + math.random()
         LogDebugCtH("FAKE Sending to host", opcode, ", Delay: ", delay)
-        C_Timer.NewTimer(delay, function (t)
+        C_Timer.NewTimer(delay, function(t)
             HandleMessage("WHISPER", sender, opcode, data)
         end)
         return
@@ -762,9 +783,24 @@ end
 
 -- CMSG_ITEM_RECEIVED
 do
+    local queued = {} ---@type string[] -- The item guids to send.
+
+    local function SendQueued()
+        LogDebugCtH("Sending batched CMSG_ITEM_RECEIVED, items:", #queued)
+        SendToHost(OPCODES.CMSG_ITEM_RECEIVED, queued)
+        wipe(queued)
+    end
+
     ---@param itemGuid string
-    function Sender.CMSG_ITEM_RECEIVED(itemGuid)
-        SendToHost(OPCODES.CMSG_ITEM_RECEIVED, itemGuid)
+    ---@param doNotBatch boolean?
+    function Sender.CMSG_ITEM_RECEIVED(itemGuid, doNotBatch)
+        if doNotBatch then
+            SendToHost(OPCODES.CMSG_ITEM_RECEIVED, { itemGuid })
+            return
+        end
+        table.insert(queued, itemGuid)
+        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once.
+        batchTimers:StartUnique("CMSG_ITEM_RECEIVED", 0.1, SendQueued, nil, true)
     end
 
     ---@class CommEvent_CMSG_ITEM_RECEIVED
@@ -774,7 +810,10 @@ do
 
     messageFilter[OPCODES.CMSG_ITEM_RECEIVED] = FilterReceivedOnHost
     messageHandler[OPCODES.CMSG_ITEM_RECEIVED] = function(data, sender)
-        Events.CMSG_ITEM_RECEIVED:Trigger(sender, data)
+        ---@cast data string[]
+        for _, itemGuid in ipairs(data) do
+            Events.CMSG_ITEM_RECEIVED:Trigger(sender, itemGuid)
+        end
     end
 end
 
@@ -856,6 +895,14 @@ do
     ---@field itemGuid string
     ---@field currentItems string[] [item1[, item2]]
 
+    local queued = {} ---@type Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED[]
+
+    local function SendQueued()
+        LogDebugCtH("Sending batched CBMSG_ITEM_CURRENTLY_EQUIPPED, items:", #queued)
+        SendClientToAll(OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED, queued)
+        wipe(queued)
+    end
+
     ---@param itemGuid string
     ---@param currentItems string[] [item1[, item2]]
     function Sender.CBMSG_ITEM_CURRENTLY_EQUIPPED(itemGuid, currentItems)
@@ -863,7 +910,9 @@ do
             itemGuid = itemGuid,
             currentItems = currentItems,
         }
-        SendClientToAll(OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED, packet)
+        table.insert(queued, packet)
+        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once.
+        batchTimers:StartUnique("CBMSG_ITEM_CURRENTLY_EQUIPPED", 0.1, SendQueued, nil, true)
     end
 
     ---@class CommEvent_CBMSG_ITEM_CURRENTLY_EQUIPPED
@@ -873,8 +922,10 @@ do
 
     messageFilter[OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED] = FilterReceivedClientBroadcast
     messageHandler[OPCODES.CBMSG_ITEM_CURRENTLY_EQUIPPED] = function(data, sender)
-        ---@cast data Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
-        Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:Trigger(sender, data)
+        ---@cast data Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED[]
+        for _, individual in ipairs(data) do
+            Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:Trigger(sender, individual)
+        end
     end
 end
 
