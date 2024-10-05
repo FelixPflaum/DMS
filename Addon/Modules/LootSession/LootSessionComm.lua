@@ -701,10 +701,21 @@ local function LogDebugCtH(...)
     Env:PrintDebug("Comm Client:", ...)
 end
 
+local doFakeSend = false ---@type string|false
+
 ---Send message to host.
 ---@param opcode Opcode
 ---@param data any
 function SendToHost(opcode, data)
+    if doFakeSend ~= false then
+        local sender = doFakeSend
+        local delay = 0.5 + math.random()
+        LogDebugCtH("FAKE Sending to host", opcode, ", Delay: ", delay)
+        C_Timer.NewTimer(delay, function (t)
+            HandleMessage("WHISPER", sender, opcode, data)
+        end)
+        return
+    end
     LogDebugCtH("Sending to host", opcode)
     Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, data)
 end
@@ -721,6 +732,15 @@ local function FilterReceivedOnHost(channel, sender, opcode, data)
         return false
     end
     return true
+end
+
+---For debugging: Fake send to host by directly calling the local message handler after a delay.
+---@param sender string The sender name to use.
+---@param action fun() A function that uses a Comm.Sender.CMSG_ function.
+function Comm:FakeSendToHost(sender, action)
+    doFakeSend = sender
+    action()
+    doFakeSend = false
 end
 
 -- CMSG_ATTENDANCE_CHECK

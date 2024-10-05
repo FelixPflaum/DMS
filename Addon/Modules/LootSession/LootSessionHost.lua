@@ -742,10 +742,23 @@ function Host:ItemAdd(itemId)
                 status = LootStatus.sent,
             }
             if candidate.isFake and Env.settings.testMode then
-                local ir = item.responses[name]
-                Env.Session.FillTestResponse(ir, responses.responses, item.roller)
+                local shouldAck, shouldRespond, responseDelay, response = Env.Session.GetTestResponse(responses.responses)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)
-                print(ir.status.displayString, ir.response and ir.response.displayString, ir.roll, ir.candidate.currentPoints)
+                print("Ack", tostring(shouldAck), "Resp", tostring(shouldRespond), "Delay", responseDelay, response.displayString)
+                if shouldAck then
+                    C_Timer.NewTimer(1, function (t)
+                        Comm:FakeSendToHost(candidate.name, function ()
+                            Comm.Send.CMSG_ITEM_RECEIVED(item.guid)
+                        end)
+                    end)
+                    if shouldRespond then
+                        C_Timer.NewTimer(responseDelay, function (t)
+                            Comm:FakeSendToHost(candidate.name, function ()
+                                Comm.Send.CMSG_ITEM_RESPONSE(item.guid, response.id)
+                            end)
+                        end)
+                    end
+                end
             end
         end
 

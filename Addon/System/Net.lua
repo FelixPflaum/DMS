@@ -93,7 +93,7 @@ end
 
 ---@type {sentAt:number, size:integer}[]
 local cpsTracker = {}
-local cpsTrackerLen = 10
+local cpsTrackerLen = 100
 local cpsTrackerLastPos = 1
 for i = 1, cpsTrackerLen do
     cpsTracker[i] = { sentAt = 0, size = 0 }
@@ -120,9 +120,12 @@ local function TrackCPS(msg)
     cpsTracker[cpsTrackerLastPos].size = size
 
     local now = GetTime()
-    local cps1s = 0.0
+    local cps1s = 0.0 -- chars per second
     local cps2s = 0.0
     local cps5s = 0.0
+    local ps1s = 0 -- packets per second
+    local ps2s = 0
+    local ps5s = 0
 
     local offset = 1
     while true do
@@ -139,10 +142,13 @@ local function TrackCPS(msg)
         end
 
         cps5s = cps5s + v.size / 5
+        ps5s = ps5s + 1
         if delta <= 2 then
             cps2s = cps2s + v.size / 2
+            ps2s = ps2s + 1
             if delta <= 1 then
                 cps1s = cps1s + v.size
+                ps1s = ps1s + 1
             end
         end
     end
@@ -162,7 +168,7 @@ local function TrackCPS(msg)
         Env:PrintWarn("CPS last 5 seconds over " .. warnlimit5s .. "! CPS: " .. cps5s)
     end
 
-    Env:PrintDebug("Net: Sending with size", size, "CPS", cps1s, "CPS/2s", cps2s, "CPS/5s", cps5s)
+    Env:PrintDebug("Net: Sending with size", size, "PS/CPS 1s:", ps1s, "/", cps1s, "2s:", ps2s, "/", cps2s, "5s:", "/", ps5s, cps5s)
 end
 
 ---@param opcode integer

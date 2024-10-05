@@ -268,17 +268,15 @@ function Env.Session.FillFakeCandidateList(list, amount)
     end
 end
 
----@param itemResponse SessionHost_ItemResponse
 ---@param responses LootResponse[]
----@param roller UniqueRoller
-function Env.Session.FillTestResponse(itemResponse, responses, roller)
-    local ls = Env.Session.LootCandidateStatus
-    local lsList = { -- lol
-        ls.sent, ls.unknown, ls.waitingForResponse, ls.responseTimeout,
-        ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded,
-        ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded, ls.responded,
-    }
-    itemResponse.status = lsList[math.random(#lsList)]
-    itemResponse.response = itemResponse.status == ls.responded and responses[math.random(#responses)] or nil
-    itemResponse.roll = itemResponse.response and itemResponse.response.id >= REPSONSE_ID_FIRST_CUSTOM and roller:GetRoll() or nil
+---@return boolean shouldAck
+---@return boolean shouldRespond
+---@return integer responseDelay
+---@return LootResponse response
+function Env.Session.GetTestResponse(responses)
+    local shouldAck = math.random() > 0.05
+    local shouldRespond = math.random() > 0.1
+    local responseDelay = math.random(1, 20)
+    local response = responses[math.random(Env.Session.RESPONSE_ID_PASS, #responses)]
+    return shouldAck, shouldRespond, responseDelay, response
 end
