@@ -96,7 +96,7 @@ const UserAddEditPage = (): JSX.Element => {
         <>
             <h1 className="pageHeading">{isEdit ? "Edit" : "Add"} User</h1>
             <form onSubmit={onSubmit}>
-                <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17} maxLen={18}></TextInput>
+                <TextInput label="Discord ID" inputRef={idInputRef} required={true} minLen={17} maxLen={20}></TextInput>
                 <TextInput label="Name" inputRef={nameInputRef} required={true} minLen={4}></TextInput>
                 <PermissionInput label="Permissions" perms={permissions} onChange={onPermChange}></PermissionInput>
                 <div>

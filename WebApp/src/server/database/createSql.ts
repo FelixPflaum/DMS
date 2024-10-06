@@ -79,4 +79,12 @@ export const creationSqlQueries: string[] = [
     "ALTER TABLE lootHistory ADD CONSTRAINT loothistory_ibfk_1 FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE;",
     "ALTER TABLE pointHistory ADD CONSTRAINT pointhistory_ibfk_1 FOREIGN KEY (playerName) REFERENCES players(playerName) ON DELETE CASCADE ON UPDATE CASCADE;",
     "ALTER TABLE importLogs MODIFY logData MEDIUMTEXT NOT NULL;",
+    "ALTER TABLE players DROP FOREIGN KEY players_ibfk_1;",
+    "ALTER TABLE importLogs DROP FOREIGN KEY importlogs_ibfk_1;",
+    "ALTER TABLE players MODIFY account VARCHAR(20);",
+    "ALTER TABLE audit MODIFY loginId VARCHAR(20) NOT NULL;",
+    "ALTER TABLE users MODIFY loginId VARCHAR(20) NOT NULL;",
+    "ALTER TABLE importLogs MODIFY user VARCHAR(20);",
+    "ALTER TABLE players ADD CONSTRAINT players_ibfk_1 FOREIGN KEY (account) REFERENCES users(loginId) ON DELETE SET NULL ON UPDATE CASCADE;",
+    "ALTER TABLE importLogs ADD CONSTRAINT importLogs_ibfk_1 FOREIGN KEY (user) REFERENCES users(loginId) ON UPDATE CASCADE ON DELETE SET NULL;",
 ];
