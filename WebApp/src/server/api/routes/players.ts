@@ -75,7 +75,7 @@ playerRouter.post("/create", async (req: Request, res: Response): Promise<void> 
     const body = req.body as Partial<ApiPlayerEntry>;
     const playerName = body.playerName;
     const classId = body.classId;
-    const points = body.points;
+    const points = 0; // body.points;
 
     if (!playerName || playerName.length < 2) return send400(res, "Invalid player name.");
     if (!classId || classId < 1 || classId > 13) return send400(res, "Invalid class id.");
@@ -145,7 +145,7 @@ playerRouter.post("/update/:playerName", async (req: Request, res: Response): Pr
     const body = req.body as Partial<ApiPlayerEntry>;
     const playerName = body.playerName;
     const classId = body.classId;
-    const account = body.account;
+    const account = body.account || undefined; // Turn empty string into undefined.
 
     if (!playerName || playerName.length < 2) return send400(res, "Invalid player name.");
     if (!classId || classId < 1 || classId > 13) return send400(res, "Invalid class id.");
@@ -163,15 +163,18 @@ playerRouter.post("/update/:playerName", async (req: Request, res: Response): Pr
         return sendApiResponse(res, "Player does not exist.");
     }
 
+    const changes: string[] = [];
+    if (targetPlayer.classId != classId) changes.push(`Class: ${targetPlayer.classId} -> ${classId}`);
+    if (targetPlayer.playerName != playerName) changes.push(`Name: ${targetPlayer.playerName} -> ${playerName}`);
+
+    if (changes.length == 0) return send400(res, "No changes made.");
+
     const updRes = await updatePlayer(playerNameKey, { playerName, classId, account });
     if (updRes.isError) return send500Db(res);
     if (!updRes.affectedRows) {
         return sendApiResponse(res, "Player does not exist.");
     }
 
-    const changes: string[] = [];
-    if (targetPlayer.classId != classId) changes.push(`Class: ${targetPlayer.classId} -> ${classId}`);
-    if (targetPlayer.playerName != playerName) changes.push(`Name: ${targetPlayer.playerName} -> ${playerName}`);
     await addAuditEntry(auth.user.loginId, auth.user.userName, "Updated player", changes.join(", "));
 
     sendApiResponse(res, true);

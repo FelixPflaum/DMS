@@ -1,7 +1,6 @@
 import type { FormEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import TextInput from "../components/form/TextInput";
-import NumberInput from "../components/form/NumberInput";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLoadOverlayCtx } from "../LoadOverlayProvider";
 import { apiGet, apiPost } from "../serverApi";
@@ -9,6 +8,7 @@ import type { ApiPlayerEntry, ApiPlayerRes } from "@/shared/types";
 import PointChangeForm from "../components/PointChangeForm";
 import StaticFormRow from "../components/form/StaticFormRow";
 import { useToaster } from "../components/toaster/Toaster";
+import CharClassSelect from "../components/form/CharClassSelect";
 
 const PlayerAddEditPage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
@@ -21,8 +21,7 @@ const PlayerAddEditPage = (): JSX.Element => {
     const isEdit = !!nameParam;
 
     const nameInputRef = useRef<HTMLInputElement>(null);
-    const classInputRef = useRef<HTMLInputElement>(null);
-    const pointInputRef = useRef<HTMLInputElement>(null);
+    const classInputRef = useRef<HTMLSelectElement>(null);
     const accountInputRef = useRef<HTMLInputElement>(null);
     const submitBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -39,7 +38,6 @@ const PlayerAddEditPage = (): JSX.Element => {
             setPlayer(res.player);
             if (nameInputRef.current) nameInputRef.current.value = res.player.playerName;
             if (classInputRef.current) classInputRef.current.value = res.player.classId.toString();
-            if (pointInputRef.current) pointInputRef.current.value = res.player.points.toString();
             if (accountInputRef.current) accountInputRef.current.value = res.player.account ?? "";
         });
     }, []);
@@ -49,7 +47,7 @@ const PlayerAddEditPage = (): JSX.Element => {
 
         const nameValue = nameInputRef.current?.value;
         const classValue = parseInt(classInputRef.current?.value ?? "x");
-        const pointValue = parseInt(pointInputRef.current?.value ?? "x");
+        const pointValue = 0; // This is ignored on this endpoint atm.
         const accValue = accountInputRef.current?.value;
         if (typeof classValue !== "number" || typeof pointValue !== "number" || !nameValue) return;
 
@@ -97,9 +95,9 @@ const PlayerAddEditPage = (): JSX.Element => {
             <h1 className="pageHeading">{isEdit ? "Edit" : "Add"} Player</h1>
             <form onSubmit={onSubmit}>
                 <TextInput label="Name" inputRef={nameInputRef} required={true} minLen={2}></TextInput>
-                <NumberInput label="Class" inputRef={classInputRef} required={true}></NumberInput>
+                <CharClassSelect label="Class" inputRef={classInputRef}></CharClassSelect>
                 <TextInput label="Account" inputRef={accountInputRef} minLen={17}></TextInput>
-                <StaticFormRow label="Sanity" value={player?.points.toString() ?? "0"}></StaticFormRow>
+                {isEdit ? <StaticFormRow label="Sanity" value={player?.points.toString() ?? "0"}></StaticFormRow> : null}
                 <div>
                     <button className="button" ref={submitBtnRef}>
                         Save
