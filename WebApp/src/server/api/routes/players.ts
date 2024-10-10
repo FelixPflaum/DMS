@@ -166,6 +166,7 @@ playerRouter.post("/update/:playerName", async (req: Request, res: Response): Pr
     const changes: string[] = [];
     if (targetPlayer.classId != classId) changes.push(`Class: ${targetPlayer.classId} -> ${classId}`);
     if (targetPlayer.playerName != playerName) changes.push(`Name: ${targetPlayer.playerName} -> ${playerName}`);
+    if (targetPlayer.account != account) changes.push(`Account: ${targetPlayer.account} -> ${account}`);
 
     if (changes.length == 0) return send400(res, "No changes made.");
 
