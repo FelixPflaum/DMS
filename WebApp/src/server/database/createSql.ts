@@ -87,4 +87,5 @@ export const creationSqlQueries: string[] = [
     "ALTER TABLE importLogs MODIFY user VARCHAR(20);",
     "ALTER TABLE players ADD CONSTRAINT players_ibfk_1 FOREIGN KEY (account) REFERENCES users(loginId) ON DELETE SET NULL ON UPDATE CASCADE;",
     "ALTER TABLE importLogs ADD CONSTRAINT importLogs_ibfk_1 FOREIGN KEY (user) REFERENCES users(loginId) ON UPDATE CASCADE ON DELETE SET NULL;",
+    "ALTER TABLE audit MODIFY info TEXT NOT NULL;",
 ];
