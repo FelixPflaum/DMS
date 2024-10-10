@@ -39,7 +39,8 @@ function getOldest(hist: { timeStamp: number }[]): number {
  */
 async function validateLootHistory(
     conn: PoolConnection,
-    lootHistory: AddonLootHistoryEntry[]
+    lootHistory: AddonLootHistoryEntry[],
+    players: AddonPlayerEntry[]
 ): Promise<{ newEntries: Map<string, AddonLootHistoryEntry[]>; error?: string }> {
     const oldestImport = getOldest(lootHistory) * 1000; // Addon is seconds timestamps
 
@@ -52,10 +53,27 @@ async function validateLootHistory(
         dict[h.guid] = h;
     }
 
+    // TODO: Deduplicate getting player dict.
+    const [dbPlayers] = (await conn.query<RowDataPacket[]>(`SELECT * FROM players;`)) as [PlayerRow[], FieldPacket[]];
+    const dbPlayersDict = new Map<string, PlayerRow>();
+    for (const dbp of dbPlayers) {
+        dbPlayersDict.set(dbp.playerName, dbp);
+    }
+
+    const importPlayerDict = new Map<string, AddonPlayerEntry>();
+    for (const ip of players) {
+        importPlayerDict.set(ip.playerName, ip);
+    }
+
     const newEntries = new Map<string, AddonLootHistoryEntry[]>();
 
     for (const importEntry of lootHistory) {
         if (dict[importEntry.guid]) continue;
+
+        if (!dbPlayersDict.has(importEntry.playerName) && !importPlayerDict.has(importEntry.playerName)) {
+            return { error: `Unknown player ${importEntry.playerName} for loot entry ${importEntry.guid}`, newEntries };
+        }
+
         if (!newEntries.has(importEntry.playerName)) newEntries.set(importEntry.playerName, []);
         newEntries.get(importEntry.playerName)!.push(importEntry);
     }
@@ -266,7 +284,7 @@ export const importAddonExport = async (data: AddonExport): Promise<{ error?: st
     try {
         conn.query("LOCK TABLES players WRITE, pointHistory WRITE, lootHistory WRITE;");
 
-        const lootHistValidationRes = await validateLootHistory(conn, data.lootHistory);
+        const lootHistValidationRes = await validateLootHistory(conn, data.lootHistory, data.players);
         if (lootHistValidationRes.error) {
             return { error: lootHistValidationRes.error };
         }
@@ -280,9 +298,9 @@ export const importAddonExport = async (data: AddonExport): Promise<{ error?: st
         if (!backupSuccess) return { error: "Making data backup failed!" };
 
         conn.beginTransaction();
+        const playerLog = await updatePlayers(conn, playerChangeValidationRes.changedPlayers);
         const lootLog = await updateLootHistory(conn, lootHistValidationRes.newEntries);
         const pointLog = await updatePointHistory(conn, playerChangeValidationRes.pointChanges);
-        const playerLog = await updatePlayers(conn, playerChangeValidationRes.changedPlayers);
         await conn.commit();
 
         return { log: { players: playerLog, lootHistory: lootLog, pointHistory: pointLog } };
