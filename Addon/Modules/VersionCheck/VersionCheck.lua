@@ -87,7 +87,7 @@ function VersionCheck.SendRequest(channel)
         return
     end
 
-    Net:Send(VC_COMM_PREFIX, channel, VC_OPCODES.REQUEST_VERSION)
+    Net:Send(VC_COMM_PREFIX, channel, VC_OPCODES.REQUEST_VERSION, "NORMAL")
 
     if currentTimeoutTimer then
         currentTimeoutTimer:Cancel()
@@ -127,7 +127,7 @@ Env:OnAddonLoaded(function(...)
     Env.Net:Register(VC_COMM_PREFIX, function(channel, sender, opcode, data)
         if opcode == VC_OPCODES.REQUEST_VERSION then
             if channel ~= "PARTY" and channel ~= "RAID" and channel ~= "GUILD" then return end
-            Net:SendWhisper(VC_COMM_PREFIX, sender, VC_OPCODES.MY_VERSION, VERSION)
+            Net:SendWhisper(VC_COMM_PREFIX, sender, VC_OPCODES.MY_VERSION, "NORMAL", VERSION)
         elseif opcode == VC_OPCODES.MY_VERSION then
             if channel ~= "WHISPER" then return end
             if isEnabled and responseList[sender] then

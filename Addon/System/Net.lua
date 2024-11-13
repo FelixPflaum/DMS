@@ -113,6 +113,10 @@ end
 
 ---@param msg string
 local function TrackCPS(msg)
+    if not DMS_Settings or DMS_Settings.logLevel == 1 then
+        return
+    end
+
     local size = msg:len()
 
     cpsTrackerLastPos = GetCpsTrackerPos(1)
@@ -153,8 +157,6 @@ local function TrackCPS(msg)
         end
     end
 
-    --TODO: this should become debug only
-
     local warnlimit1s = 1500
     local warnlimit2s = 1000
     local warnlimit5s = 600
@@ -182,34 +184,39 @@ local function MakeMsg(opcode, ...)
     return LibDeflate:EncodeForWoWAddonChannel(deflated)
 end
 
+---@alias CTLPrio "BULK"|"NORMAL"|"ALERT"
+
 ---Send message to a channel.
 ---@param prefix string
 ---@param channel string
 ---@param opcode integer
-function Net:Send(prefix, channel, opcode, ...)
+---@param prio CTLPrio
+function Net:Send(prefix, channel, opcode, prio, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
-    AceComm:SendCommMessage(prefix, msg, channel)
+    AceComm:SendCommMessage(prefix, msg, channel, nil, prio)
 end
 
 ---Send message in whisper channel.
 ---@param prefix string
 ---@param target string
 ---@param opcode integer
-function Net:SendWhisper(prefix, target, opcode, ...)
+---@param prio CTLPrio
+function Net:SendWhisper(prefix, target, opcode, prio, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
-    AceComm:SendCommMessage(prefix, msg, "WHISPER", target)
+    AceComm:SendCommMessage(prefix, msg, "WHISPER", target, prio)
 end
 
 ---Send message in whisper channel.
 ---@param prefix string
 ---@param target string
 ---@param opcode integer
+---@param prio CTLPrio
 ---@param callbackFn fun(callbackArg:string, sent:number, textlen:number)
 ---@param callbackArg string
-function Net:SendWhisperWithProgress(prefix, target, opcode, callbackFn, callbackArg, ...)
+function Net:SendWhisperWithProgress(prefix, target, opcode, prio, callbackFn, callbackArg, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
-    AceComm:SendCommMessage(prefix, msg, "WHISPER", target, nil, callbackFn, callbackArg)
+    AceComm:SendCommMessage(prefix, msg, "WHISPER", target, prio, callbackFn, callbackArg)
 end

@@ -495,16 +495,15 @@ do
     ---@type ST_CellUpdateFunc
     local function CellUpdateGearIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
         if not fShow then return end
-        local itemLink = data[realrow][column] ---@type string?
-        if not itemLink then
+        local itemId = data[realrow][column] ---@type integer?
+        if not itemId then
             cellFrame:ClearNormalTexture()
             cellFrame:SetScript("OnEnter", nil)
             return
         end
-        local itemId = Env.Item.GetIdFromLink(itemLink)
         local icon = itemId and GetItemIcon(itemId)
         cellFrame:SetNormalTexture(icon or [[Interface/Icons/inv_misc_questionmark]])
-        cellFrame:SetScript("OnEnter", function() Env.UI.ShowItemTooltip(cellFrame, itemLink) end)
+        cellFrame:SetScript("OnEnter", function() Env.UI.ShowItemTooltip(cellFrame, "item:" .. itemId) end)
         cellFrame:SetScript("OnLeave", GameTooltip_Hide)
     end
 
@@ -759,7 +758,7 @@ do
         end
     end
 
-    ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer,string?,string?]
+    ---@alias ResponseTableRowData [integer,SessionClient_Candidate,SessionClient_ItemResponse,integer,integer,integer,integer?,integer?]
 
     TABLE_DEF = {
         [TABLE_INDICES.ICON] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateClassIcon },

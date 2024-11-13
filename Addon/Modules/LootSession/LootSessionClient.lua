@@ -27,7 +27,7 @@ end
 ---@field response LootResponse|nil
 ---@field status LootCandidateStatus
 ---@field roll integer|nil
----@field currentItem string[]? ItemLinks [item1[,item2]] for currently equipped items. Item2 is used for rings and trinkets.
+---@field currentItem integer[]? ItemIds [item1[,item2]] for currently equipped items. Item2 is used for rings and trinkets.
 
 ---@class (exact) SessionClient_ItemAwardData
 ---@field candidateName string The name of the player the item was awarded to.
@@ -306,7 +306,7 @@ Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, 
 end)
 
 -- itemGuid -> candidateName -> [link1[, link2]]
-local gearReceivedBuffer = {} ---@type table<string, table<string, string[]>>
+local gearReceivedBuffer = {} ---@type table<string, table<string, integer[]>>
 
 Comm.Events.CBMSG_ITEM_CURRENTLY_EQUIPPED:RegisterCallback(function(sender, data)
     if not Client.isRunning then return end
@@ -372,7 +372,9 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
         Client.OnItemUpdate:Trigger(newItem, false)
 
         local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
-        Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1, current2 })
+        local current1Id = current1 and Env.Item.GetIdFromLink(current1) or nil
+        local current2Id = current2 and Env.Item.GetIdFromLink(current2) or nil
+        Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1Id, current2Id })
         LogDebug("Gear sent", newItem.guid, current1, current2)
     end)
 end)

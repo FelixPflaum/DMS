@@ -110,7 +110,7 @@ local function InitHost(target)
     if Env.settings.testMode then
         Env:PrintError("TEST MODE: Generating fake candidate entries!")
         Env.Session.FillFakeCandidateList(candidates, 20)
-        Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidates, true)
     end
 end
 
@@ -312,7 +312,7 @@ function Host:UpdateCandidateList()
                 LogDebug(" - ", lc.name)
             end
         end
-        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates, true)
     end
 end
 

@@ -5,7 +5,7 @@ local L = Env:GetLocalization()
 local Net = Env.Net
 
 local COMM_SESSION_PREFIX = "DMSS"
-local COMM_VERSION = 2
+local COMM_VERSION = 3
 
 ---@enum Opcode
 local OPCODES = {
@@ -149,7 +149,7 @@ local function SendToClients(opcode, data)
 
     if hostCommTarget == "self" then
         LogDebugHtC("Sending whisper", LookupOpcodeName(opcode))
-        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, data)
+        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, "NORMAL", data)
         return
     end
 
@@ -166,7 +166,7 @@ local function SendToClients(opcode, data)
     end
 
     LogDebugHtC("Sending broadcast", channel, LookupOpcodeName(opcode))
-    Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
+    Net:Send(COMM_SESSION_PREFIX, channel, opcode, "NORMAL", data)
 end
 
 ---@param channel string
@@ -298,8 +298,21 @@ do
     ---@field isResponding boolean
     ---@field currentPoints integer
 
+    local queued = {} ---@type PackedLootCandidate[]
+
+    local function SendQueued()
+        local packet = {} ---@type PackedLootCandidate[]
+        for _, v in ipairs(queued) do
+            table.insert(packet, v)
+        end
+        wipe(queued)
+        LogDebugHtC("Sending batched HMSG_CANDIDATE_UPDATE, entries:", #packet)
+        SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, packet)
+    end
+
     ---@param candidates table<string,SessionHost_Candidate>|SessionHost_Candidate
-    function Sender.HMSG_CANDIDATE_UPDATE(candidates)
+    ---@param noBatch boolean?
+    function Sender.HMSG_CANDIDATE_UPDATE(candidates, noBatch)
         ---@type PackedLootCandidate[]
         local lcPackList = {}
         if candidates.name then
@@ -309,7 +322,14 @@ do
                 table.insert(lcPackList, PackLootCandidate(lc))
             end
         end
-        SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, lcPackList)
+        if noBatch then
+            SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, lcPackList)
+        else
+            for _, v in ipairs(lcPackList) do
+                table.insert(queued, v)
+            end
+            batchTimers:StartUnique("HMSG_CANDIDATE_UPDATE", 1, SendQueued, nil, true)
+        end
     end
 
     ---@class CommEvent_HMSG_CANDIDATE_UPDATE
@@ -736,7 +756,7 @@ function SendToHost(opcode, data)
         return
     end
     LogDebugCtH("Sending to host", opcode)
-    Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, data)
+    Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, "NORMAL", data)
 end
 
 ---@param channel string
@@ -857,7 +877,7 @@ end
 function SendClientToAll(opcode, data)
     if hostCommTarget and hostCommTarget == "self" then
         LogDebugCtA("Sending client broadcast to self", LookupOpcodeName(opcode))
-        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, data)
+        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, "BULK", data)
         return
     end
     local channel = ""
@@ -870,7 +890,7 @@ function SendClientToAll(opcode, data)
         return false
     end
     LogDebugCtA("Sending client broadcast", channel, LookupOpcodeName(opcode))
-    Net:Send(COMM_SESSION_PREFIX, channel, opcode, data)
+    Net:Send(COMM_SESSION_PREFIX, channel, opcode, "BULK", data)
 end
 
 ---@param channel string
@@ -891,7 +911,7 @@ end
 do
     ---@class (exact) Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
     ---@field itemGuid string
-    ---@field currentItems string[] [item1[, item2]]
+    ---@field currentItems integer[] [item1[, item2]]
 
     local queued = {} ---@type Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED[]
 
@@ -902,15 +922,16 @@ do
     end
 
     ---@param itemGuid string
-    ---@param currentItems string[] [item1[, item2]]
+    ---@param currentItems integer[] [item1[, item2]]
     function Sender.CBMSG_ITEM_CURRENTLY_EQUIPPED(itemGuid, currentItems)
         local packet = { ---@type Packet_CBMSG_ITEM_CURRENTLY_EQUIPPED
             itemGuid = itemGuid,
             currentItems = currentItems,
         }
         table.insert(queued, packet)
-        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once.
-        batchTimers:StartUnique("CBMSG_ITEM_CURRENTLY_EQUIPPED", 0.1, SendQueued, nil, true)
+        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once. 
+        -- Delay sending equipped items to not clog up addon channel with this when many items are posted at once.
+        batchTimers:StartUnique("CBMSG_ITEM_CURRENTLY_EQUIPPED", 5, SendQueued, nil, true)
     end
 
     ---@class CommEvent_CBMSG_ITEM_CURRENTLY_EQUIPPED

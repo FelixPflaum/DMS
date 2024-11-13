@@ -52,7 +52,7 @@ local function SendProbe(target, dataType)
         return false
     end
     LogDebug("Sending probe to", target, dataType)
-    Net:SendWhisper(SYNC_COMM_PREFIX, target, SYNC_OPCODES.PROBE_RECEIVER, dataType)
+    Net:SendWhisper(SYNC_COMM_PREFIX, target, SYNC_OPCODES.PROBE_RECEIVER, "NORMAL", dataType)
     local th = C_Timer.NewTimer(PROBE_TIMEOUT, function(t)
         FailProbe(target)
         LogDebug("probe timed out", target, dataType)
@@ -84,7 +84,7 @@ local function SendSettings(target)
         lootSession = Env.settings.lootSession,
         pointDistrib = Env.settings.pointDistrib,
     }
-    Net:SendWhisperWithProgress(SYNC_COMM_PREFIX, target, SYNC_OPCODES.SEND_SESSION_SETTINGS, SendProgress, target, syncData)
+    Net:SendWhisperWithProgress(SYNC_COMM_PREFIX, target, SYNC_OPCODES.SEND_SESSION_SETTINGS, "NORMAL", SendProgress, target, syncData)
 end
 
 commHandler[SYNC_OPCODES.PROBE_RECEIVED] = function(sender, data)
@@ -155,7 +155,7 @@ commHandler[SYNC_OPCODES.PROBE_RECEIVER] = function(sender, data)
         type = data,
         state = "probing",
     }
-    Net:SendWhisper(SYNC_COMM_PREFIX, sender, SYNC_OPCODES.PROBE_RECEIVED, data)
+    Net:SendWhisper(SYNC_COMM_PREFIX, sender, SYNC_OPCODES.PROBE_RECEIVED, "NORMAL", data)
     Sync.OnProbe:Trigger(sender, data)
     LogDebug("Got probe from", sender, data)
 end
@@ -207,7 +207,7 @@ function Sync.RespondToProbe(source, accept)
         else
             incoming[source].state = "waitingForData"
         end
-        Net:SendWhisper(SYNC_COMM_PREFIX, source, SYNC_OPCODES.PROBE_RESPONSE, accept)
+        Net:SendWhisper(SYNC_COMM_PREFIX, source, SYNC_OPCODES.PROBE_RESPONSE, "NORMAL", accept)
     end
 end
 

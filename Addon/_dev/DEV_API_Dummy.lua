@@ -195,11 +195,11 @@ local FontStringDummy = {
 
 ---@param self ScriptRegionResizing
 ---@param point FramePoint
----@param relativeFrame WoWFrame
+---@param relativeFrame WoWFrame|Texture
 ---@param relativePoint FramePoint
 ---@param ofsx number
 ---@param ofsy number
----@overload fun(self:WoWFrame, point:string, relativeFrame:WoWFrame, relativePoint:string): boolean
+---@overload fun(self:WoWFrame, point:string, relativeFrame:WoWFrame|Texture, relativePoint:string): boolean
 ---@overload fun(self:WoWFrame, point:string, ofsx:number, ofsy:number): boolean
 local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, ofsy) end
 
