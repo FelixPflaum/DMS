@@ -42,12 +42,24 @@ local function TableClicked(rowFrame, cellFrame, data, cols, row, realrow, colum
     return false
 end
 
-local function UpdateRange()
+local rangeUpdateTimer = nil ---@type TimerHandle?
+
+---Update table and start update timer until frame is hidden.
+---@param ignoreIfTimerRunning boolean? If true don't update or start new timer if timer is already running.
+local function UpdateRange(ignoreIfTimerRunning)
     if frame:IsShown() then
+        if rangeUpdateTimer and ignoreIfTimerRunning then
+            return
+        end
         if #sTable.data > 0 then
             sTable:Refresh()
         end
-        C_Timer.NewTimer(1, UpdateRange)
+        rangeUpdateTimer = C_Timer.NewTimer(1, UpdateRange)
+    else
+        if rangeUpdateTimer then
+            rangeUpdateTimer:Cancel()
+            rangeUpdateTimer = nil
+        end
     end
 end
 
@@ -80,7 +92,7 @@ local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, col
 
     local name = data[realrow][column] ---@type string
     if not CheckInteractDistance(name, 2) then
-        cellFrame.text:SetText("|cFFFF2222"..name.."|r")
+        cellFrame.text:SetText("|cFFFF2222" .. name .. "|r")
         return
     end
 
@@ -131,7 +143,7 @@ Trade.OnItemsChanged:RegisterCallback(function(items)
     if not frame:IsShown() then
         frame:Show()
         frame:SetFrameLevel(1000)
-        UpdateRange()
+        UpdateRange(true)
     end
 
     ---@type ST_DataMinimal[]
@@ -158,5 +170,5 @@ Env:RegisterSlashCommand("trade", L["Open trade window."], function(args)
         return
     end
     frame:Show()
-    UpdateRange()
+    UpdateRange(true)
 end)
