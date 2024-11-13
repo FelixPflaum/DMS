@@ -360,6 +360,9 @@ end
 ---@param itemId integer
 ---@param response LootResponse
 function Env.Database:AddLootHistoryEntry(guid, playerName, itemId, response)
+    if not self.db.players[playerName] then
+        error("Tried to add loot history entry for unknown player " .. playerName)
+    end
     for _, v in ipairs(self.db.lootHistory) do
         if v.guid == guid then
             error("Tried to add already existing loot entry to loot history! " .. guid)

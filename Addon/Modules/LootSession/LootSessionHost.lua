@@ -535,6 +535,9 @@ function Host:AwardItem(itemGuid, candidateName)
 
     if not itemResponse.candidate.isFake then
         Env.Database:RemoveLootHistoryEntry(item.guid)
+        if not Env.Database:GetPlayer(candidateName) then
+            Env.Database:AddPlayer(candidateName, itemResponse.candidate.classId, 0)
+        end
         Env.Database:AddLootHistoryEntry(item.guid, candidateName, item.itemId, responseUsed)
     end
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
