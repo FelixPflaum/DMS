@@ -45,6 +45,7 @@ local function FillFromGuild()
     for i = 1, size do
         local name, _, _, _, _, _, _, _, isOnline = GetGuildRosterInfo(i)
         if isOnline then
+            name = Ambiguate(name, "short")
             responseList[name] = {
                 state = "waiting",
                 version = "",
