@@ -175,7 +175,7 @@ local function UpdateNearbyPlayerTable()
     nearbyTable:SetData(dataTable, true)
     nearbyInfoText:SetText(L["%d / %d in range (%d y) for sanity."]:format(inRangeCount, #list, Env.settings.pointDistrib.inRangeReadyMaxDistance))
     if mainWindow:IsShown() then
-        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable)
+        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable, nil, true)
     end
 end
 
@@ -186,7 +186,7 @@ local function UpdateNearbyTab(isShown)
     if isShown then
         UpdateNearbyPlayerTable()
         Env:RegisterEvent("GROUP_ROSTER_UPDATE", UpdateNearbyPlayerTable)
-        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable)
+        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable, nil, true)
     else
         Env:UnregisterEvent("GROUP_ROSTER_UPDATE", UpdateNearbyPlayerTable)
         nearbyUpdateTimer:Cancel("nearbyUpdate")
