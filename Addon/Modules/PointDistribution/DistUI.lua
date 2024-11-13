@@ -28,6 +28,9 @@ local lastTabButton = nil ---@type WoWFrameButton?
 
 local function Script_Close()
     mainWindow:Hide()
+    if tabs[currentTab] then
+        tabs[currentTab].updateFunc(false)
+    end
 end
 
 ---Switch shown tab.
@@ -153,7 +156,7 @@ local function CellUpdateDistance(rowFrame, cellFrame, data, cols, row, realrow,
     end
 end
 
-local nearbyUpdateTimer = nil ---@type TimerHandle?
+local nearbyUpdateTimer = Env:NewUniqueTimers()
 
 ---Update nearby player table and status for prep tab.
 local function UpdateNearbyPlayerTable()
@@ -171,7 +174,9 @@ local function UpdateNearbyPlayerTable()
     end
     nearbyTable:SetData(dataTable, true)
     nearbyInfoText:SetText(L["%d / %d in range (%d y) for sanity."]:format(inRangeCount, #list, Env.settings.pointDistrib.inRangeReadyMaxDistance))
-    nearbyUpdateTimer = C_Timer.NewTimer(2, UpdateNearbyPlayerTable)
+    if mainWindow:IsShown() then
+        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable)
+    end
 end
 
 ---Update function for prep tab.
@@ -181,15 +186,10 @@ local function UpdateNearbyTab(isShown)
     if isShown then
         UpdateNearbyPlayerTable()
         Env:RegisterEvent("GROUP_ROSTER_UPDATE", UpdateNearbyPlayerTable)
-        if not nearbyUpdateTimer then
-            nearbyUpdateTimer = C_Timer.NewTimer(2, UpdateNearbyPlayerTable)
-        end
+        nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable)
     else
         Env:UnregisterEvent("GROUP_ROSTER_UPDATE", UpdateNearbyPlayerTable)
-        if nearbyUpdateTimer then
-            nearbyUpdateTimer:Cancel()
-            nearbyUpdateTimer = nil
-        end
+        nearbyUpdateTimer:Cancel("nearbyUpdate")
     end
 end
 
