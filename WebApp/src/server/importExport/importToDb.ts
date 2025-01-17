@@ -129,7 +129,7 @@ async function validatePlayerChanges(
     changedPlayers: Map<string, { data: AddonPlayerEntry; oldEntry?: PlayerRow }>;
     error?: string;
 }> {
-    const oldestPointImport = getOldest(pointHistory) * 1000; // Addon is seconds timestamps
+    const oldestPointImport = getOldest(pointHistory) * 1000 - 1; // Addon is seconds timestamps, -1 to make sure we always get the entry from DB even considering rounding.
     const [dbPointHistory] = (await conn.query<RowDataPacket[]>(`SELECT * FROM pointHistory WHERE timestamp>=?;`, [
         oldestPointImport,
     ])) as [PointHistoryRow[], FieldPacket[]];
