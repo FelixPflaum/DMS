@@ -458,4 +458,25 @@ function Env.Database:MakeBackup(desc)
     end
 end
 
--- TODO: load backup
+Env:RegisterSlashCommand("listbackups", "", function(args)
+    if not DMS_Backups or #DMS_Backups == 0 then
+        print("No backups.")
+        return
+    end
+    print("Listing backups:")
+    for k, v in ipairs(DMS_Backups) do
+        print(k .. ". " .. date("%Y-%m-%d %H:%M:%S", v.timestamp) .. ": " .. v.description)
+    end
+end)
+
+Env:RegisterSlashCommand("restorebackup", "", function(args)
+    local num = tonumber(args[1])
+    if not num or not DMS_Backups or not DMS_Backups[num] then
+        print("Backup doesn't exist!")
+        return
+    end
+    local backupData = DMS_Backups[num]
+    -- Env.Database:MakeBackup("Backup before restoring backup.")
+    Env.ImportDataFromWeb(backupData.data)
+    print("Restored backup: " .. date("%Y-%m-%d %H:%M:%S", backupData.timestamp) .. ": " .. backupData.description)
+end)
