@@ -3,7 +3,7 @@
 ## Author: coolmodi
 ## Version: 0.2.5
 ## Notes: 
-## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups
+## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups, DMS_Logs
 
 Libs\Ace3\LibStub\LibStub.lua
 Libs\Ace3\CallbackHandler-1.0\CallbackHandler-1.0.xml
