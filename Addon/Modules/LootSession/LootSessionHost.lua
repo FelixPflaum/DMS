@@ -655,8 +655,9 @@ end
 
 ---Set item status to timed out, disallowing any further responses.
 ---@param guid string
+---@param sendInstant boolean|nil Do not batch with other roll end packets and send immediately.
 ---@return SessionHost_Item? stoppedItem The item that was stopped if guid was valid.
-function Host:ItemStopRoll(guid)
+function Host:ItemStopRoll(guid, sendInstant)
     local item = items[guid]
     if not item then return end
     LogDebug("ItemStopRoll", guid, item.itemId)
@@ -677,7 +678,7 @@ function Host:ItemStopRoll(guid)
                 end
             end
         end
-        Comm.Send.HMSG_ITEM_ROLL_END(item.guid)
+        Comm.Send.HMSG_ITEM_ROLL_END(item.guid, sendInstant)
     end
     return item
 end

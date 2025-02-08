@@ -626,7 +626,7 @@ do
         nextSend[itemGuid] = nextSend[itemGuid] or {}
         nextSend[itemGuid][clientData.candidate.name] = packedClient
 
-        batchTimers:StartUnique("HMSG_ITEM_RESPONSE_UPDATE", 1, SendResponseUpdateBatch, nil, true)
+        batchTimers:StartUnique("HMSG_ITEM_RESPONSE_UPDATE", 2, SendResponseUpdateBatch, nil, true)
     end
 
     ---@param item SessionHost_Item
@@ -734,7 +734,7 @@ do
         end
 
         nextSend[itemGuid] = true
-        batchTimers:StartUnique("HMSG_ITEM_ROLL_END", 0.2, SendUpdateBatch, nil, true)
+        batchTimers:StartUnique("HMSG_ITEM_ROLL_END", 2, SendUpdateBatch, nil, true)
     end
 
     ---@class CommEvent_HMSG_ITEM_ROLL_END

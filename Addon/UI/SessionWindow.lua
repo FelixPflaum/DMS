@@ -197,7 +197,7 @@ end
 
 local function Script_StopRollClick()
     if not IsHosting() or not selectedItemGuid then return end
-    local stoppedItem = Host:ItemStopRoll(selectedItemGuid)
+    local stoppedItem = Host:ItemStopRoll(selectedItemGuid, true)
     MSA_CloseDropDownMenus()
     if stoppedItem then
         local _, itemLink = C_Item.GetItemInfo(stoppedItem.itemId)
