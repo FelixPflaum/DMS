@@ -228,6 +228,21 @@ Comm.Events.HMSG_CANDIDATE_UPDATE:RegisterCallback(function(lcs, sender)
     Client.OnCandidateUpdate:Trigger()
 end)
 
+Comm.Events.HMSG_CANDIDATE_STATUS_UPDATE:RegisterCallback(function(lcs, sender)
+    Env:PrintVerbose(lcs)
+    for _, lc in ipairs(lcs) do
+        local candidate = Client.candidates[lc.name]
+        if not candidate then
+            Env:PrintError("Got HMSG_CANDIDATE_STATUS_UPDATE for unknown candidate " .. lc.name)
+            return
+        end
+        candidate.leftGroup = lc.leftGroup
+        candidate.isResponding = lc.isResponding
+        candidate.isOffline = not UnitIsConnected(lc.name)
+    end
+    Client.OnCandidateUpdate:Trigger()
+end)
+
 ---@private
 ---@param unit string
 ---@param isConnected boolean

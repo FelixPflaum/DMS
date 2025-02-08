@@ -14,6 +14,7 @@ local OPCODES = {
     HMSG_CANDIDATE_UPDATE = 3,
     HMSG_ITEM_ANNOUNCE = 4,
     HMSG_ITEM_RESPONSE_UPDATE = 5,
+    HMSG_CANDIDATE_STATUS_UPDATE = 6,
     HMSG_ITEM_ROLL_END = 7,
     HMSG_ITEM_AWARD_UPDATE = 8,
     HMSG_KEEPALIVE = 9,
@@ -144,12 +145,15 @@ end
 
 ---@param opcode Opcode
 ---@param data any
-local function SendToClients(opcode, data)
+---@param isLowPriority boolean|nil
+local function SendToClients(opcode, data, isLowPriority)
     lastHostBroadcastSent = GetTime()
+
+    local priority = isLowPriority and "BULK" or "NORMAL"
 
     if hostCommTarget == "self" then
         LogDebugHtC("Sending whisper", LookupOpcodeName(opcode))
-        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, "NORMAL", data)
+        Net:SendWhisper(COMM_SESSION_PREFIX, UnitName("player"), opcode, priority, data)
         return
     end
 
@@ -166,7 +170,7 @@ local function SendToClients(opcode, data)
     end
 
     LogDebugHtC("Sending broadcast", channel, LookupOpcodeName(opcode))
-    Net:Send(COMM_SESSION_PREFIX, channel, opcode, "NORMAL", data)
+    Net:Send(COMM_SESSION_PREFIX, channel, opcode, priority, data)
 end
 
 ---@param channel string
@@ -268,19 +272,32 @@ end
 -- HMSG_CANDIDATE_UPDATE
 
 ---@param candidate SessionHost_Candidate
+local function PackLootCandidateStatus(candidate)
+    local status = 0
+    if candidate.leftGroup then
+        status = status + 0x2
+    end
+    if candidate.isResponding then
+        status = status + 0x4
+    end
+    return status
+end
+
+---@param candidate {leftGroup:boolean, isResponding:boolean}
+---@param status integer
+local function UnpackLootCandidateStatus(candidate, status)
+    candidate.leftGroup = bit.band(status, 0x2) > 0
+    candidate.isResponding = bit.band(status, 0x4) > 0
+end
+
+---@param candidate SessionHost_Candidate
 local function PackLootCandidate(candidate)
     local data = { ---@type PackedLootCandidate
         n = candidate.name,
         c = candidate.classId,
-        s = 0,
+        s = PackLootCandidateStatus(candidate),
         cp = candidate.currentPoints,
     }
-    if candidate.leftGroup then
-        data.s = data.s + 0x2
-    end
-    if candidate.isResponding then
-        data.s = data.s + 0x4
-    end
     return data
 end
 
@@ -298,21 +315,8 @@ do
     ---@field isResponding boolean
     ---@field currentPoints integer
 
-    local queued = {} ---@type PackedLootCandidate[]
-
-    local function SendQueued()
-        local packet = {} ---@type PackedLootCandidate[]
-        for _, v in ipairs(queued) do
-            table.insert(packet, v)
-        end
-        wipe(queued)
-        LogDebugHtC("Sending batched HMSG_CANDIDATE_UPDATE, entries:", #packet)
-        SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, packet)
-    end
-
     ---@param candidates table<string,SessionHost_Candidate>|SessionHost_Candidate
-    ---@param noBatch boolean?
-    function Sender.HMSG_CANDIDATE_UPDATE(candidates, noBatch)
+    function Sender.HMSG_CANDIDATE_UPDATE(candidates)
         ---@type PackedLootCandidate[]
         local lcPackList = {}
         if candidates.name then
@@ -322,14 +326,7 @@ do
                 table.insert(lcPackList, PackLootCandidate(lc))
             end
         end
-        if noBatch then
-            SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, lcPackList)
-        else
-            for _, v in ipairs(lcPackList) do
-                table.insert(queued, v)
-            end
-            batchTimers:StartUnique("HMSG_CANDIDATE_UPDATE", 1, SendQueued, nil, true)
-        end
+        SendToClients(OPCODES.HMSG_CANDIDATE_UPDATE, lcPackList)
     end
 
     ---@class CommEvent_HMSG_CANDIDATE_UPDATE
@@ -346,13 +343,87 @@ do
             local lc = {
                 name = packedLc.n,
                 classId = packedLc.c,
-                leftGroup = bit.band(packedLc.s, 0x2) > 0,
-                isResponding = bit.band(packedLc.s, 0x4) > 0,
+                leftGroup = false,
+                isResponding = false,
                 currentPoints = packedLc.cp,
             }
+            UnpackLootCandidateStatus(lc, packedLc.s)
             table.insert(lcs, lc)
         end
         Events.HMSG_CANDIDATE_UPDATE:Trigger(lcs, sender)
+    end
+end
+
+-- HMSG_CANDIDATE_STATUS_UPDATE
+
+do
+    ---@class (exact) PackedLootCandidateStatus
+    ---@field n string
+    ---@field s integer
+
+    ---@class (exact) Packet_HMSG_CANDIDATE_STATUS_UPDATE
+    ---@field name string
+    ---@field leftGroup boolean
+    ---@field isResponding boolean
+
+    local queued = {} ---@type PackedLootCandidateStatus[]
+
+    ---@param candidate SessionHost_Candidate
+    local function PackLootCandidateStatusUpdate(candidate)
+        local data = { ---@type PackedLootCandidateStatus
+            n = candidate.name,
+            s = PackLootCandidateStatus(candidate),
+        }
+        return data
+    end
+
+    local function SendQueued()
+        local packet = {} ---@type PackedLootCandidateStatus[]
+        for _, v in ipairs(queued) do
+            table.insert(packet, v)
+        end
+        wipe(queued)
+        LogDebugHtC("Sending batched HMSG_CANDIDATE_STATUS_UPDATE, entries:", #packet)
+        SendToClients(OPCODES.HMSG_CANDIDATE_STATUS_UPDATE, packet, true)
+    end
+
+    ---@param candidates table<string,SessionHost_Candidate>|SessionHost_Candidate
+    function Sender.HMSG_CANDIDATE_STATUS_UPDATE(candidates)
+        ---@type PackedLootCandidateStatus[]
+        local lcPackList = {}
+        if candidates.name then
+            table.insert(lcPackList, PackLootCandidateStatusUpdate(candidates))
+        else
+            for _, lc in pairs(candidates) do
+                table.insert(lcPackList, PackLootCandidateStatusUpdate(lc))
+            end
+        end
+        for _, v in ipairs(lcPackList) do
+            table.insert(queued, v)
+        end
+        batchTimers:StartUnique("HMSG_CANDIDATE_STATUS_UPDATE", 3, SendQueued, nil, true)
+    end
+
+    ---@class CommEvent_HMSG_CANDIDATE_STATUS_UPDATE
+    ---@field RegisterCallback fun(self:CommEvent_HMSG_CANDIDATE_STATUS_UPDATE, cb:fun(lcs:Packet_HMSG_CANDIDATE_STATUS_UPDATE[], sender:string))
+    ---@field Trigger fun(self:CommEvent_HMSG_CANDIDATE_STATUS_UPDATE, lcs:Packet_HMSG_CANDIDATE_STATUS_UPDATE[], sender:string)
+    Events.HMSG_CANDIDATE_STATUS_UPDATE = Env:NewEventEmitter()
+
+    messageFilter[OPCODES.HMSG_CANDIDATE_STATUS_UPDATE] = FilterReceivedOnClient
+    messageHandler[OPCODES.HMSG_CANDIDATE_STATUS_UPDATE] = function(data, sender)
+        ---@cast data PackedLootCandidateStatus[]
+        local lcs = {} ---@type Packet_HMSG_CANDIDATE_STATUS_UPDATE[]
+        for _, packedLc in ipairs(data) do
+            ---@type Packet_HMSG_CANDIDATE_STATUS_UPDATE
+            local lc = {
+                name = packedLc.n,
+                leftGroup = false,
+                isResponding = false,
+            }
+            UnpackLootCandidateStatus(lc, packedLc.s)
+            table.insert(lcs, lc)
+        end
+        Events.HMSG_CANDIDATE_STATUS_UPDATE:Trigger(lcs, sender)
     end
 end
 
@@ -929,8 +1000,9 @@ do
             currentItems = currentItems,
         }
         table.insert(queued, packet)
-        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once. 
+        -- Similar to HMSG_ITEM_ANNOUNCE, this is for multiple items received at once.
         -- Delay sending equipped items to not clog up addon channel with this when many items are posted at once.
+        -- TODO: Should be able to send more info after all, just make sure it happens after most data was already sent.
         batchTimers:StartUnique("CBMSG_ITEM_CURRENTLY_EQUIPPED", 5, SendQueued, nil, true)
     end
 

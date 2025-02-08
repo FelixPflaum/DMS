@@ -110,7 +110,7 @@ local function InitHost(target)
     if Env.settings.testMode then
         Env:PrintError("TEST MODE: Generating fake candidate entries!")
         Env.Session.FillFakeCandidateList(candidates, 20)
-        Comm.Send.HMSG_CANDIDATE_UPDATE(candidates, true)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
     end
 end
 
@@ -170,7 +170,7 @@ function Host:TimerUpdate()
     end
 
     if haveCandidateChange then
-        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
+        Comm.Send.HMSG_CANDIDATE_STATUS_UPDATE(changedLootCandidates)
     end
 
     local lastBoradcastTime = Comm.GetLastHostBroadcastSent()
@@ -312,7 +312,7 @@ function Host:UpdateCandidateList()
                 LogDebug(" - ", lc.name)
             end
         end
-        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates, true)
+        Comm.Send.HMSG_CANDIDATE_UPDATE(changedLootCandidates)
     end
 end
 
@@ -333,7 +333,7 @@ Comm.Events.CMSG_ATTENDANCE_CHECK:RegisterCallback(function(sender)
     candidate.isResponding = true
     candidate.lastMessage = GetTime()
     if update then
-        Comm.Send.HMSG_CANDIDATE_UPDATE(candidate)
+        Comm.Send.HMSG_CANDIDATE_STATUS_UPDATE(candidate)
     end
 end)
 
