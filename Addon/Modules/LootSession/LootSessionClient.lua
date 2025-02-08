@@ -195,6 +195,13 @@ end)
 Comm.Events.HMSG_ITEM_UPDATE:RegisterCallback(function(data, sender)
     local item = Client.items[data.guid]
     if not item then return end
+    if item.veiled and not data.isVeiled then
+        for _, response in pairs(item.responses) do
+            if response.status.id == LootStatus.veiled.id then
+                response.status = LootStatus.unveiled
+            end
+        end
+    end
     item.veiled = data.isVeiled
     item.isGarbage = data.isGarbage
     LogDebug("item update", tostring(item.veiled), tostring(item.isGarbage))

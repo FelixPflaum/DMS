@@ -27,6 +27,7 @@ Env.Session.CLIENT_TIMEOUT_TIME = Env.Session.CLIENT_KEEPALIVE_TIME + 5 -- Consi
 ---@field responseTimeout LootCandidateStatus Client did not give a roll response in time.
 ---@field responded LootCandidateStatus Client responded with a roll choice.
 ---@field veiled LootCandidateStatus Responses are hidden.
+---@field unveiled LootCandidateStatus Responses are unveiled but data not yet received.
 Env.Session.LootCandidateStatus = {
     ---@type LootCandidateStatus
     sent = { -- Loot data sent, waiting for answer...
@@ -62,6 +63,12 @@ Env.Session.LootCandidateStatus = {
     veiled = { -- Response not shown to client
         id = 6,
         displayString = L["Not yet unveiled"],
+        color = { 0.7, 0.7, 0.7 },
+    },
+    ---@type LootCandidateStatus
+    unveiled = { -- Waiting for response data from host
+        id = 7,
+        displayString = L["...loading"],
         color = { 0.7, 0.7, 0.7 },
     },
 }

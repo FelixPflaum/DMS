@@ -410,6 +410,7 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetText fun(self:EditBox, text:string)
 ---@field GetText fun(self:EditBox):string
 ---@field HasFocus fun(self:EditBox):boolean
+---@field HighlightText fun(self:EditBox, start:integer?, end:integer?) Highlights the text in an EditBox. 
 
 ChatFontNormal = {}
 
