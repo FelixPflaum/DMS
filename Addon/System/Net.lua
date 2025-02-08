@@ -9,7 +9,7 @@ local AceSerializer = LibStub("AceSerializer-3.0")
 local Net = {}
 Env.Net = Net
 
----@alias AddonCommCallback fun(channel:string, sender:string, opcode:integer, data:any)
+---@alias AddonCommCallback fun(channel:string, sender:string, opcode:integer, data:any, recvSize: integer)
 
 ---@type table<string, (AddonCommCallback|{object:table, funcName:string})[]>
 local callbacks = {}
@@ -46,9 +46,9 @@ local function MessageReceived(prefix, text, channel, sender)
 
     for _, cb in ipairs(callbacks[prefix]) do
         if type(cb) == "function" then
-            cb(channel, sender, opcode, data)
+            cb(channel, sender, opcode, data, text:len())
         else
-            cb.object[cb.funcName](cb.object, channel, sender, opcode, data)
+            cb.object[cb.funcName](cb.object, channel, sender, opcode, data, text:len())
         end
     end
 end
@@ -195,6 +195,7 @@ function Net:Send(prefix, channel, opcode, prio, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
     AceComm:SendCommMessage(prefix, msg, channel, nil, prio)
+    return msg:len()
 end
 
 ---Send message in whisper channel.
@@ -206,6 +207,7 @@ function Net:SendWhisper(prefix, target, opcode, prio, ...)
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
     AceComm:SendCommMessage(prefix, msg, "WHISPER", target, prio)
+    return msg:len()
 end
 
 ---Send message in whisper channel.
@@ -219,4 +221,5 @@ function Net:SendWhisperWithProgress(prefix, target, opcode, prio, callbackFn, c
     local msg = MakeMsg(opcode, ...)
     TrackCPS(msg)
     AceComm:SendCommMessage(prefix, msg, "WHISPER", target, prio, callbackFn, callbackArg)
+    return msg:len()
 end

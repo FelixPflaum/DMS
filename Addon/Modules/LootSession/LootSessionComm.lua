@@ -50,17 +50,54 @@ local clientHostName = ""
 local reconnectMsgBuffer = nil ---@type {src:string,buf:{channel:string, sender:string, opcode:Opcode, data:any}[]}|nil
 local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
 
+---@class (static) CommLogEntrySend
+---@field timestamp integer
+---@field type string
+---@field opcode Opcode
+---@field opcodeStr string
+---@field data any
+---@field sendSize integer
+
+---@class (static) CommLogEntryReceive
+---@field timestamp integer
+---@field sender string
+---@field opcode Opcode
+---@field opcodeStr string
+---@field data any
+---@field recvSize integer
+
+---@class (static) CommLog
+---@field logtype "commlog"
+---@field timestamp integer
+---@field sendlog CommLogEntrySend[]
+---@field receivelog CommLogEntryReceive[]
+
+local commlog = nil ---@type CommLog|nil
+
 ---@param channel string
 ---@param sender string
 ---@param opcode Opcode
 ---@param data any
-local function HandleMessage(channel, sender, opcode, data)
+---@param recvSize integer
+local function HandleMessage(channel, sender, opcode, data, recvSize)
     if not messageHandler[opcode] then
         Env:PrintError(L["Received unhandled opcode %s from %s"]:format(LookupOpcodeName(opcode), sender))
         return
     end
     Env:PrintDebug("Comm received:", LookupOpcodeName(opcode))
     Env:PrintVerbose(data)
+
+    if commlog then
+        local newEntry = { ---@type CommLogEntryReceive
+            timestamp = time(),
+            sender = sender,
+            opcode = opcode,
+            opcodeStr = LookupOpcodeName(opcode),
+            data = data,
+            recvSize = recvSize,
+        }
+        table.insert(commlog.receivelog, newEntry)
+    end
 
     local now = GetTime()
     lastReceived[sender] = now
@@ -170,7 +207,18 @@ local function SendToClients(opcode, data, isLowPriority)
     end
 
     LogDebugHtC("Sending broadcast", channel, LookupOpcodeName(opcode))
-    Net:Send(COMM_SESSION_PREFIX, channel, opcode, priority, data)
+    local sendSize = Net:Send(COMM_SESSION_PREFIX, channel, opcode, priority, data)
+    if commlog then
+        local newEntry = { ---@type CommLogEntrySend
+            timestamp = time(),
+            type = "host_broadcast "..priority,
+            opcode = opcode,
+            opcodeStr = LookupOpcodeName(opcode),
+            data = data,
+            sendSize = sendSize,
+        }
+        table.insert(commlog.sendlog, newEntry)
+    end
 end
 
 ---@param channel string
@@ -190,7 +238,7 @@ local function FilterReceivedOnClient(channel, sender, opcode, data)
                 Env:PrintWarn(L["A loot session from %s is running, trying to reconnect..."]:format(sender))
                 reconnectMsgBuffer = { src = sender, buf = {} }
                 Comm.Send.CMSG_RESEND_START()
-                HandleMessage(channel, sender, opcode, data) -- Make it buffer this msg
+                HandleMessage(channel, sender, opcode, data, 0) -- Make it buffer this msg
                 return false
             end
         end
@@ -564,13 +612,13 @@ do
         local msgbuf = reconnectMsgBuffer
         reconnectMsgBuffer = nil
 
-        HandleMessage(channel, sender, OPCODES.HMSG_SESSION_START, data.startPck)
-        HandleMessage(channel, sender, OPCODES.HMSG_CANDIDATE_UPDATE, data.candidates)
+        HandleMessage(channel, sender, OPCODES.HMSG_SESSION_START, data.startPck, 0)
+        HandleMessage(channel, sender, OPCODES.HMSG_CANDIDATE_UPDATE, data.candidates, 0)
 
-        HandleMessage(channel, sender, OPCODES.HMSG_ITEM_ANNOUNCE, data.items)
+        HandleMessage(channel, sender, OPCODES.HMSG_ITEM_ANNOUNCE, data.items, 0)
 
         for _, buffered in ipairs(msgbuf.buf) do
-            HandleMessage(buffered.channel, buffered.sender, buffered.opcode, buffered.data)
+            HandleMessage(buffered.channel, buffered.sender, buffered.opcode, buffered.data, 0)
         end
     end
 end
@@ -822,12 +870,23 @@ function SendToHost(opcode, data)
         local delay = 0.5 + math.random()
         LogDebugCtH("FAKE Sending to host", opcode, ", Delay: ", delay)
         C_Timer.NewTimer(delay, function(t)
-            HandleMessage("WHISPER", sender, opcode, data)
+            HandleMessage("WHISPER", sender, opcode, data, 0)
         end)
         return
     end
     LogDebugCtH("Sending to host", opcode)
-    Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, "NORMAL", data)
+    local sendSize = Net:SendWhisper(COMM_SESSION_PREFIX, clientHostName, opcode, "NORMAL", data)
+    if commlog then
+        local newEntry = { ---@type CommLogEntrySend
+            timestamp = time(),
+            type = "whisper_host",
+            opcode = opcode,
+            opcodeStr = LookupOpcodeName(opcode),
+            data = data,
+            sendSize = sendSize,
+        }
+        table.insert(commlog.sendlog, newEntry)
+    end
 end
 
 ---@param channel string
@@ -961,7 +1020,18 @@ function SendClientToAll(opcode, data)
         return false
     end
     LogDebugCtA("Sending client broadcast", channel, LookupOpcodeName(opcode))
-    Net:Send(COMM_SESSION_PREFIX, channel, opcode, "BULK", data)
+    local sendSize = Net:Send(COMM_SESSION_PREFIX, channel, opcode, "BULK", data)
+    if commlog then
+        local newEntry = { ---@type CommLogEntrySend
+            timestamp = time(),
+            type = "client_broadcast",
+            opcode = opcode,
+            opcodeStr = LookupOpcodeName(opcode),
+            data = data,
+            sendSize = sendSize,
+        }
+        table.insert(commlog.sendlog, newEntry)
+    end
 end
 
 ---@param channel string
@@ -1049,3 +1119,72 @@ do
         Events.CMSG_RESEND_START:Trigger(sender)
     end
 end
+
+--------------------------------------------------------------------------
+--- Debug log commands
+--------------------------------------------------------------------------
+
+Env:RegisterSlashCommand("commlogstart", "", function(args)
+    if not DMS_Logs then
+        DMS_Logs = {}
+    end
+    commlog = {
+        logtype = "commlog",
+        timestamp = time(),
+        receivelog = {},
+        sendlog = {}
+    }
+    table.insert(DMS_Logs, commlog)
+    Env:PrintSuccess("Comm log enabled.")
+end)
+
+Env:RegisterSlashCommand("commlogend", "", function(args)
+    commlog = nil
+    Env:PrintSuccess("Comm log disabled.")
+end)
+
+Env:RegisterSlashCommand("commlogclear", "", function(args)
+    commlog = nil
+    if DMS_Logs then
+        DMS_Logs = {}
+    end
+    Env:PrintSuccess("Comm logs cleared.")
+end)
+
+Env:RegisterSlashCommand("commloglist", "", function(args)
+    if not DMS_Logs then
+        Env:PrintError("No comm logs exist!")
+        return
+    end
+
+    Env:PrintSuccess("Comm logs:")
+    for k, v in ipairs(DMS_Logs) do
+        print(k .. ": " .. v.timestamp)
+    end
+end)
+
+Env:RegisterSlashCommand("commlogshow", "", function(args)
+    if not DMS_Logs then
+        Env:PrintError("No comm logs exist!")
+        return
+    end
+
+    local num = tonumber(args[1])
+    if not num or not DMS_Logs or not DMS_Logs[num] then
+        print("Log doesn't exist!")
+        return
+    end
+
+    local log = DMS_Logs[num] ---@type CommLog
+
+    Env:PrintSuccess("Comm log #" .. num)
+    local startTime = log.timestamp
+    Env:PrintSuccess("--- RECV log: ---")
+    for _, v in ipairs(log.receivelog) do
+        print(string.format("T+%ds: %s > %s (%d)", v.timestamp - startTime, v.sender, v.opcodeStr, v.recvSize))
+    end
+    Env:PrintSuccess("--- SEND log: ---")
+    for _, v in ipairs(log.sendlog) do
+        print(string.format("T+%ds: %s > %s (%d)", v.timestamp - startTime, v.type, v.opcodeStr, v.sendSize))
+    end
+end)
