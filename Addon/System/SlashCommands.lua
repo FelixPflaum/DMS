@@ -21,7 +21,8 @@ SlashCmdList["DAMAGEDMINDSSANITY"] = function(arg)
 
     local cmdColor = "|cFFAAFFFF"
     local descColor = "|cFFCCCCCC"
-    print(addonName .. " " .. L["commands"] .. ":")
+    local version = C_AddOns.GetAddOnMetadata(addonName, "Version")
+    print(addonName .. " (v" .. version .. ") " .. L["commands"] .. ":")
     for command, v in pairs(registeredCommands) do
         if v.description ~= "" then
             print(cmdColor .. "  " .. command .. "|r - " .. descColor .. v.description)
