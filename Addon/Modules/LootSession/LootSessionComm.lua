@@ -49,6 +49,7 @@ local hostCommTarget = "group" ---@type CommTarget
 local clientHostName = ""
 local reconnectMsgBuffer = nil ---@type {src:string,buf:{channel:string, sender:string, opcode:Opcode, data:any}[]}|nil
 local lastReceived = {} ---@type table<string,number> -- <sender, GetTime()>
+local blockedVersionMismatch = {} ---@type table<string,boolean> -- <sender, hasDifferentVersion>
 
 ---@class (static) CommLogEntrySend
 ---@field timestamp integer
@@ -211,7 +212,7 @@ local function SendToClients(opcode, data, isLowPriority)
     if commlog then
         local newEntry = { ---@type CommLogEntrySend
             timestamp = time(),
-            type = "host_broadcast "..priority,
+            type = "host_broadcast " .. priority,
             opcode = opcode,
             opcodeStr = LookupOpcodeName(opcode),
             data = data,
@@ -227,6 +228,10 @@ end
 ---@param data any
 local function FilterReceivedOnClient(channel, sender, opcode, data)
     if opcode >= OPCODES.MAX_HMSG then
+        return false
+    end
+
+    if blockedVersionMismatch[sender] then
         return false
     end
 
@@ -293,6 +298,7 @@ do
             else
                 Env:PrintError(L["Host's addon version is outdated! Your API version: %d"]:format(COMM_VERSION))
             end
+            blockedVersionMismatch[sender] = true
             return
         end
         local rebuiltResponses = Env.Session.CreateLootClientResponsesFromComm(data.responses)
