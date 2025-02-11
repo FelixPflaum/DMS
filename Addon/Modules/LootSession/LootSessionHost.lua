@@ -139,7 +139,7 @@ Comm.Events.CMSG_RESEND_START:RegisterCallback(function(sender)
     if not timers:HasTimer(RESEND_TIMER_KEY) and timeSinceLastResend > RESEND_MIN_INTERVAL then
         ResendStart()
     else
-        timers:StartUnique(RESEND_TIMER_KEY, RESEND_MIN_INTERVAL - timeSinceLastResend, ResendStart)
+        timers:StartUnique(RESEND_TIMER_KEY, RESEND_MIN_INTERVAL - timeSinceLastResend, ResendStart, nil, true)
     end
     for _, sessionItem in pairs(items) do
         if sessionItem.status == "waiting" and
