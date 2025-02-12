@@ -339,6 +339,10 @@ local function CreateStatusHeaders(f)
     sessionStatus:SetPoint("TOPRIGHT", clientsStatus, "TOPLEFT", -20, 0)
     sessionStatus:SetText("---")
 
+    local ownSanityValue = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge3Outline")
+    ownSanityValue:SetPoint("CENTER", frame.portrait, "CENTER", 0, 0)
+    ownSanityValue:SetText("")
+
     -- Event Hooks
 
     Client.OnStart:RegisterCallback(function()
@@ -357,6 +361,10 @@ local function CreateStatusHeaders(f)
             count = count + 1
             if candidate.isResponding and not candidate.isOffline and not candidate.leftGroup then
                 ready = ready + 1
+            end
+
+            if candidate.name == UnitName("player") then
+                ownSanityValue:SetText(tostring(candidate.currentPoints))
             end
         end
         local text = ready .. "/" .. count
