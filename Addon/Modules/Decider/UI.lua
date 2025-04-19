@@ -264,19 +264,21 @@ end
 function GambaWheel:Spin(targetPos, duration)
     assert(targetPos and targetPos <= #self.slicesActive, "Target position can't be above active slices!")
     local targetRotationOffset = (targetPos - 1) / #self.slicesActive * math.pi * 2
-    local animationStart = GetTime()
-    local initSpeed = math.pi * 2 * 4
-    local finalRotation = duration * initSpeed / 2
-    -- Align final rotation to be at the target rotation offset.
+    local animationStart = 0
+    -- Movement curve: 1-(1-x)^3.5
+    -- where x is fraction of duration expired.
+    -- Base dist: 7/9 * v_init * duration
+    -- Pad final rotation to be at the target rotation offset.
+    local initSpeed = math.pi * 2
+    local finalRotation = (7 / 9) * duration * initSpeed
     finalRotation = finalRotation + (math.pi * 2 - math.fmod(finalRotation, math.pi * 2)) - targetRotationOffset
-    -- Calculate (negative) acceleration needed to reach final rotation in duration.
-    local accel = ((finalRotation - initSpeed * duration) * 2) / math.pow(duration, 2)
 
     local musicPlaying, musicHandle = PlaySoundFile(Env.UI.GetMediaPath("quiz_loop.mp3"), "Master")
 
     local animateFunc = function()
-        local t = (GetTime() - animationStart)
-        local rota = initSpeed * t + 0.5 * accel * math.pow(t, 2)
+        local t = GetTime() - animationStart
+        local rota = (1 - math.pow(1 - (t / duration), 3.5)) * finalRotation
+
         if t >= duration or not self.frames.main:IsShown() then
             rota = finalRotation
             self.frames.wheel:SetScript("OnUpdate", nil)
@@ -291,6 +293,7 @@ function GambaWheel:Spin(targetPos, duration)
     end
 
     C_Timer.After(1.75, function()
+        animationStart = GetTime()
         self.frames.wheel:SetScript("OnUpdate", animateFunc)
     end)
 end

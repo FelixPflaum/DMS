@@ -99,7 +99,7 @@ local function StartWheel(title, data, target, duration)
         winner = Env.UI.ColorStringFromArray(data[target].color, data[target].text),
     }
 
-    C_Timer.After(duration + 1, function()
+    C_Timer.After(duration, function()
         if not decissionRunning then
             return
         end
