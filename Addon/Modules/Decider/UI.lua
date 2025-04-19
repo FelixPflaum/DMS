@@ -262,7 +262,10 @@ end
 ---@param targetPos number
 ---@param duration number
 function GambaWheel:Spin(targetPos, duration)
+    assert(duration > 4, "duration must be  >4!")
     assert(targetPos and targetPos <= #self.slicesActive, "Target position can't be above active slices!")
+    local START_DELAY = 1.75
+    duration = duration - START_DELAY
     local targetRotationOffset = (targetPos - 1) / #self.slicesActive * math.pi * 2
     local animationStart = 0
     -- Movement curve: 1-(1-x)^3.5
@@ -292,7 +295,7 @@ function GambaWheel:Spin(targetPos, duration)
         end
     end
 
-    C_Timer.After(1.75, function()
+    C_Timer.After(START_DELAY, function()
         animationStart = GetTime()
         self.frames.wheel:SetScript("OnUpdate", animateFunc)
     end)

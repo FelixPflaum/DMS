@@ -5,7 +5,9 @@ local function LogDebug(...)
     Env:PrintDebug("Decider:", ...)
 end
 
-local SPIN_DURATION = 8
+local L = Env:GetLocalization()
+
+local SPIN_DURATION = 10
 
 ---@alias PlayerData {name:string, classId:integer}
 
@@ -115,11 +117,11 @@ commHandler[DECIDER_OPCODES.SEND_DECISSION] = function(sender, data)
     LogDebug("got SEND_DECISSION", sender, data)
 
     if not CanUnitDecide(sender) then
-        return Env:PrintWarn(sender .. " tried to start a decission but has no permission to do so!")
+        return Env:PrintWarn(L["%s tried to spin the wheel but has no permission to do so!"]:format(sender))
     end
 
     if decissionRunning and sender ~= UnitName("player") then
-        return Env:PrintWarn(sender .. " tried to start a decission but there's already a decission running!")
+        return Env:PrintWarn(L["%s tried to spin the wheel but there's already one running!"]:format(sender))
     end
 
     local wheelData = {}
@@ -127,6 +129,7 @@ commHandler[DECIDER_OPCODES.SEND_DECISSION] = function(sender, data)
         table.insert(wheelData, { color = Env.UI.GetClassColor(member.classId).color, text = member.name })
     end
 
+    Env:PrintSuccess(L["Wheelspin from %s: %s"]:format(sender, data.title))
     StartWheel(data.title, wheelData, data.resultPos, SPIN_DURATION)
 end
 
@@ -145,18 +148,18 @@ end)
 
 Env:RegisterSlashCommand("decide", "", function(args)
     if not CanUnitDecide(UnitName("player")) then
-        return Env:PrintError("You don't have permission to to this!")
+        return Env:PrintError(L["You do not have permissions to start a session."])
     end
 
     if decissionRunning then
-        return Env:PrintError("Wheel is spinning!")
+        return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
     end
 
     local title = table.concat(args, " ")
     local members = GetMemberlist()
 
     if #members == 0 then
-        return Env:PrintError("Not in party or raid!")
+        return Env:PrintError(L["Not in party or raid!"])
     end
 
     local target = math.random(1, #members)
@@ -169,7 +172,7 @@ end)
 
 Env:RegisterSlashCommand("decidetest", "", function(args)
     if decissionRunning then
-        return Env:PrintError("Wheel is spinning!")
+        return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
     end
 
     local slices = tonumber(args[1])
