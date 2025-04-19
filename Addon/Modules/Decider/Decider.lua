@@ -5,7 +5,7 @@ local function LogDebug(...)
     Env:PrintDebug("Decider:", ...)
 end
 
-local SPIN_DURATION = 10
+local SPIN_DURATION = 8
 
 ---@alias PlayerData {name:string, classId:integer}
 

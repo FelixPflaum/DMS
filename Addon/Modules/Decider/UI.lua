@@ -266,8 +266,11 @@ function GambaWheel:Spin(targetPos, duration)
     local targetRotationOffset = (targetPos - 1) / #self.slicesActive * math.pi * 2
     local animationStart = GetTime()
     local initSpeed = math.pi * 2 * 4
-    local endPos = duration * initSpeed / 2 + targetRotationOffset
-    local accel = ((endPos - initSpeed * duration) * 2) / math.pow(duration, 2)
+    local finalRotation = duration * initSpeed / 2
+    -- Align final rotation to be at the target rotation offset.
+    finalRotation = finalRotation + (math.pi * 2 - math.fmod(finalRotation, math.pi * 2)) - targetRotationOffset
+    -- Calculate (negative) acceleration needed to reach final rotation in duration.
+    local accel = ((finalRotation - initSpeed * duration) * 2) / math.pow(duration, 2)
 
     local musicPlaying, musicHandle = PlaySoundFile(Env.UI.GetMediaPath("quiz_loop.mp3"), "Master")
 
@@ -275,7 +278,7 @@ function GambaWheel:Spin(targetPos, duration)
         local t = (GetTime() - animationStart)
         local rota = initSpeed * t + 0.5 * accel * math.pow(t, 2)
         if t >= duration or not self.frames.main:IsShown() then
-            rota = endPos
+            rota = finalRotation
             self.frames.wheel:SetScript("OnUpdate", nil)
             if musicPlaying then
                 StopSound(musicHandle, 2000)
