@@ -13,6 +13,12 @@ function Env.UI.GetImagePath(imgName)
     return [[Interface\AddOns\]] .. addonName .. [[\UI\img\]] .. imgName
 end
 
+---Get path to a media file of the addon.
+---@param mediaName string The name of the file.
+function Env.UI.GetMediaPath(mediaName)
+    return [[Interface\AddOns\]] .. addonName .. [[\Media\]] .. mediaName
+end
+
 ---@type table<string, {color:[number,number,number],argbstr:string}>
 local classColors = {
     DEATHKNIGHT = { color = { 0.77, 0.12, 0.23 }, argbstr = "FFC41E3A" },

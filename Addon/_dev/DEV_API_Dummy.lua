@@ -161,6 +161,7 @@ end
 ---@field SetScrollChild fun(self:WoWFrame, child:WoWFrame):nil
 ---@field CreateFontString fun(self:WoWFrame, name:string|nil, layer:any, inherits: any):FontString
 ---@field CreateTexture fun(self:WoWFrame, name:string|nil, drawLayer:DrawLayer|nil, templateName:string|nil, subLevel:number|nil):Texture -- https://warcraft.wiki.gg/wiki/API_Frame_CreateTexture
+---@field CreateMaskTexture fun(self:WoWFrame):Texture https://warcraft.wiki.gg/wiki/UIOBJECT_MaskTexture
 ---@field SetFrameStrata fun(self:WoWFrame, strata:string) [Wiki](https://warcraft.wiki.gg/wiki/Frame_Strata)
 ---@field SetScale fun(self:WoWFrame, scale:number)
 ---@field IsShown fun(self:WoWFrame):boolean
@@ -186,7 +187,8 @@ end
 ---@field SetWordWrap fun(self:WoWFrame, w:boolean):nil
 ---@field GetStringHeight fun(self:WoWFrame):number
 ---@field SetTextColor fun(self:WoWFrame, r:number, g:number, b:number):nil
----@field SetFont fun(self:WoWFrame, path:string, height:number, flags:string|nil);
+---@field SetFont fun(self:WoWFrame, path:string, height:number, flags:string|nil)
+---@field SetRotation fun(self:FontString, radians:number)
 local FontStringDummy = {
 
 }
@@ -213,6 +215,7 @@ local function SetPointDummy(self, point, relativeFrame, relativePoint, ofsx, of
 ---@field Show fun(self:ScriptRegionResizing)
 ---@field Hide fun(self:ScriptRegionResizing)
 ---@field GetTop fun(self:ScriptRegionResizing):number Bottom side of the screen to the top edge of the region.
+---@field SetAllPoints fun(self:ScriptRegionResizing, relativeTo:Region)
 local ScriptRegionResizing = {
     SetPoint = SetPointDummy
 }
@@ -410,7 +413,7 @@ function ButtonFrameTemplate_HideButtonBar(frame) end
 ---@field SetText fun(self:EditBox, text:string)
 ---@field GetText fun(self:EditBox):string
 ---@field HasFocus fun(self:EditBox):boolean
----@field HighlightText fun(self:EditBox, start:integer?, end:integer?) Highlights the text in an EditBox. 
+---@field HighlightText fun(self:EditBox, start:integer?, end:integer?) Highlights the text in an EditBox.
 
 ChatFontNormal = {}
 
@@ -915,6 +918,12 @@ function IsInRaid(groupType) end
 ---@return boolean isInRaid
 function IsInGroup(groupType) end
 
+---Returns true if the unit is assistant leader in a party or raid group, false otherwise.
+---@param unit string
+---@param groupType string
+---@return boolean
+function UnitIsGroupAssistant(unit, groupType) end
+
 ---Returns true if the unit is connected to the game (i.e. not offline).
 ---@param unit string
 ---@return boolean
@@ -1141,7 +1150,14 @@ ITEM_CLASSES_ALLOWED = "Classes: %s"
 ---Plays the specified audio file once. Unlike PlayMusic, you cannot stop the playback.
 ---@param path string
 ---@param channel string Either "Master" (this will play the sound also with disabled sounds like before 4.0.1), "SFX", "Ambience", "Music".
+---@return boolean|nil willPlay
+---@return number soundHandle
 function PlaySoundFile(path, channel) end
+
+---Stops playing the specified sound. 
+---@param soundHandle number Playing sound handle, as returned by PlaySound or PlaySoundFile.
+---@param fadeoutTime number|nil In milliseconds.
+function StopSound(soundHandle, fadeoutTime) end
 
 ---@param format string|"*t"
 ---@param time number
@@ -1191,7 +1207,7 @@ function C_Map.GetMapInfo(uiMapID) end
 ---@return integer
 function C_Map.GetBestMapForUnit(unit) end
 
----Returns the size in yards of the area represented by the map. 
+---Returns the size in yards of the area represented by the map.
 -- NOT AVAILABLE IN CLASSIC
 -- ---@param uiMapID integer
 -- ---@return number width
@@ -1208,7 +1224,7 @@ function C_Map.GetBestMapForUnit(unit) end
 ---@return Vector2Mixin position
 function C_Map.GetPlayerMapPosition(uiMapID, unitToken) end
 
----Translates a map position to a world map position. 
+---Translates a map position to a world map position.
 ---@param uiMapID integer
 ---@param mapPosition Vector2Mixin
 ---@return integer continentId
@@ -1227,12 +1243,12 @@ function C_Map.GetWorldPosFromMapPos(uiMapID, mapPosition) end
 ---@return integer LfgDungeonID
 function GetInstanceInfo() end
 
----Returns 1 if the unit is in range of most helpful spells (40yds) and in a group / raid with you, otherwise nil. 
+---Returns 1 if the unit is in range of most helpful spells (40yds) and in a group / raid with you, otherwise nil.
 ---@param unit string
 ---@return 1|nil
 function UnitInRange(unit) end
 
----Returns true if the player is in an instance, and the type of instance. 
+---Returns true if the player is in an instance, and the type of instance.
 ---@return boolean
 ---@return string instanceType
 function IsInInstance() end
@@ -1241,7 +1257,7 @@ function IsInInstance() end
 ---@return boolean
 function InCombatLockdown() end
 
----Returns the position of a unit in the current world area. 
+---Returns the position of a unit in the current world area.
 ---@param unit string
 ---@return number x
 ---@return number y
