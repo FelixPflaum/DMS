@@ -1,6 +1,8 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
+local LibWindow = LibStub("LibWindow-1.1")
+
 ---@class SliceFrame
 ---@field frame WoWFrame
 ---@field tex Texture
@@ -13,7 +15,14 @@ local SliceFrame = {}
 ---@diagnostic disable-next-line: inject-field
 SliceFrame.__index = SliceFrame
 
----comment
+local sliceFont = CreateFont("DmsSliceFont")
+sliceFont:CopyFontObject(GameTooltipText) ---@diagnostic disable-line: undefined-global, no-unknown
+sliceFont:SetJustifyH("LEFT")
+sliceFont:SetTextColor(1, 1, 1)
+sliceFont:SetShadowColor(0, 0, 0, 1)
+sliceFont:SetShadowOffset(1, 1)
+
+---Create a new slice frame.
 ---@param parent WoWFrame
 ---@return SliceFrame
 function SliceFrame:New(parent)
@@ -25,7 +34,7 @@ function SliceFrame:New(parent)
         frame = frame,
         tex = frame:CreateTexture(),
         mask = frame:CreateMaskTexture(),
-        name = frame:CreateFontString(nil, "OVERLAY", "GameTooltipText"),
+        name = frame:CreateFontString(nil, "OVERLAY", "DmsSliceFont"),
         sliceCount = 0,
         slicePos = 0,
         sliceSize = 0,
@@ -33,10 +42,10 @@ function SliceFrame:New(parent)
     setmetatable(sf, self)
 
     sf.frame:SetAllPoints(parent)
-    sf.tex:SetTexture(Env.UI.GetImagePath("halfcircle.png"))
+    sf.tex:SetTexture(Env.UI.GetImagePath("gw_halfcircle.png"))
     sf.tex:SetAllPoints(sf.frame)
     sf.mask:SetAllPoints(sf.tex)
-    sf.mask:SetTexture(Env.UI.GetImagePath("halfcircle.png"))
+    sf.mask:SetTexture(Env.UI.GetImagePath("gw_halfcircle.png"))
     sf.tex:AddMaskTexture(sf.mask)
 
     sf:SetData(2, 1, { 1, 1, 1 }, "---")
@@ -44,7 +53,7 @@ function SliceFrame:New(parent)
     return sf
 end
 
----comment
+---Set rotation of this slice.
 ---@param rotation number
 function SliceFrame:SetRotation(rotation)
     local DIST_FROM_EDGE = 15
@@ -69,7 +78,7 @@ function SliceFrame:SetRotation(rotation)
     self.name:SetPoint("LEFT", self.frame, "CENTER", x, y)
 end
 
----comment
+---Set display data for this slice.
 ---@param sliceCount integer
 ---@param slicePos integer
 ---@param color [number, number, number]
@@ -84,61 +93,161 @@ function SliceFrame:SetData(sliceCount, slicePos, color, text)
 end
 
 ---@class GambaWheel
----@field frame WoWFrame
+---@field frames {main:WoWFrame, wheel:WoWFrame, closeBtn:Texture, title:FontString}
 ---@field slicesActive SliceFrame[]
 ---@field slicesInactive SliceFrame[]
 local GambaWheel = {}
 GambaWheel.__index = GambaWheel ---@diagnostic disable-line: inject-field
 
-function GambaWheel:New()
+---Place decorational art.
+---@param parent WoWFrame
+local function GW_PlaceArt(parent)
+    local overlay = CreateFrame("Frame", nil, parent)
+    overlay:SetAllPoints(parent)
+
+    local caret = overlay:CreateTexture(nil, "OVERLAY")
+    caret:SetTexture(Env.UI.GetImagePath("downmarker.png"))
+    caret:SetTexCoord(45 / 64, 61 / 64, 0, 1)
+    caret:SetRotation(-math.pi / 2)
+    caret:SetPoint("RIGHT", 1, 0)
+    caret:SetVertexColor(1, 0, 0, 1)
+    caret:SetSize(16, 16)
+
+    local center = overlay:CreateTexture(nil, "OVERLAY")
+    center:SetTexture(Env.UI.GetImagePath("gw_center.png"))
+    center:SetSize(100, 100)
+    center:SetPoint("CENTER", 0, 0)
+
+    local border = parent:CreateTexture(nil, "ARTWORK")
+    border:SetTexture(Env.UI.GetImagePath("gw_border.png"))
+    border:SetPoint("TOPLEFT", -30, 30)
+    border:SetPoint("BOTTOMRIGHT", 30, -30)
+
+    local crown = parent:CreateTexture(nil, "BORDER")
+    crown:SetTexture(Env.UI.GetImagePath("gw_crown.png"))
+    crown:SetSize(80, 80)
+    crown:SetRotation(math.pi * 0.2)
+    crown:SetPoint("TOPLEFT", -5, 20)
+
+    local coin = parent:CreateTexture(nil, "BORDER")
+    coin:SetTexture(Env.UI.GetImagePath("gw_coin.png"))
+    coin:SetSize(50, 50)
+    coin:SetRotation(math.pi * 0.15)
+    coin:SetPoint("TOPRIGHT", -40, 15)
+
+    local clover = parent:CreateTexture(nil, "BORDER")
+    clover:SetTexture(Env.UI.GetImagePath("gw_clover.png"))
+    clover:SetSize(64, 64)
+    clover:SetTexCoord(1, 0, 0, 1)
+    clover:SetPoint("TOPRIGHT", 15, 3)
+
+    local stars = parent:CreateTexture(nil, "BORDER")
+    stars:SetTexture(Env.UI.GetImagePath("gw_stars.png"))
+    stars:SetSize(100, 100)
+    stars:SetRotation(math.pi * 0.75)
+    stars:SetPoint("BOTTOMLEFT", -20, -20)
+
+    local stars2 = parent:CreateTexture(nil, "BORDER")
+    stars2:SetTexture(Env.UI.GetImagePath("gw_stars.png"))
+    stars2:SetSize(100, 100)
+    stars2:SetRotation(math.pi * 1.25)
+    stars2:SetPoint("BOTTOMRIGHT", 20, -20)
+end
+
+---Create new spinny wheel frame.
+---@param libWinConfig table
+function GambaWheel:New(libWinConfig)
+    local WHEEL_SIZE = 300
+    local TITLE_SIZE = 30
+
     local frame = CreateFrame("Frame", nil, UIParent)
     frame:SetPoint("CENTER", 0, 0)
-    frame:SetSize(300, 300)
+    frame:SetSize(WHEEL_SIZE, WHEEL_SIZE + TITLE_SIZE)
+    frame:SetFrameStrata("DIALOG")
+    frame:SetClampedToScreen(true)
+    frame:EnableMouse(true)
     frame:Hide()
+
+    -- LibWindow scroll rescaling.
+    LibWindow:Embed(frame)
+    frame:RegisterConfig(libWinConfig) ---@diagnostic disable-line: undefined-field
+    frame:SetScale(libWinConfig.scale or 1.0)
+    frame:RestorePosition() ---@diagnostic disable-line: undefined-field
+    frame:MakeDraggable() ---@diagnostic disable-line: undefined-field
+    frame:SetScript("OnMouseWheel", function(f, d) if IsControlKeyDown() then LibWindow.OnMouseWheel(f, d) end end)
+
+    local header = CreateFrame("Frame", nil, frame)
+    header:SetPoint("TOPLEFT", 0, 0)
+    header:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, -TITLE_SIZE)
+
+    local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    title:SetText("The Decider")
+    title:SetPoint("CENTER", 0, 0)
+
+    local closeBtn = CreateFrame("Button", nil, header)
+    closeBtn:SetNormalTexture(Env.UI.GetImagePath("bars.png"))
+    closeBtn:SetPoint("RIGHT", -10, 0)
+    closeBtn:SetSize(16, 16)
+
+    closeBtn:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+
+    local wheelFrame = CreateFrame("Frame", nil, frame)
+    wheelFrame:SetPoint("BOTTOM", 0, 0)
+    wheelFrame:SetSize(WHEEL_SIZE, WHEEL_SIZE)
+
+    GW_PlaceArt(wheelFrame)
 
     ---@type GambaWheel
     ---@diagnostic disable-next-line: missing-fields
     local gw = {
-        frame = frame,
+        frames = {
+            main = frame,
+            wheel = wheelFrame,
+            title = title,
+        },
         slicesActive = {},
         slicesInactive = {},
     }
     setmetatable(gw, self)
 
+    gw:SetData({
+        { color = { 0.5, 0.5, 0.5 }, text = "" },
+        { color = { 0.5, 0.5, 0.5 }, text = "" },
+    })
+
     return gw
 end
 
----comment
+---Get or create a slice frame.
 ---@param gw GambaWheel
 ---@return SliceFrame
 local function GW_GetSliceFrame(gw)
     local slice ---@type SliceFrame
     if #gw.slicesInactive > 0 then
-        print("Reusing inactive slice frame")
         slice = table.remove(gw.slicesInactive, #gw.slicesInactive)
     else
-        print("Creating new slice frame")
-        slice = SliceFrame:New(gw.frame)
+        slice = SliceFrame:New(gw.frames.wheel)
     end
     table.insert(gw.slicesActive, slice)
     slice.frame:Show()
     return slice
 end
 
----comment
+---Hide and store any unneeded slice frames for later use.
 ---@param gw GambaWheel
 ---@param maxCount integer
 local function GW_StoreUnused(gw, maxCount)
     local activeCount = #gw.slicesActive
     for i = activeCount, maxCount + 1, -1 do
-        print("store slice for later use", i)
         local slice = table.remove(gw.slicesActive, i)
         slice.frame:Hide()
         table.insert(gw.slicesInactive, slice)
     end
 end
 
----comment
+---Set choice data.
 ---@param data {color:[number, number, number], text:string}[]
 function GambaWheel:SetData(data)
     local count = #data;
@@ -149,7 +258,7 @@ function GambaWheel:SetData(data)
     GW_StoreUnused(self, count)
 end
 
----comment
+---Visually spin the wheel.
 ---@param targetPos number
 ---@param duration number
 function GambaWheel:Spin(targetPos, duration)
@@ -159,40 +268,62 @@ function GambaWheel:Spin(targetPos, duration)
     local initSpeed = math.pi * 2 * 4
     local endPos = duration * initSpeed / 2 + targetRotationOffset
     local accel = ((endPos - initSpeed * duration) * 2) / math.pow(duration, 2)
-    local gw = self
+
+    local musicPlaying, musicHandle = PlaySoundFile(Env.UI.GetMediaPath("quiz_loop.mp3"), "Master")
+
     local animateFunc = function()
         local t = (GetTime() - animationStart)
         local rota = initSpeed * t + 0.5 * accel * math.pow(t, 2)
-        if t >= duration then
+        if t >= duration or not self.frames.main:IsShown() then
             rota = endPos
-            gw.frame:SetScript("OnUpdate", nil)
+            self.frames.wheel:SetScript("OnUpdate", nil)
+            if musicPlaying then
+                StopSound(musicHandle, 2000)
+                PlaySoundFile(Env.UI.GetMediaPath("violin_win.mp3"), "Master")
+            end
         end
         for _, slice in ipairs(self.slicesActive) do
             slice:SetRotation(rota)
         end
     end
-    self.frame:SetScript("OnUpdate", animateFunc)
+
+    C_Timer.After(1.75, function()
+        self.frames.wheel:SetScript("OnUpdate", animateFunc)
+    end)
 end
 
 Env.DeciderUI = {}
 
-local gw = GambaWheel:New()
+local gw = nil ---@type GambaWheel
+Env:OnAddonLoaded(function()
+    gw = GambaWheel:New(Env.settings.UI.DeciderWindow)
+end)
 
+---Show the decider wheel frame.
 function Env.DeciderUI:Show()
-    gw.frame:Show()
+    gw.frames.main:Show()
 end
 
+---Hide the decider wheel frame.
 function Env.DeciderUI:Hide()
-    gw.frame:Hide()
+    gw.frames.main:Hide()
 end
 
+---Set frame title.
+---@param title string
+function Env.DeciderUI:SetTitle(title)
+    gw.frames.title:SetText(title)
+end
+
+---Set choice data.
 ---@param data {color:[number, number, number], text:string}[]
 function Env.DeciderUI:SetData(data)
     gw:SetData(data)
 end
 
----@param targetPos number
----@param duration number
+---Spin the wheel.
+---@param targetPos number The position it should stop at. Index of a data entry set with SetData().
+---@param duration number Spin duration in seconds.
 function Env.DeciderUI:Spin(targetPos, duration)
     gw:Spin(targetPos, duration)
 end

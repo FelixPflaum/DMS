@@ -34,6 +34,7 @@ local defaultSettings = {
         SyncWindow = {},
         TradeWindow = {},
         DistWindow = {},
+        DeciderWindow = {},
     },
     lootSession = {
         timeout = 90,
