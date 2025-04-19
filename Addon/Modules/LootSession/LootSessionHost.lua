@@ -350,13 +350,21 @@ Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
         Env:PrintError(sender .. " tried to respond to unknown item " .. itemGuid)
         return
     end
+    if item.parentGuid ~= nil then
+        -- Children reference parent response data, no need to set anything.
+        return
+    end
     local itemResponse = item.responses[sender]
     if not itemResponse then
         Env:PrintError(sender .. " tried to respond to item " .. itemGuid .. " but candidate client not known!")
         return
     end
     if itemResponse.status == LootStatus.sent or itemResponse.status == LootStatus.unknown then
-        itemResponse.status = LootStatus.waitingForResponse
+        if item.status == "waiting" then
+            itemResponse.status = LootStatus.waitingForResponse
+        else
+            itemResponse.status = LootStatus.responseTimeout
+        end
         if not item.veiled then
             Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
         end
@@ -750,14 +758,14 @@ function Host:ItemAdd(itemId)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)
                 print("Ack", tostring(shouldAck), "Resp", tostring(shouldRespond), "Delay", responseDelay, response.displayString)
                 if shouldAck then
-                    C_Timer.NewTimer(1, function (t)
-                        Comm:FakeSendToHost(candidate.name, function ()
+                    C_Timer.NewTimer(1, function(t)
+                        Comm:FakeSendToHost(candidate.name, function()
                             Comm.Send.CMSG_ITEM_RECEIVED(item.guid, true)
                         end)
                     end)
                     if shouldRespond then
-                        C_Timer.NewTimer(responseDelay, function (t)
-                            Comm:FakeSendToHost(candidate.name, function ()
+                        C_Timer.NewTimer(responseDelay, function(t)
+                            Comm:FakeSendToHost(candidate.name, function()
                                 Comm.Send.CMSG_ITEM_RESPONSE(item.guid, response.id)
                             end)
                         end)
