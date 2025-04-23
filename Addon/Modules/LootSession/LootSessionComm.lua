@@ -5,7 +5,7 @@ local L = Env:GetLocalization()
 local Net = Env.Net
 
 local COMM_SESSION_PREFIX = "DMSS"
-local COMM_VERSION = 3
+local COMM_VERSION = 4
 
 ---@enum Opcode
 local OPCODES = {
@@ -977,6 +977,14 @@ do
     ---@field itemGuid string
     ---@field responseId integer
 
+    local queued = {} ---@type Packet_CMSG_ITEM_RESPONSE[]
+
+    local function SendQueued()
+        LogDebugCtH("Sending batched CMSG_ITEM_RESPONSE, responses:", #queued)
+        SendToHost(OPCODES.CMSG_ITEM_RESPONSE, queued)
+        wipe(queued)
+    end
+
     ---@param itemGuid string
     ---@param responseId integer
     function Sender.CMSG_ITEM_RESPONSE(itemGuid, responseId)
@@ -984,7 +992,8 @@ do
             itemGuid = itemGuid,
             responseId = responseId,
         }
-        SendToHost(OPCODES.CMSG_ITEM_RESPONSE, p)
+        table.insert(queued, p)
+        batchTimers:StartUnique("CMSG_ITEM_RESPONSE", 1, SendQueued, nil, true)
     end
 
     ---@class CommEvent_CMSG_ITEM_RESPONSE
@@ -994,8 +1003,10 @@ do
 
     messageFilter[OPCODES.CMSG_ITEM_RESPONSE] = FilterReceivedOnHost
     messageHandler[OPCODES.CMSG_ITEM_RESPONSE] = function(data, sender)
-        ---@cast data Packet_CMSG_ITEM_RESPONSE
-        Events.CMSG_ITEM_RESPONSE:Trigger(sender, data.itemGuid, data.responseId)
+        ---@cast data Packet_CMSG_ITEM_RESPONSE[]
+        for _, pck in ipairs(data) do
+            Events.CMSG_ITEM_RESPONSE:Trigger(sender, pck.itemGuid, pck.responseId)
+        end
     end
 end
 

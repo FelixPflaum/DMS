@@ -5,8 +5,9 @@ local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 
-local MAX_IMPORT_AGE = 86400 * 3;
+local MAX_IMPORT_AGE = 86400 * 3
 local RESPONSE_GRACE_PERIOD = 2 -- Extra time given where the host will still accept responsed after expiration. Will not be reflected in UI. Just to account for comm latency.
+local ITEM_ACK_TIMEOUT = 15
 
 local function LogDebug(...)
     Env:PrintDebug("Host:", ...)
@@ -371,6 +372,23 @@ Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     end
 end)
 
+---Stop roll for an item if all candidates did respond.
+---@param item SessionHost_Item
+---@return boolean didStop true if all responded and roll was stopped
+local function StopRollIfAllResponded(item)
+    if not items[item.guid] then
+        return false
+    end
+    for _, itemResponse in pairs(item.responses) do
+        if not itemResponse.response and itemResponse.status.id ~= LootStatus.unknown.id then
+            return false
+        end
+    end
+    LogDebug(("Stopping item roll %s because all responded or offline."):format(item.guid))
+    Host:ItemStopRoll(item.guid)
+    return true
+end
+
 ---Set response, does NOT do any checks, it will simply change the response!
 ---@param item SessionHost_Item
 ---@param itemResponse SessionHost_ItemResponse
@@ -385,20 +403,7 @@ local function SetItemResponse(item, itemResponse, response, doInstant)
     if not item.veiled then
         Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse, doInstant)
     end
-
-    local allResponded = true
-    for _, itemResponseItr in pairs(item.responses) do
-        if not itemResponseItr.response and not (
-                itemResponseItr.status.id == LootStatus.unknown.id or
-                itemResponseItr.status.id == LootStatus.responseTimeout.id
-            ) then
-            allResponded = false
-            break
-        end
-    end
-    if allResponded then
-        Host:ItemStopRoll(item.guid)
-    end
+    StopRollIfAllResponded(item)
 end
 
 ---Manually set response of a player for a given item.
@@ -792,7 +797,7 @@ function Host:ItemAdd(itemId)
         UnveilNextItem()
     end
 
-    timers:StartUnique(item.guid .. "ackcheck", 6, function(key)
+    timers:StartUnique(item.guid .. "ackcheck", ITEM_ACK_TIMEOUT, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)
         for _, itemResponse in pairs(item.responses) do
             if itemResponse.status == LootStatus.sent then
@@ -802,6 +807,7 @@ function Host:ItemAdd(itemId)
                 end
             end
         end
+        StopRollIfAllResponded(item)
     end)
 
     return true
