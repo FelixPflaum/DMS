@@ -92,10 +92,15 @@ function SliceFrame:SetData(sliceCount, slicePos, color, text)
     self:SetRotation(0)
 end
 
+---@alias GambaWheelConfig {autoCloseDuration:number, playSound:boolean}
+
 ---@class GambaWheel
 ---@field frames {main:WoWFrame, wheel:WoWFrame, closeBtn:Texture, title:FontString}
 ---@field slicesActive SliceFrame[]
 ---@field slicesInactive SliceFrame[]
+---@field timers table<string,TimerHandle>
+---@field soundHandles table<string,number>
+---@field config GambaWheelConfig
 local GambaWheel = {}
 GambaWheel.__index = GambaWheel ---@diagnostic disable-line: inject-field
 
@@ -156,7 +161,8 @@ end
 
 ---Create new spinny wheel frame.
 ---@param libWinConfig table
-function GambaWheel:New(libWinConfig)
+---@param config GambaWheelConfig
+function GambaWheel:New(libWinConfig, config)
     local WHEEL_SIZE = 300
     local TITLE_SIZE = 30
 
@@ -189,10 +195,6 @@ function GambaWheel:New(libWinConfig)
     closeBtn:SetPoint("RIGHT", -10, 0)
     closeBtn:SetSize(16, 16)
 
-    closeBtn:SetScript("OnClick", function()
-        frame:Hide()
-    end)
-
     local wheelFrame = CreateFrame("Frame", nil, frame)
     wheelFrame:SetPoint("BOTTOM", 0, 0)
     wheelFrame:SetSize(WHEEL_SIZE, WHEEL_SIZE)
@@ -209,6 +211,9 @@ function GambaWheel:New(libWinConfig)
         },
         slicesActive = {},
         slicesInactive = {},
+        timers = {},
+        soundHandles = {},
+        config = config,
     }
     setmetatable(gw, self)
 
@@ -217,7 +222,56 @@ function GambaWheel:New(libWinConfig)
         { color = { 0.5, 0.5, 0.5 }, text = "" },
     })
 
+    closeBtn:SetScript("OnClick", function()
+        gw:Close()
+    end)
+
     return gw
+end
+
+---Play sound and store handle. Stops playback first if it already runs.
+---@param gw GambaWheel
+---@param file string
+local function GW_PlaySound(gw, file)
+    if gw.soundHandles[file] then
+        StopSound(gw.soundHandles[file])
+    end
+    local willPlay, handle = PlaySoundFile(file, "MASTER")
+    if willPlay then
+        gw.soundHandles[file] = handle
+    end
+end
+
+---Stop specific sound or all sound playback.
+---@param gw GambaWheel
+---@param file string|nil
+---@param fade number|nil Optional fadeout time in ms if stopping specific sound.
+local function GW_StopSound(gw, file, fade)
+    if file then
+        if gw.soundHandles[file] then
+            StopSound(gw.soundHandles[file], fade)
+            gw.soundHandles[file] = nil
+        end
+        return
+    end
+
+    for _, handle in pairs(gw.soundHandles) do
+        StopSound(handle)
+    end
+    gw.soundHandles = {}
+end
+
+---Handle closeing the wheel frame.
+function GambaWheel:Close()
+    self.frames.wheel:SetScript("OnUpdate", nil)
+    GW_StopSound(self)
+
+    for _, v in pairs(self.timers) do
+        v:Cancel()
+    end
+    self.timers = {}
+
+    self.frames.main:Hide()
 end
 
 ---Get or create a slice frame.
@@ -262,6 +316,8 @@ end
 ---@param targetPos number
 ---@param duration number
 function GambaWheel:Spin(targetPos, duration)
+    local SOUND_MUSIC = Env.UI.GetMediaPath("quiz_loop.mp3")
+    local SOUND_FIN = Env.UI.GetMediaPath("violin_win.mp3")
     assert(duration > 4, "duration must be  >4!")
     assert(targetPos and targetPos <= #self.slicesActive, "Target position can't be above active slices!")
     local START_DELAY = 1.75
@@ -276,18 +332,24 @@ function GambaWheel:Spin(targetPos, duration)
     local finalRotation = (7 / 9) * duration * initSpeed
     finalRotation = finalRotation + (math.pi * 2 - math.fmod(finalRotation, math.pi * 2)) - targetRotationOffset
 
-    local musicPlaying, musicHandle = PlaySoundFile(Env.UI.GetMediaPath("quiz_loop.mp3"), "Master")
+    if self.config.playSound then
+        GW_PlaySound(self, SOUND_MUSIC)
+    end
 
     local animateFunc = function()
         local t = GetTime() - animationStart
         local rota = (1 - math.pow(1 - (t / duration), 3.5)) * finalRotation
 
-        if t >= duration or not self.frames.main:IsShown() then
+        if t >= duration then
             rota = finalRotation
             self.frames.wheel:SetScript("OnUpdate", nil)
-            if musicPlaying then
-                StopSound(musicHandle, 2000)
-                PlaySoundFile(Env.UI.GetMediaPath("violin_win.mp3"), "Master")
+            GW_StopSound(self, SOUND_MUSIC, 2000)
+            GW_PlaySound(self, SOUND_FIN)
+            if self.config.autoCloseDuration > 0 then
+                self.timers["AUTO_CLOSE"] = C_Timer.NewTimer(self.config.autoCloseDuration, function()
+                    self:Close()
+                    self.timers["AUTO_CLOSE"] = nil
+                end)
             end
         end
         for _, slice in ipairs(self.slicesActive) do
@@ -295,9 +357,10 @@ function GambaWheel:Spin(targetPos, duration)
         end
     end
 
-    C_Timer.After(START_DELAY, function()
+    self.timers["SPIN_START"] = C_Timer.NewTimer(START_DELAY, function()
         animationStart = GetTime()
         self.frames.wheel:SetScript("OnUpdate", animateFunc)
+        self.timers["SPIN_START"] = nil
     end)
 end
 
@@ -305,7 +368,14 @@ Env.DeciderUI = {}
 
 local gw = nil ---@type GambaWheel
 Env:OnAddonLoaded(function()
-    gw = GambaWheel:New(Env.settings.UI.DeciderWindow)
+    gw = GambaWheel:New(Env.settings.UI.DeciderWindow, {
+        autoCloseDuration = Env.settings.misc.deciderAutoClose,
+        playSound = Env.settings.misc.deciderPlaySound,
+    })
+    Env.OnSettingsChange:RegisterCallback(function(settings)
+        gw.config.autoCloseDuration = settings.misc.deciderAutoClose
+        gw.config.playSound = settings.misc.deciderPlaySound
+    end)
 end)
 
 ---Show the decider wheel frame.
@@ -315,7 +385,7 @@ end
 
 ---Hide the decider wheel frame.
 function Env.DeciderUI:Hide()
-    gw.frames.main:Hide()
+    gw:Close()
 end
 
 ---Set frame title.

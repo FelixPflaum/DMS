@@ -52,8 +52,17 @@ local defaultSettings = {
         inRangeReadyPoints = 3,
         inRangeReadyMaxDistance = 100,
         raidCompleteDefaultPoints = 15,
+    },
+    misc = {
+        deciderAutoClose = 5,
+        deciderPlaySound = true,
     }
 }
+
+---@class (exact) AddonSettingsChangedEmitter
+---@field RegisterCallback fun(self:AddonSettingsChangedEmitter, cb:fun(settings:AddonSettings))
+---@field Trigger fun(self:AddonSettingsChangedEmitter, settings:AddonSettings)
+Env.OnSettingsChange = Env:NewEventEmitter()
 
 ---Fills missing entries in table.
 ---@param inputTable table<string, any>
@@ -90,4 +99,6 @@ Env:OnAddonLoaded(function()
 
     ---@class (exact) AddonSettings : SettingsTable
     Env.settings = DMS_Settings
+
+    Env.OnSettingsChange:Trigger(Env.settings)
 end)

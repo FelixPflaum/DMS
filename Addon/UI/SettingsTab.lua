@@ -25,6 +25,11 @@ local function CreateOptionTable()
     local MAX_RESPONSE_BUTTONS = 8
     local ORDER_LAST_RESPONSE_BUTTON = 100
 
+    local OptionChanged = function()
+        Env:PrintDebug("Settings tab OptionChanged()")
+        Env.OnSettingsChange:Trigger(Env.settings)
+    end
+
     local optionTable = {
         type = "group",
         get = function(info)
@@ -33,6 +38,7 @@ local function CreateOptionTable()
         set = function(info, val)
             ---@diagnostic disable-next-line: no-unknown
             Env.settings[info[#info]] = val
+            OptionChanged()
         end,
         args = {
             generalGroup = {
@@ -101,6 +107,7 @@ local function CreateOptionTable()
                         set = function(info, val)
                             ---@diagnostic disable-next-line: no-unknown
                             Env.settings[info[#info]] = val * 86400 -- Convert to seconds.
+                            OptionChanged()
                         end,
                     },
                 }
@@ -115,6 +122,7 @@ local function CreateOptionTable()
                 set = function(info, val)
                     ---@diagnostic disable-next-line: no-unknown
                     Env.settings.lootSession[info[#info]] = val
+                    OptionChanged()
                 end,
                 args = {
                     timeout = {
@@ -201,6 +209,7 @@ local function CreateOptionTable()
                         end,
                         set = function(info, val)
                             Env.settings.lootSession.pointsRemoveIfCompetition.flat = val
+                            OptionChanged()
                         end,
                     },
                     pointsRemoveIfCompetitionPct = {
@@ -217,6 +226,7 @@ local function CreateOptionTable()
                         end,
                         set = function(info, val)
                             Env.settings.lootSession.pointsRemoveIfCompetition.pct = val
+                            OptionChanged()
                         end,
                     },
                     descSanityRemoveUncontested = {
@@ -239,6 +249,7 @@ local function CreateOptionTable()
                         end,
                         set = function(info, val)
                             Env.settings.lootSession.pointsRemoveIfSoloRoll.flat = val
+                            OptionChanged()
                         end,
                     },
                     pointsRemoveUncontestedPct = {
@@ -255,6 +266,7 @@ local function CreateOptionTable()
                         end,
                         set = function(info, val)
                             Env.settings.lootSession.pointsRemoveIfSoloRoll.pct = val
+                            OptionChanged()
                         end,
                     },
                 }
@@ -269,6 +281,7 @@ local function CreateOptionTable()
                 set = function(info, val)
                     ---@diagnostic disable-next-line: no-unknown
                     Env.settings.pointDistrib[info[#info]] = val
+                    OptionChanged()
                 end,
                 args = {
                     headerPrep = {
@@ -349,6 +362,37 @@ local function CreateOptionTable()
                         max = 40,
                         step = 1,
                     },
+                }
+            },
+            deciderGroup = {
+                order = 400,
+                type = "group",
+                name = L["Miscellaneous"],
+                get = function(info)
+                    return Env.settings.misc[info[#info]]
+                end,
+                set = function(info, val)
+                    ---@diagnostic disable-next-line: no-unknown
+                    Env.settings.misc[info[#info]] = val
+                    OptionChanged()
+                end,
+                args = {
+                    deciderAutoClose = {
+                        order = 1,
+                        name = L["Decider Wheel Close Timer"],
+                        desc = L["0 = disable"],
+                        type = "range",
+                        width = 1,
+                        min = 0,
+                        max = 20,
+                        step = 1,
+                    },
+                    deciderPlaySound = {
+                        order = 2,
+                        name = L["Decider Wheel Sound"],
+                        type = "toggle",
+                        width = 1,
+                    }
                 }
             },
             debugGroup = {
