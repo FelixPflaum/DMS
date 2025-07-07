@@ -44,6 +44,7 @@ local defaultSettings = {
         pointsMinForRoll = 30,
         pointsRemoveIfCompetition = { flat = 0, pct = 50 }, ---@type FlatAndPctVal
         pointsRemoveIfSoloRoll = { flat = 0, pct = 0 }, ---@type FlatAndPctVal
+        unveilWaitAllRolls = false,
     },
     pointDistrib = {
         worldBuffPoints = 1,

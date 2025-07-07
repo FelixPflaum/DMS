@@ -135,6 +135,13 @@ local function CreateOptionTable()
                         max = 300,
                         step = 1,
                     },
+                    unveilWaitAllRolls = {
+                        order = 2,
+                        name = L["Unveil After Timeout"],
+                        desc = L["Only unveil the next item if roll time is over."],
+                        type = "toggle",
+                        width = 1,
+                    },
                     spacerResponses = MakeHackySpacer(9),
                     headerResponses = {
                         order = 10,

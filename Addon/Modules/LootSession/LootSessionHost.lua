@@ -637,7 +637,7 @@ function UnveilNextItem()
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
                 return
             end
-        else
+        elseif item.status ~= "waiting" or not Env.settings.lootSession.unveilWaitAllRolls then
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
             Comm.Send.HMSG_ITEM_UPDATE(item)
