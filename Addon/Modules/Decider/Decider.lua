@@ -9,11 +9,11 @@ local L = Env:GetLocalization()
 
 local SPIN_DURATION = 10
 
----@alias PlayerData {name:string, classId:integer}
+---@alias DeciderPlayerData {name:string, classId:integer}
 
 ---@class DecissionPacket
 ---@field title string
----@field data PlayerData[]
+---@field data DeciderPlayerData[]
 ---@field resultPos integer
 
 ---@enum OpcodeDecider
@@ -25,32 +25,6 @@ local Net = Env.Net
 local DECIDER_COMM_PREFIX = "DMSDecide"
 local commHandler = {} ---@type table<OpcodeDecider,fun(sender:string, data:any)>
 local decissionRunning = nil ---@type {title:string, winner:string}|nil
-
----Get array of players in group/raid.
----@return PlayerData[]
-local function GetMemberlist()
-    ---@type PlayerData[]
-    local members = {}
-
-    if IsInGroup() and GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) > 1 then
-        local prefix = IsInRaid() and "raid" or "party"
-
-        if prefix == "party" then
-            table.insert(members, { name = UnitName("player"), classId = select(3, UnitClass("player")) })
-        end
-
-        local numMembers = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
-        for i = 1, numMembers do
-            local unit = prefix .. i
-            local name = UnitName(unit)
-            if name then
-                table.insert(members, { name = name, classId = select(3, UnitClass(unit)) })
-            end
-        end
-    end
-
-    return members
-end
 
 ---Check if unit has permission to start a wheel.
 ---@param unitName string
@@ -74,7 +48,7 @@ end
 
 ---Send decission packet to group.
 ---@param title string
----@param data PlayerData[]
+---@param data DeciderPlayerData[]
 ---@param resultPos integer
 local function SendDecission(title, data, resultPos)
     LogDebug("Sending decission", title, #data, resultPos)
@@ -146,31 +120,7 @@ Env:OnAddonLoaded(function(...)
     end)
 end)
 
-Env:RegisterSlashCommand("decide", "", function(args)
-    if not CanUnitDecide(UnitName("player")) then
-        return Env:PrintError(L["You do not have permissions to start a session."])
-    end
-
-    if decissionRunning then
-        return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
-    end
-
-    local title = table.concat(args, " ")
-    local members = GetMemberlist()
-
-    if #members == 0 then
-        return Env:PrintError(L["Not in party or raid!"])
-    end
-
-    local target = math.random(1, #members)
-    SendDecission(title, members, target)
-    decissionRunning = {
-        title = title,
-        winner = Env.UI.ColorByClassId(members[target].name, members[target].classId)
-    }
-end)
-
-Env:RegisterSlashCommand("decidetest", "", function(args)
+--[[ Env:RegisterSlashCommand("decidetest", "", function(args)
     if decissionRunning then
         return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
     end
@@ -190,4 +140,30 @@ Env:RegisterSlashCommand("decidetest", "", function(args)
     end
 
     StartWheel(title, data, tarPos, SPIN_DURATION)
-end)
+end) ]]
+
+Env.Decider = {}
+
+---Start a decision wheel if permissions are met and none is currently active.
+---@param title string
+---@param members DeciderPlayerData[]
+function Env.Decider.Start(title, members)
+    if not CanUnitDecide(UnitName("player")) then
+        return Env:PrintError(L["You do not have permissions to start a session."])
+    end
+
+    if decissionRunning then
+        return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
+    end
+
+    if #members < 2 then
+        return Env:PrintError(L["Requires at least 2 entries!"])
+    end
+
+    local target = math.random(1, #members)
+    SendDecission(title, members, target)
+    decissionRunning = {
+        title = title,
+        winner = Env.UI.ColorByClassId(members[target].name, members[target].classId)
+    }
+end

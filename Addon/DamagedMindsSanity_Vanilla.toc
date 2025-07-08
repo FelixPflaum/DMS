@@ -74,5 +74,6 @@ Modules/PointDistribution/WorldBuffs.lua
 Modules/PointDistribution/PointDistributor.lua
 Modules/PointDistribution/DistUI.lua
 
-Modules/Decider/UI.lua
+Modules/Decider/WheelUI.lua
 Modules/Decider/Decider.lua
+Modules/Decider/StartUI.lua
