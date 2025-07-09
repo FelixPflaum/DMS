@@ -83,6 +83,9 @@ local responses ---@type LootResponses
 local pointsMinForRoll = 0
 local pointsMaxRange = 0
 local lastStartResend = 0
+local rollTimeout = 100
+local isTestMode = false
+local unveilWaitAllRolls = false
 
 ---@param target CommTarget
 local function InitHost(target)
@@ -95,6 +98,9 @@ local function InitHost(target)
     items = {}
     pointsMinForRoll = Env.settings.lootSession.pointsMinForRoll
     pointsMaxRange = Env.settings.lootSession.pointsMaxRange
+    rollTimeout = Env.settings.lootSession.timeout
+    isTestMode = Env.settings.testMode
+    unveilWaitAllRolls = Env.settings.lootSession.unveilWaitAllRolls
 
     Env:RegisterEvent("GROUP_ROSTER_UPDATE", Host)
     Env:RegisterEvent("GROUP_LEFT", Host)
@@ -108,7 +114,7 @@ local function InitHost(target)
     Host:UpdateCandidateList()
     timers:StartUnique(UPDATE_TIMER_KEY, UPDATE_TIME, "TimerUpdate", Host)
 
-    if Env.settings.testMode then
+    if isTestMode then
         Env:PrintError("TEST MODE: Generating fake candidate entries!")
         Env.Session.FillFakeCandidateList(candidates, 20)
         Comm.Send.HMSG_CANDIDATE_UPDATE(candidates)
@@ -386,10 +392,6 @@ local function StopRollIfAllResponded(item)
     end
     LogDebug(("Stopping item roll %s because all responded or offline."):format(item.guid))
     Host:ItemStopRoll(item.guid)
-    -- If waiting for all rolls before unveil we need to check here again now.
-    if Env.settings.lootSession.unveilWaitAllRolls then
-        UnveilNextItem()
-    end
     return true
 end
 
@@ -641,7 +643,7 @@ function UnveilNextItem()
                 LogDebug("Last unveiled item not yet awarded, not unveiling another.")
                 return
             end
-        elseif item.status ~= "waiting" or not Env.settings.lootSession.unveilWaitAllRolls then
+        elseif item.status ~= "waiting" or not unveilWaitAllRolls then
             LogDebug("Unveil item: ", item.guid, item.itemId)
             item.veiled = false
             Comm.Send.HMSG_ITEM_UPDATE(item)
@@ -696,6 +698,11 @@ function Host:ItemStopRoll(guid, sendInstant)
             end
         end
         Comm.Send.HMSG_ITEM_ROLL_END(item.guid, sendInstant)
+
+        -- If waiting for all rolls before unveil we need to check here again now.
+        if unveilWaitAllRolls then
+            UnveilNextItem()
+        end
     end
     return item
 end
@@ -750,7 +757,7 @@ function Host:ItemAdd(itemId)
             itemId = itemId,
             veiled = true,
             startTime = time(),
-            endTime = time() + Env.settings.lootSession.timeout,
+            endTime = time() + rollTimeout,
             status = "waiting",
             responses = {},
             roller = Env:NewUniqueRoller(),
@@ -762,7 +769,7 @@ function Host:ItemAdd(itemId)
                 candidate = candidate,
                 status = LootStatus.sent,
             }
-            if candidate.isFake and Env.settings.testMode then
+            if candidate.isFake and isTestMode then
                 local shouldAck, shouldRespond, responseDelay, response = Env.Session.GetTestResponse(responses.responses)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)
                 print("Ack", tostring(shouldAck), "Resp", tostring(shouldRespond), "Delay", responseDelay, response.displayString)
@@ -783,7 +790,7 @@ function Host:ItemAdd(itemId)
             end
         end
 
-        timers:StartUnique(item.guid, Env.settings.lootSession.timeout + RESPONSE_GRACE_PERIOD, "ItemStopRoll", self)
+        timers:StartUnique(item.guid, rollTimeout + RESPONSE_GRACE_PERIOD, "ItemStopRoll", self)
     end
 
     LogDebug("ItemAdd", itemId, "have parent ", parentItem ~= nil, "guid:", item.guid)
