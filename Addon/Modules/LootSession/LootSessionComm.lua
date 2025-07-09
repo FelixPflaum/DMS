@@ -108,16 +108,20 @@ local function HandleMessage(channel, sender, opcode, data, recvSize)
         end
     end
 
-    -- Buffer all packets except the resend start packet.
-    if opcode ~= OPCODES.HMSG_SESSION_START_RESEND and reconnectMsgBuffer and reconnectMsgBuffer.src == sender then
-        Env:PrintDebug("Buffering msg from", sender, LookupOpcodeName(opcode))
-        table.insert(reconnectMsgBuffer.buf, {
-            channel = channel,
-            sender = sender,
-            opcode = opcode,
-            data = data,
-        })
-        return
+    if reconnectMsgBuffer and reconnectMsgBuffer.src == sender then
+        -- Buffer all packets except the (resend) start packet.
+        -- Note: Starting also causes buffer to be set to nil, 
+        -- so no futher action required in that case. See Comm:ClientSetAllowedHost()
+        if opcode ~= OPCODES.HMSG_SESSION_START_RESEND and opcode ~= OPCODES.HMSG_SESSION_START then
+            Env:PrintDebug("Buffering msg from", sender, LookupOpcodeName(opcode))
+            table.insert(reconnectMsgBuffer.buf, {
+                channel = channel,
+                sender = sender,
+                opcode = opcode,
+                data = data,
+            })
+            return
+        end
     end
 
     if messageFilter[opcode] and not messageFilter[opcode](channel, sender, opcode, data) then
