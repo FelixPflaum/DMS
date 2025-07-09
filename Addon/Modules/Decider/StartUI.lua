@@ -9,7 +9,7 @@ local GetImagePath = Env.UI.GetImagePath
 
 local WIN_WIDTH = 350
 local TABLE_ROW_HEIGHT = 15
-local TABLE_ROWS = 10
+local TABLE_ROWS = 8
 
 local mainWindow ---@type DbWindow
 local entryTable ---@type ST_ScrollingTable
@@ -195,15 +195,17 @@ Env:OnAddonLoaded(function()
     titleBox:SetWidth(WIN_WIDTH - 50)
 
     local fillPartyButton = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
-    fillPartyButton:SetText(L["Add Whole Party"])
-    fillPartyButton:SetWidth(125)
+    fillPartyButton:SetText(L["Add Whole Group"])
+    fillPartyButton:SetWidth(135)
     fillPartyButton:SetPoint("TOPLEFT", labelTitle, "BOTTOMLEFT", 15, -20)
-    fillPartyButton:SetScript("OnClick", FillFromGroup)
+    fillPartyButton:SetScript("OnClick", function()
+        FillFromGroup()
+    end)
 
-    local fillClassBtn = CreateFillClassBtn(contentFrame, 125)
+    local fillClassBtn = CreateFillClassBtn(contentFrame, 135)
     fillClassBtn:SetPoint("TOPLEFT", fillPartyButton, "TOPLEFT", 0, -25)
 
-    local addMemberBtn = CreateAddMemberBtn(contentFrame, 125)
+    local addMemberBtn = CreateAddMemberBtn(contentFrame, 135)
     addMemberBtn:SetPoint("TOPLEFT", fillClassBtn, "TOPLEFT", 0, -25)
 
     local buttonStart = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
@@ -219,8 +221,8 @@ Env:OnAddonLoaded(function()
     end)
 
     entryTable = ScrollingTable:CreateST({
-        [ENTRY_TABLE_INDICES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, defaultsort = ScrollingTable.SORT_ASC },
-        [ENTRY_TABLE_INDICES.TOGGLE] = { name = "", width = 32, DoCellUpdate = CellUpdateRemoveButton },
+        [ENTRY_TABLE_INDICES.NAME] = { name = L["Name"], width = 100, DoCellUpdate = CellUpdateName, sort = ScrollingTable.SORT_ASC },
+        [ENTRY_TABLE_INDICES.TOGGLE] = { name = "", width = TABLE_ROW_HEIGHT, DoCellUpdate = CellUpdateRemoveButton },
     }, TABLE_ROWS, TABLE_ROW_HEIGHT, nil, contentFrame)
     entryTable.frame:SetPoint("TOPRIGHT", titleBox, "BOTTOMRIGHT", 0, -entryTable.head:GetHeight() - 4)
     entryTable:RegisterEvents({ OnClick = TableRemoveClicked })

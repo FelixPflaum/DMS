@@ -120,28 +120,6 @@ Env:OnAddonLoaded(function(...)
     end)
 end)
 
---[[ Env:RegisterSlashCommand("decidetest", "", function(args)
-    if decissionRunning then
-        return Env:PrintError(L["Wheel is already spinning! Wait before starting a new one."])
-    end
-
-    local slices = tonumber(args[1])
-    local tarPos = tonumber(args[2])
-    local title = table.concat(args, " ", 3)
-
-    if not tarPos or not slices then
-        return Env:PrintError("not a number!")
-    end
-
-    local data = {}
-    for i = 1, slices do
-        local cls = Env.classList[math.random(1, #Env.classList)]
-        table.insert(data, { color = Env.UI.GetClassColor(cls.id).color, text = "Test" .. i })
-    end
-
-    StartWheel(title, data, tarPos, SPIN_DURATION)
-end) ]]
-
 Env.Decider = {}
 
 ---Start a decision wheel if permissions are met and none is currently active.
