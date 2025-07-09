@@ -226,8 +226,6 @@ Env:OnAddonLoaded(function()
     }, TABLE_ROWS, TABLE_ROW_HEIGHT, nil, contentFrame)
     entryTable.frame:SetPoint("TOPRIGHT", titleBox, "BOTTOMRIGHT", 0, -entryTable.head:GetHeight() - 4)
     entryTable:RegisterEvents({ OnClick = TableRemoveClicked })
-
-    mainWindow:Show()
 end)
 
 Env.UI:RegisterOnReset(function()
