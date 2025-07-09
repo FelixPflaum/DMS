@@ -952,8 +952,9 @@ local openDialogData = {
 
 Client.OnStart:RegisterCallback(function()
     selectedItemGuid = nil
-    if not IsHosting() and not Env.settings.autoOpenOnStart == "yes" then
+    if not IsHosting() and Env.settings.autoOpenOnStart ~= "yes" then
         if Env.settings.autoOpenOnStart == "no" then
+            Env:PrintWarn(L["A loot session started. To open the session window use /dms open"])
             return
         end
         if not LibDialog:ActiveDialog(openDialogData) then
@@ -965,8 +966,44 @@ Client.OnStart:RegisterCallback(function()
     frame:SetFrameLevel(888)
 end)
 
-Client.OnEnd:RegisterCallback(function()
+local closeDialogData = {
+    show_while_dead = true,
+    text = L["Loot session ended. Do you want to close the session window?"],
+    on_cancel = function(self, data, reason) end,
+    buttons = {
+        {
+            text = L["Yes"],
+            on_click = function()
+                frame:Hide()
+            end
+        },
+        {
+            text = L["No"],
+            on_click = function() end
+        },
+    },
+}
 
+Client.OnEnd:RegisterCallback(function()
+    if IsHosting() or not frame:IsShown() then
+        return
+    end
+
+    if Env.settings.autoCloseOnEnd == "no" then
+        return
+    end
+
+    if Env.settings.autoCloseOnEnd == "ask" then
+        if not LibDialog:ActiveDialog(closeDialogData) then
+            LibDialog:Spawn(closeDialogData)
+        end
+        return
+    end
+
+    if Env.settings.autoCloseOnEnd == "yes" then
+        Env:PrintSuccess(L["Window closed because loot session ended."])
+        frame:Hide()
+    end
 end)
 
 Client.OnCandidateUpdate:RegisterCallback(function()

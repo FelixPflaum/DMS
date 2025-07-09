@@ -58,8 +58,20 @@ local function CreateOptionTable()
                             ["ask"] = L["Always ask"],
                         }
                     },
-                    autoSwitchToNextItem = {
+                    autoCloseOnEnd = {
                         order = 2,
+                        name = L["Automatically close"],
+                        desc = L["Close the session window automatically when a session ends, or ask with a dialog box."],
+                        type = "select",
+                        width = 0.75,
+                        values = {
+                            ["yes"] = L["Yes"],
+                            ["no"] = L["No"],
+                            ["ask"] = L["Always ask"],
+                        }
+                    },
+                    autoSwitchToNextItem = {
+                        order = 3,
                         name = L["Automatically switch to next"],
                         desc = L["Automatically switch to next unawarded item if the currently selected one is awarded."],
                         width = 1.5,

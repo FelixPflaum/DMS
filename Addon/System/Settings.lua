@@ -17,6 +17,7 @@ local defaultSettings = {
     logLevel = 1, ---@type LogLevel
     testMode = false,
     autoOpenOnStart = "yes", ---@type "yes"|"ask"|"no"
+    autoCloseOnEnd = "no", ---@type "yes"|"ask"|"no"
     autoSwitchToNextItem = false,
     startPermissions = { -- TODO: use this?
         leader = true,
