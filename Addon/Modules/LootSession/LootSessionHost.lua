@@ -386,6 +386,10 @@ local function StopRollIfAllResponded(item)
     end
     LogDebug(("Stopping item roll %s because all responded or offline."):format(item.guid))
     Host:ItemStopRoll(item.guid)
+    -- If waiting for all rolls before unveil we need to check here again now.
+    if Env.settings.lootSession.unveilWaitAllRolls then
+        UnveilNextItem()
+    end
     return true
 end
 
@@ -893,7 +897,7 @@ function Host:Start(target)
     if lastImportAge > MAX_IMPORT_AGE then
         if not LibDialog:ActiveDialog(confirmDialog) then
             local dialog = LibDialog:Spawn(confirmDialog, target) ---@type any
-            dialog.text:SetText(L["Last data import is %s old!\n\nAre you sure you want to start the session?"]:format(Env.ToShortTimeUnit(lastImportAge)));
+            dialog.text:SetText(L["Last data import is %s old!\n\nAre you sure you want to start the session?"]:format(Env.ToShortTimeUnit(lastImportAge)))
         end
         return
     end
