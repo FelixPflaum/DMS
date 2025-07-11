@@ -50,6 +50,7 @@ local MakeGuid = Env.Database.GenerateHistGuid
 ---@field childGuids string[]|nil If duplicates of the item exist their guids will be in here.
 ---@field itemId integer
 ---@field veiled boolean Details are not sent to clients until item is unveiled.
+---@field softUnveiled boolean Totally temp workaround: The next item to be unveiled once rolls are done.
 ---@field startTime integer
 ---@field endTime integer
 ---@field status "waiting"|"timeout"|"child"
@@ -130,33 +131,6 @@ function Host:Destroy()
     Env:UnregisterEvent("GROUP_LEFT", self)
     Comm.Send.HMSG_SESSION_END()
 end
-
-local function ResendStart()
-    if not Host.isRunning then return end
-    lastStartResend = GetTime()
-    LogDebug("Resending start")
-    Comm.Send.HMSG_SESSION_START_RESEND(Host.guid, responses.responses, pointsMinForRoll, pointsMaxRange, candidates, items)
-end
-
-Comm.Events.CMSG_RESEND_START:RegisterCallback(function(sender)
-    if not Host.isRunning then return end
-    Env:PrintWarn(L["%s is reconnecting to session."]:format(sender))
-    local now = GetTime()
-    local timeSinceLastResend = now - lastStartResend
-    if not timers:HasTimer(RESEND_TIMER_KEY) and timeSinceLastResend > RESEND_MIN_INTERVAL then
-        ResendStart()
-    else
-        timers:StartUnique(RESEND_TIMER_KEY, RESEND_MIN_INTERVAL - timeSinceLastResend, ResendStart, nil, true)
-    end
-    for _, sessionItem in pairs(items) do
-        if sessionItem.status == "waiting" and
-            sessionItem.responses[sender] and
-            sessionItem.responses[sender].status.id == LootStatus.unknown.id then
-            sessionItem.responses[sender].status = LootStatus.sent
-            Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(sessionItem.guid, sessionItem.responses[sender])
-        end
-    end
-end)
 
 ---@private
 function Host:TimerUpdate()
@@ -348,6 +322,32 @@ end)
 --- Item Responses
 ------------------------------------------------------------------------------------
 
+---Send response update to clinet if item is unveiled.
+---Handles soft unveil status by sending only the response status.
+---@param item SessionHost_Item
+---@param itemResponse SessionHost_ItemResponse
+local function SendItemResponseUpdate(item, itemResponse)
+    if not item.veiled then
+        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+    elseif item.softUnveiled then
+        ---@type SessionHost_ItemResponse
+        local statusOnlyResponse = {
+            candidate = itemResponse.candidate,
+            status = itemResponse.status,
+        }
+        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, statusOnlyResponse)
+    end
+end
+
+---Cahnge status of a client response.
+---@param item SessionHost_Item
+---@param itemResponse SessionHost_ItemResponse
+---@param status LootCandidateStatus
+local function SetItemResponseStatus(item, itemResponse, status)
+    itemResponse.status = status
+    SendItemResponseUpdate(item, itemResponse)
+end
+
 Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     if not Host.isRunning then return end
     local candidate = candidates[sender]
@@ -368,12 +368,9 @@ Comm.Events.CMSG_ITEM_RECEIVED:RegisterCallback(function(sender, itemGuid)
     end
     if itemResponse.status == LootStatus.sent or itemResponse.status == LootStatus.unknown then
         if item.status == "waiting" then
-            itemResponse.status = LootStatus.waitingForResponse
+            SetItemResponseStatus(item, itemResponse, LootStatus.waitingForResponse)
         else
-            itemResponse.status = LootStatus.responseTimeout
-        end
-        if not item.veiled then
-            Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
+            SetItemResponseStatus(item, itemResponse, LootStatus.responseTimeout)
         end
     end
 end)
@@ -396,6 +393,7 @@ local function StopRollIfAllResponded(item)
 end
 
 ---Set response, does NOT do any checks, it will simply change the response!
+---This also sets the status to responded.
 ---@param item SessionHost_Item
 ---@param itemResponse SessionHost_ItemResponse
 ---@param response LootResponse
@@ -406,9 +404,7 @@ local function SetItemResponse(item, itemResponse, response, doInstant)
         itemResponse.roll = item.roller:GetRoll()
     end
     itemResponse.status = LootStatus.responded
-    if not item.veiled then
-        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse, doInstant)
-    end
+    SendItemResponseUpdate(item, itemResponse)
     StopRollIfAllResponded(item)
 end
 
@@ -487,7 +483,7 @@ function Host:TrashItem(itemGuid)
             Comm.Send.HMSG_ITEM_UPDATE(relatedItem)
         end
     end)
-    UnveilNextItem();
+    self:UnveilNextItemIfNeeded()
 end
 
 ---Award item to a candidate.
@@ -518,7 +514,8 @@ function Host:AwardItem(itemGuid, candidateName)
 
     if chosenResponse.isPointsRoll then
         local candidate = itemResponse.candidate
-        local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints, chosenResponse, responses.responses, pointsMinForRoll)
+        local doesCount, useResponse, useReason = Env.PointLogic.DoesRollCountAsPointRoll(candidate.currentPoints,
+            chosenResponse, responses.responses, pointsMinForRoll)
         if doesCount then
             pointSnapshop = MakePointsSnapshot(item)
             local pointsToRemove, reason = Env.PointLogic.ShouldDeductPoints(item, itemResponse, candidate.currentPoints)
@@ -562,7 +559,7 @@ function Host:AwardItem(itemGuid, candidateName)
     Comm.Send.HMSG_ITEM_AWARD_UPDATE(itemGuid, candidateName, responseUsed.id, item.awarded.pointsSnapshot)
 
     Env.Trade:AddItem(item.itemId, item.awarded.candidateName)
-    UnveilNextItem()
+    self:UnveilNextItemIfNeeded()
 
     return nil, responseUsed, pointsUsed, pointUsageReason
 end
@@ -625,7 +622,8 @@ end
 ------------------------------------------------------------------
 
 ---Unveil next item after the last awarded item.
-function UnveilNextItem()
+---Does nothing if last unveiled item wasn't awarded yet.
+function Host:UnveilNextItemIfNeeded()
     ---@type SessionHost_Item[]
     local orderedItem = {}
 
@@ -638,36 +636,50 @@ function UnveilNextItem()
     end)
 
     for _, item in ipairs(orderedItem) do
-        if not item.veiled then
-            if not item.awarded and not item.markedGarbage then
-                LogDebug("Last unveiled item not yet awarded, not unveiling another.")
-                return
-            end
-        elseif item.status ~= "waiting" or not unveilWaitAllRolls then
-            LogDebug("Unveil item: ", item.guid, item.itemId)
-            item.veiled = false
-            Comm.Send.HMSG_ITEM_UPDATE(item)
-
-            if not item.parentGuid then
-                for _, v in pairs(item.responses) do
-                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, v)
+        if item.veiled then
+            if unveilWaitAllRolls and item.status == "waiting" then
+                if item.softUnveiled then
+                    LogDebug("Next item is soft unveiled, not unveiling another.")
+                    return
                 end
-                if item.childGuids then
-                    for _, childGuid in ipairs(item.childGuids) do
-                        local childItem = items[childGuid]
-                        if childItem.veiled then
-                            LogDebug("Unveil child item because parent was unveiled", childGuid)
-                            childItem.veiled = false
-                            Comm.Send.HMSG_ITEM_UPDATE(childItem)
+                LogDebug("Soft unveil item: ", item.guid, item.itemId)
+                item.softUnveiled = true
+                if not item.parentGuid then
+                    for _, v in pairs(item.responses) do
+                        ---@type SessionHost_ItemResponse
+                        local emptyResponse = {
+                            candidate = v.candidate,
+                            status = v.status,
+                        }
+                        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, emptyResponse)
+                    end
+                end
+            elseif not unveilWaitAllRolls or item.status ~= "waiting" then
+                LogDebug("Unveil item: ", item.guid, item.itemId)
+                item.veiled = false
+                Comm.Send.HMSG_ITEM_UPDATE(item)
+
+                if not item.parentGuid then
+                    for _, v in pairs(item.responses) do
+                        Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, v)
+                    end
+                    if item.childGuids then
+                        for _, childGuid in ipairs(item.childGuids) do
+                            local childItem = items[childGuid]
+                            if childItem.veiled then
+                                LogDebug("Unveil child item because parent was unveiled", childGuid)
+                                childItem.veiled = false
+                                Comm.Send.HMSG_ITEM_UPDATE(childItem)
+                            end
                         end
                     end
                 end
             end
+        end
 
-            if not item.awarded and not item.markedGarbage then
-                LogDebug("Unveiled item is the next to be awarded, not unveiling more.")
-                return
-            end
+        if not item.awarded and not item.markedGarbage then
+            LogDebug("Last unveiled item not yet awarded, not unveiling another.")
+            return
         end
     end
 end
@@ -691,17 +703,14 @@ function Host:ItemStopRoll(guid, sendInstant)
         end
         for _, itemResponse in pairs(item.responses) do
             if not itemResponse.response and itemResponse.status ~= LootStatus.unknown then
-                itemResponse.status = LootStatus.responseTimeout
-                if not item.veiled then
-                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
-                end
+                SetItemResponseStatus(item, itemResponse, LootStatus.responseTimeout)
             end
         end
         Comm.Send.HMSG_ITEM_ROLL_END(item.guid, sendInstant)
 
         -- If waiting for all rolls before unveil we need to check here again now.
         if unveilWaitAllRolls then
-            UnveilNextItem()
+            self:UnveilNextItemIfNeeded()
         end
     end
     return item
@@ -740,6 +749,7 @@ function Host:ItemAdd(itemId)
             order = parentItem.order + #parentItem.childGuids + 1,
             itemId = itemId,
             veiled = parentItem.veiled,
+            softUnveiled = parentItem.softUnveiled,
             startTime = parentItem.startTime,
             endTime = parentItem.endTime,
             status = "child",
@@ -756,6 +766,7 @@ function Host:ItemAdd(itemId)
             order = itemCount * 100,
             itemId = itemId,
             veiled = true,
+            softUnveiled = false,
             startTime = time(),
             endTime = time() + rollTimeout,
             status = "waiting",
@@ -770,9 +781,11 @@ function Host:ItemAdd(itemId)
                 status = LootStatus.sent,
             }
             if candidate.isFake and isTestMode then
-                local shouldAck, shouldRespond, responseDelay, response = Env.Session.GetTestResponse(responses.responses)
+                local shouldAck, shouldRespond, responseDelay, response = Env.Session.GetTestResponse(responses
+                .responses)
                 Env:PrintError("TEST MODE: Generating fake response for " .. name)
-                print("Ack", tostring(shouldAck), "Resp", tostring(shouldRespond), "Delay", responseDelay, response.displayString)
+                print("Ack", tostring(shouldAck), "Resp", tostring(shouldRespond), "Delay", responseDelay,
+                    response.displayString)
                 if shouldAck then
                     C_Timer.NewTimer(1, function(t)
                         Comm:FakeSendToHost(candidate.name, function()
@@ -805,17 +818,14 @@ function Host:ItemAdd(itemId)
             Comm.Send.HMSG_ITEM_UPDATE(item)
         end
     else
-        UnveilNextItem()
+        self:UnveilNextItemIfNeeded()
     end
 
     timers:StartUnique(item.guid .. "ackcheck", ITEM_ACK_TIMEOUT, function(key)
         LogDebug("ItemAdd ackcheck", itemId, "guid:", item.guid)
         for _, itemResponse in pairs(item.responses) do
             if itemResponse.status == LootStatus.sent then
-                itemResponse.status = LootStatus.unknown
-                if not item.veiled then
-                    Comm.Send.HMSG_ITEM_RESPONSE_UPDATE(item.guid, itemResponse)
-                end
+                SetItemResponseStatus(item, itemResponse, LootStatus.unknown)
             end
         end
         StopRollIfAllResponded(item)
@@ -851,6 +861,37 @@ function Host:DoForEachRelatedItem(item, includeThis, func)
         end
     end
 end
+
+------------------------------------------------------------------
+--- Client Reconnection
+------------------------------------------------------------------
+
+local function ResendStart()
+    if not Host.isRunning then return end
+    lastStartResend = GetTime()
+    LogDebug("Resending start")
+    Comm.Send.HMSG_SESSION_START_RESEND(Host.guid, responses.responses, pointsMinForRoll, pointsMaxRange, candidates,
+        items)
+end
+
+Comm.Events.CMSG_RESEND_START:RegisterCallback(function(sender)
+    if not Host.isRunning then return end
+    Env:PrintWarn(L["%s is reconnecting to session."]:format(sender))
+    local now = GetTime()
+    local timeSinceLastResend = now - lastStartResend
+    if not timers:HasTimer(RESEND_TIMER_KEY) and timeSinceLastResend > RESEND_MIN_INTERVAL then
+        ResendStart()
+    else
+        timers:StartUnique(RESEND_TIMER_KEY, RESEND_MIN_INTERVAL - timeSinceLastResend, ResendStart, nil, true)
+    end
+    for _, sessionItem in pairs(items) do
+        if sessionItem.status == "waiting" and
+            sessionItem.responses[sender] and
+            sessionItem.responses[sender].status.id == LootStatus.unknown.id then
+            SetItemResponseStatus(sessionItem, sessionItem.responses[sender], LootStatus.sent)
+        end
+    end
+end)
 
 ------------------------------------------------------------------
 --- API
@@ -904,7 +945,8 @@ function Host:Start(target)
     if lastImportAge > MAX_IMPORT_AGE then
         if not LibDialog:ActiveDialog(confirmDialog) then
             local dialog = LibDialog:Spawn(confirmDialog, target) ---@type any
-            dialog.text:SetText(L["Last data import is %s old!\n\nAre you sure you want to start the session?"]:format(Env.ToShortTimeUnit(lastImportAge)))
+            dialog.text:SetText(L["Last data import is %s old!\n\nAre you sure you want to start the session?"]:format(
+            Env.ToShortTimeUnit(lastImportAge)))
         end
         return
     end
