@@ -311,6 +311,7 @@ Comm.Events.HMSG_ITEM_RESPONSE_UPDATE:RegisterCallback(function(itemGuid, data, 
     local item = Client.items[itemGuid]
     if not item then
         LogDebug("got item response update for unknown item", itemGuid)
+        return
     end
     for _, packedClient in ipairs(data) do
         UpdateResponseFromPacket(item, packedClient)
