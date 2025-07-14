@@ -16,7 +16,8 @@ Env.Session.CLIENT_TIMEOUT_TIME = Env.Session.CLIENT_KEEPALIVE_TIME + 5 -- Consi
 ----------------------------------------------------------------------------
 
 ---@class (exact) LootCandidateStatus
----@field id integer Also used for ordering (desc)
+---@field id integer
+---@field displayOrder integer Descending
 ---@field displayString string
 ---@field color [number, number, number]
 
@@ -32,42 +33,49 @@ Env.Session.LootCandidateStatus = {
     ---@type LootCandidateStatus
     sent = { -- Loot data sent, waiting for answer...
         id = 4,
+        displayOrder = 5,
         displayString = L["Sent, waiting for answer..."],
         color = { 1, 0.5, 0 },
     },
     ---@type LootCandidateStatus
     waitingForResponse = { -- Waiting for response selection...
         id = 3,
+        displayOrder = 4,
         displayString = L["Waiting for roll decision..."],
         color = { 1, 1, 0 },
     },
     ---@type LootCandidateStatus
     unknown = { -- Unknown, offline or addon not installed
         id = 2,
+        displayOrder = 3,
         displayString = L["Unknown, offline, not installed"],
         color = { 0.5, 0.5, 0.5 },
     },
     ---@type LootCandidateStatus
     responseTimeout = { -- Did not respond in time
         id = 1,
+        displayOrder = 2,
         displayString = L["Did not respond in time"],
         color = { 1, 0, 0 },
     },
     ---@type LootCandidateStatus
     responded = { -- Response given
         id = 5,
+        displayOrder = 1,
         displayString = L["Response given"],
         color = { 0.5, 1, 0.5 },
     },
     ---@type LootCandidateStatus
     veiled = { -- Response not shown to client
         id = 6,
+        displayOrder = 6,
         displayString = L["Not yet unveiled"],
         color = { 0.7, 0.7, 0.7 },
     },
     ---@type LootCandidateStatus
     unveiled = { -- Waiting for response data from host
         id = 7,
+        displayOrder = 7,
         displayString = L["...loading"],
         color = { 0.7, 0.7, 0.7 },
     },

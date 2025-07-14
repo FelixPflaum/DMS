@@ -673,7 +673,7 @@ do
     ---@param item SessionClient_Item
     local function GetResponseWeight(status, response, item)
         local REPSONSE_ID_FIRST_CUSTOM = Env.Session.REPSONSE_ID_FIRST_CUSTOM
-        local weight = status.id
+        local weight = status.displayOrder
         if response then
             if response.id < REPSONSE_ID_FIRST_CUSTOM then
                 -- Show pass and autopass below everything
