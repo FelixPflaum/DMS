@@ -11,12 +11,16 @@ import ItemIconLink from "../components/item/ItemIconLink";
 import LootResponse from "../components/LootResponse";
 import { isItemDataLoaded, loadItemData } from "../data/itemStorage";
 import { useToaster } from "../components/toaster/Toaster";
+import { isGuid } from "@/shared/guid";
+import { getLootHistoryEntry } from "../data/lootHistory";
+import type { LootHistoryRow } from "@/server/database/types";
 
 const ProfilePage = (): JSX.Element => {
     const loadctx = useLoadOverlayCtx();
     const toaster = useToaster();
     const [searchParams, _setSearchParams] = useSearchParams();
     const [profile, setProfile] = useState<ApiProfileResult | undefined>();
+    const [lootData, setLootData] = useState<Record<string, LootHistoryRow | false>>({});
     const navigate = useNavigate();
 
     const nameParam = searchParams.get("name");
@@ -66,7 +70,39 @@ const ProfilePage = (): JSX.Element => {
         },
         { name: "New Sanity", dataKey: "newPoints" },
         { name: "Change Type", dataKey: "changeType" },
-        { name: "Reason", dataKey: "reason" },
+        {
+            name: "Reason",
+            dataKey: "reason",
+            render: (rd) => {
+                if (!rd.reason) return "";
+                if (rd.changeType != "ITEM_AWARD" && rd.changeType != "ITEM_AWARD_REVERTED") return rd.reason;
+                if (!isGuid(rd.reason)) return rd.reason;
+
+                const guid = rd.reason;
+                const ld = lootData[guid];
+                if (typeof ld !== "undefined") {
+                    if (!ld) return rd.reason + " (Unknown Loot!)";
+                    return <ItemIconLink itemId={ld.itemId}></ItemIconLink>;
+                }
+
+                getLootHistoryEntry(guid)
+                    .then((data) => {
+                        const newData = { ...lootData };
+                        newData[guid] = data ?? false;
+                        setLootData(newData);
+                    })
+                    .catch((err) => {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        toaster.addToast(
+                            "Missing loot data!",
+                            `Could not get loot data for ${rd.reason}!\nError: ${msg}`,
+                            "error"
+                        );
+                    });
+
+                return rd.reason + " (...)";
+            },
+        },
     ];
 
     const columDefsLoot: ColumnDef<ApiLootHistoryEntry>[] = [

@@ -25,12 +25,13 @@ import {
     updatePlayer,
 } from "@/server/database/tableFunctions/players";
 import { createPointHistoryEntry, getPointHistorySearch } from "@/server/database/tableFunctions/pointHistory";
-import { generateGuid, getConnection } from "@/server/database/database";
+import { getConnection } from "@/server/database/database";
 import { getLootHistorySearch } from "@/server/database/tableFunctions/lootHistory";
 import { makeDataBackup } from "@/server/importExport/backup";
 import { Logger } from "@/server/Logger";
 import type { PoolConnection } from "mysql2/promise";
 import type { PlayerRow } from "@/server/database/types";
+import { generateGuid } from "@/shared/guid";
 
 const logger = new Logger("API Players");
 

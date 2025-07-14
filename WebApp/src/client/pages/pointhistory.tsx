@@ -6,6 +6,10 @@ import { apiGet } from "../serverApi";
 import type { ApiPointHistoryEntry, ApiPointHistoryPageRes } from "@/shared/types";
 import { useToaster } from "../components/toaster/Toaster";
 import styles from "../styles/pagePointHist.module.css";
+import type { LootHistoryRow } from "@/server/database/types";
+import { getLootHistoryEntry } from "../data/lootHistory";
+import ItemIconLink from "../components/item/ItemIconLink";
+import { isGuid } from "@/shared/guid";
 
 const PointHistoryPage = (): JSX.Element => {
     const toaster = useToaster();
@@ -18,6 +22,7 @@ const PointHistoryPage = (): JSX.Element => {
         data: [],
         haveMore: true,
     });
+    const [lootData, setLootData] = useState<Record<string, LootHistoryRow | false>>({});
     const loadctx = useLoadOverlayCtx();
     const loadBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -70,7 +75,39 @@ const PointHistoryPage = (): JSX.Element => {
         },
         { name: "New Sanity", dataKey: "newPoints" },
         { name: "Change Type", dataKey: "changeType" },
-        { name: "Reason", dataKey: "reason" },
+        {
+            name: "Reason",
+            dataKey: "reason",
+            render: (rd) => {
+                if (!rd.reason) return "";
+                if (rd.changeType != "ITEM_AWARD" && rd.changeType != "ITEM_AWARD_REVERTED") return rd.reason;
+                if (!isGuid(rd.reason)) return rd.reason;
+
+                const guid = rd.reason;
+                const ld = lootData[guid];
+                if (typeof ld !== "undefined") {
+                    if (!ld) return rd.reason + " (Unknown Loot!)";
+                    return <ItemIconLink itemId={ld.itemId}></ItemIconLink>;
+                }
+
+                getLootHistoryEntry(guid)
+                    .then((data) => {
+                        const newData = { ...lootData };
+                        newData[guid] = data ?? false;
+                        setLootData(newData);
+                    })
+                    .catch((err) => {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        toaster.addToast(
+                            "Missing loot data!",
+                            `Could not get loot data for ${rd.reason}!\nError: ${msg}`,
+                            "error"
+                        );
+                    });
+
+                return rd.reason + " (...)";
+            },
+        },
     ];
 
     return (
