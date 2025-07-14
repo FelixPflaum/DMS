@@ -5,6 +5,7 @@ import type { ApiAuthRes, ApiAuthUserRes, ApiUserEntry } from "@/shared/types";
 import { AccPermissions } from "@/shared/permissions";
 import { isItemDataLoaded, loadItemData } from "./data/itemStorage";
 import { useToaster } from "./components/toaster/Toaster";
+import { clearLootHistoryCache } from "./data/lootHistory";
 
 type AuthContextType = {
     user: ApiUserEntry | null;
@@ -33,6 +34,7 @@ const AuthProvider = ({ children }: { children: JSX.Element[] | JSX.Element }): 
                 document.cookie = "loginToken=; Max-Age=-1";
                 setAuth(null);
                 setUser(null);
+                clearLootHistoryCache();
             }
         });
     };

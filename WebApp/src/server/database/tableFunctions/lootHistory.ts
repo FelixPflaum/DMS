@@ -87,3 +87,12 @@ export const createLootHistoryEntry = (
     };
     return queryInsertChecked("lootHistory", { guid: guid }, nonIdFields, conn);
 };
+
+/**
+ * Get history entries by guid(s).
+ * @param guids
+ * @returns
+ */
+export const getLootHistoryEntries = (guids: string[]): Promise<DbRowsResult<LootHistoryRow>> => {
+    return querySelect<LootHistoryRow>(`SELECT * FROM lootHistory WHERE guid IN (?) ORDER BY timestamp DESC;`, [guids]);
+};

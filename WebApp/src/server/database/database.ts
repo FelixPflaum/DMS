@@ -15,7 +15,7 @@ const pool = mysql.createPool({
     database: getConfig().dbName,
 });
 
-export type DbDataValue = number | string | Date;
+export type DbDataValue = number | string | Date | string[];
 
 /**
  * Query the DB.
@@ -336,11 +336,4 @@ export const checkDb = async (): Promise<boolean> => {
     }
 
     return true;
-};
-
-/**
- * Generate string in the format <8B time as hex>-<7B random hex>
- */
-export const generateGuid = (): string => {
-    return `${Math.round(Date.now() / 1000).toString(16)}-${Math.round(Math.random() * 0xfffffff).toString(16)}`;
 };

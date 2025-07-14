@@ -1,5 +1,6 @@
+import { generateGuid } from "@/shared/guid";
 import { getDynamicSetting, onDynamicSettingChange, setDynamicSetting } from "../configDynamic";
-import { generateGuid, getConnection } from "../database/database";
+import { getConnection } from "../database/database";
 import { addSystemAuditEntry } from "../database/tableFunctions/audit";
 import { getAllPlayers, updatePlayer } from "../database/tableFunctions/players";
 import { createPointHistoryEntry } from "../database/tableFunctions/pointHistory";
