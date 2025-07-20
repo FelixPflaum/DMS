@@ -1,5 +1,9 @@
 import type { Request } from "express";
 
+function getRemoteAddr(req: Request): string | undefined {
+    return (req.headers["x-forwarded-for"] as string | undefined) || req.ip;
+}
+
 export class SpamCheck {
     private readonly max: number;
     private readonly dur: number;
@@ -39,7 +43,7 @@ export class SpamCheck {
     };
 
     isSpam(req: Request): boolean {
-        const ip = req.ip;
+        const ip = getRemoteAddr(req);
         if (!ip) return true;
         if (!this.reqHistory[ip]) this.reqHistory[ip] = [];
         this.reqHistory[ip].push(Date.now());
