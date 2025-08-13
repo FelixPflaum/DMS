@@ -10,6 +10,8 @@ local function LogDebug(...)
     Env:PrintDebug("Client:", ...)
 end
 
+local MAX_TIME_OFFSET_TO_IGNORE = 5
+
 ------------------------------------------------------------------------------------
 --- Data Structure Types
 ------------------------------------------------------------------------------------
@@ -57,6 +59,7 @@ end
 ---@field candidates table<string, SessionClient_Candidate>
 ---@field isRunning boolean
 ---@field items table<string, SessionClient_Item>
+---@field timeOffset integer Client time offset compared to host. Negative means client is behind.
 local Client = {}
 Env.SessionClient = Client
 
@@ -107,7 +110,8 @@ end
 ---@param hostName string
 ---@param guid string
 ---@param responses LootResponses
-function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange)
+---@param hostTime integer
+function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange, hostTime)
     Client.guid = guid
     Client.hostName = hostName
     Client.responses = responses
@@ -116,6 +120,15 @@ function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange)
     Client.pointsMinForRoll = pointsMinForRoll
     Client.pointsMaxRange = pointsMaxRange
     Client.items = {}
+
+    local timeoffset = time() - hostTime
+    if math.abs(Client.timeOffset) > MAX_TIME_OFFSET_TO_IGNORE then
+        Env:PrintWarn(L["%d seconds time offeset to host."]:format(Client.timeOffset))
+        Client.timeOffset = timeoffset
+    else
+        Client.timeOffset = 0
+    end
+
     Comm:ClientSetAllowedHost(hostName)
     KeepAlive()
     Client:CheckHostAlive()
@@ -132,6 +145,13 @@ local function EndSession()
     Env:UnregisterEvent("UNIT_CONNECTION", Client)
     Env:UnregisterEvent("GROUP_LEFT", Client)
     Client.OnEnd:Trigger()
+end
+
+---Get current host timestamp. This is time() with the detected time offeset to the host applied.
+---Use when comparing current time to timestamps received from the host. 
+---@return integer
+function Client:HostTime()
+    return time() - self.timeOffset
 end
 
 function Client:CheckHostAlive()
@@ -172,7 +192,7 @@ Comm.Events.HMSG_SESSION_START:RegisterCallback(function(data, responses, sender
         EndSession()
     end
 
-    InitClient(sender, data.guid, responses, data.pointsMinForRoll, data.pointsMaxRange)
+    InitClient(sender, data.guid, responses, data.pointsMinForRoll, data.pointsMaxRange, data.hostTime)
 end)
 
 Comm.Events.HMSG_SESSION_END:RegisterCallback(function(sender)
@@ -182,7 +202,7 @@ end)
 Comm.Events.HMSG_ITEM_ROLL_END:RegisterCallback(function(itemGuid, sender)
     local item = Client.items[itemGuid]
     if not item then return end
-    local now = time()
+    local now = Client:HostTime()
     if item.endTime > now then
         Client:DoForEachRelatedItem(item, true, function(relatedItem)
             relatedItem.endTime = now
@@ -453,7 +473,7 @@ function Client:RespondToItem(itemGuid, responseId)
     elseif item.parentGuid then
         Env:PrintError(L["Tried to respond to child item distribution %s!"]:format(itemGuid))
         return
-    elseif item.endTime < time() then
+    elseif item.endTime < self:HostTime() then
         Env:PrintError(L["Item %s already expired, did not send response!"]:format(itemGuid))
         return
     end

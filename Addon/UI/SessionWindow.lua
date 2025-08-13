@@ -174,7 +174,7 @@ local function UpdateItemSelect()
         btn:SetItemData(item.itemId, item.guid)
         if item.awarded then
             btn:ShowStatus("checked")
-        elseif item.endTime > time() then
+        elseif item.endTime > Client:HostTime() then
             btn:ShowStatus("roll")
         elseif item.isGarbage then
             btn:ShowStatus("trash")
@@ -802,7 +802,7 @@ local function CreateItemStatusDisplay()
     local itemForTimerUpdate = nil ---@type SessionClient_Item|nil
 
     local function TimerTextUpdateFunc()
-        local now = time()
+        local now = Client:HostTime()
         if not itemForTimerUpdate or itemForTimerUpdate.endTime < now then
             wrapper:SetScript("OnUpdate", nil)
             itemForTimerUpdate = nil
@@ -825,7 +825,7 @@ local function CreateItemStatusDisplay()
             local cname = item.awarded.candidateName
             local classId = Client.candidates[cname] and Client.candidates[cname].classId or 1
             statusText:SetText(ColorByClassId(item.awarded.candidateName, classId))
-        elseif item.endTime > time() then
+        elseif item.endTime > Client:HostTime() then
             if lastState ~= "timer" then
                 icon:SetTexture(GetImagePath("icon_die_trans.png"))
                 statusLabel:SetText(L["Expires in:"])

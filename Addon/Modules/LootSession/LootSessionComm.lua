@@ -5,7 +5,7 @@ local L = Env:GetLocalization()
 local Net = Env.Net
 
 local COMM_SESSION_PREFIX = "DMSS"
-local COMM_VERSION = 4
+local COMM_VERSION = 5
 
 ---@enum Opcode
 local OPCODES = {
@@ -270,6 +270,7 @@ do
     ---@field responses LootResponse[]
     ---@field pointsMinForRoll integer
     ---@field pointsMaxRange integer
+    ---@field hostTime integer
 
     ---@param guid string
     ---@param responses LootResponse[]
@@ -282,6 +283,7 @@ do
             responses = responses,
             pointsMinForRoll = pointsMinRoll,
             pointsMaxRange = pointsMaxRange,
+            hostTime = time(),
         }
         SendToClients(OPCODES.HMSG_SESSION_START, p)
     end
@@ -592,6 +594,7 @@ do
                 responses = responses,
                 pointsMinForRoll = pointsMinRoll,
                 pointsMaxRange = pointsMaxRange,
+                hostTime = time(),
             },
             candidates = {},
             items = {},

@@ -23,7 +23,7 @@ end
 ---@param self RollItemFrameTimerBar
 local function Script_TimerBarUpdate(self)
     if self.expirationTime then
-        local remaining = self.expirationTime - time()
+        local remaining = self.expirationTime - Client:HostTime()
         if remaining <= 0 then
             self.Text:SetText(L["Timeout"])
             self:SetValue(0)
@@ -58,7 +58,7 @@ local areYouSure = {
 }
 
 local function CloseClicked()
-    local now = time()
+    local now = Client:HostTime()
     itemsNotRolled = {} ---@type SessionClient_Item[]
     for _, v in pairs(Client.items) do
         if not v.parentGuid and not v.responseSent and v.endTime - now > 0 then
@@ -282,7 +282,7 @@ Client.OnStart:RegisterCallback(function()
 end)
 
 Client.OnItemUpdate:RegisterCallback(function()
-    local now = time()
+    local now = Client:HostTime()
     ---@type SessionClient_Item[]
     local itemsOrdered = {}
     local shown = 0
