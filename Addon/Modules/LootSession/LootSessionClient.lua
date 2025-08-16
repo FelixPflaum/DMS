@@ -122,7 +122,7 @@ function InitClient(hostName, guid, responses, pointsMinForRoll, pointsMaxRange,
     Client.items = {}
 
     local timeoffset = time() - hostTime
-    if math.abs(Client.timeOffset) > MAX_TIME_OFFSET_TO_IGNORE then
+    if math.abs(timeoffset) > MAX_TIME_OFFSET_TO_IGNORE then
         Env:PrintWarn(L["%d seconds time offeset to host."]:format(Client.timeOffset))
         Client.timeOffset = timeoffset
     else
