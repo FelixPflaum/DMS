@@ -100,7 +100,8 @@ end)
 -- Create frame when settings are ready.
 Env:OnAddonLoaded(function()
     ---@class SyncWindow : ButtonWindow
-    syncWindow = Env.UI.CreateButtonWindow("DMSSyncWindow", L["DMS Sync"], 300, 150, 0, false, Env.settings.UI.SyncWindow)
+    syncWindow = Env.UI.CreateButtonWindow("DMSSyncWindow", L["DMS Sync"], 300, 150, 0, false, Env.settings.UI
+    .SyncWindow)
     syncWindow.onTopCloseClicked = CloseWindow
     syncWindow:SetFrameStrata("DIALOG")
 
@@ -148,23 +149,18 @@ Env:OnAddonLoaded(function()
     syncWindow.ProgressText = progressText
 end)
 
-local origSIF = SetItemRef
 ---@param link string
----@param text string
----@param button any
----@param chatFrame any
-SetItemRef = function(link, text, button, chatFrame)
+hooksecurefunc(_G, "SetItemRef", function(link)
     if syncWindow.NameInput:HasFocus() then
         local namelink = link:sub(8)
-        local name, lineID, chatType, chatTarget = strsplit(":", namelink)
+        local name = strsplit(":", namelink)
         if (name and (name:len() > 0)) then
             name = Ambiguate(name, "short")
             syncWindow.NameInput:SetText(name)
             return
         end
     end
-    origSIF(link, text, button, chatFrame)
-end
+end)
 
 Env.UI:RegisterOnReset(function()
     syncWindow:Reset()
