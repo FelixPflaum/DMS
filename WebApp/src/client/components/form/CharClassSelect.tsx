@@ -12,6 +12,7 @@ const shownClasses: ClassId[] = [
     ClassId.DRUID,
     ClassId.PRIEST,
     ClassId.SHAMAN,
+    ClassId.PALADIN,
 ];
 
 const options: JSX.Element[] = [];
