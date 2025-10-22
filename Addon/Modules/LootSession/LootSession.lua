@@ -226,7 +226,7 @@ end
 
 function Env.Session.CanUnitStartSession(unitName)
     local canStart = false
-    local lootmethod, masterlooterPartyID, masterlooterRaidID = GetLootMethod()
+    local lootmethod, masterlooterPartyID, masterlooterRaidID = C_PartyInfo.GetLootMethod()
     if UnitIsGroupLeader(unitName, LE_PARTY_CATEGORY_HOME) then
         canStart = true
         Env:PrintDebug("Sender is party leader and can start.")
