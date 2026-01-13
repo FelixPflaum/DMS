@@ -9,6 +9,7 @@ local CHRONOBOON_BUFF_ID = 349981
 
 ---@enum WorldbuffFlags
 local WB_FLAGS = {
+    None = 0x0,
     Diremaul = 0x1,
     Dragonslayer = 0x2,
     Warchief = 0x4,
@@ -69,7 +70,7 @@ local function IsSpellIdWorldbuff(spellId)
     if WB_IDS[spellId] then
         return WB_IDS[spellId]
     end
-    return 0
+    return WB_FLAGS.None
 end
 
 ---Get mask of WBs in Chronoboon.
@@ -89,15 +90,20 @@ end
 
 ---Get WB count for unit.
 ---@param unit string
+---@return integer count
+---@return integer worldBuffFlags
+---@return integer boonedFlags
 local function GetWorldbuffCount(unit)
-    local worldBuffs = 0
+    local worldBuffs = WB_FLAGS.None
+    local booned = WB_FLAGS.None
     local i = 1
     local spellId ---@type integer?
     while true do
         spellId = select(10, UnitAura(unit, i, "HELPFUL"))
         if not spellId then break end
         if spellId == CHRONOBOON_BUFF_ID then
-            worldBuffs = bit.bor(worldBuffs, GetChronoboonBuffs(unit, i))
+            booned = GetChronoboonBuffs(unit, i)
+            worldBuffs = bit.bor(worldBuffs, booned)
         else
             worldBuffs = bit.bor(worldBuffs, IsSpellIdWorldbuff(spellId))
         end
@@ -111,7 +117,7 @@ local function GetWorldbuffCount(unit)
         end
     end
     LogDebug("WB unit/mask/count:", unit, worldBuffs, count)
-    return count
+    return count, worldBuffs, booned
 end
 
 ---Get worldbuff points for unit.
@@ -122,3 +128,27 @@ function Worldbuffs.GetWorldbuffPoints(unit)
     local count = GetWorldbuffCount(unit)
     return count, GetPoints(count)
 end
+
+Env:RegisterSlashCommand("wbtarget", "", function()
+    local count, flags, flagsBooned = GetWorldbuffCount("target")
+    print(UnitName("target"), count, "buffs found:")
+    local wbNames = {
+        [WB_FLAGS.Darkmoon] = "DMF",
+        [WB_FLAGS.Diremaul] = "DMT",
+        [WB_FLAGS.Dragonslayer] = "Ony",
+        [WB_FLAGS.Warchief] = "Rend",
+        [WB_FLAGS.Songflower] = "SF",
+        [WB_FLAGS.Zandalar] = "ZG",
+    }
+    for flag, name in pairs(wbNames) do
+        if bit.band(flags, flag) > 0 then
+            print("- ", name)
+        end
+    end
+    print("In Chronoboon:")
+    for flag, name in pairs(wbNames) do
+        if bit.band(flagsBooned, flag) > 0 then
+            print("- ", name)
+        end
+    end
+end)
