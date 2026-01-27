@@ -20,15 +20,14 @@ local WB_FLAGS = {
 
 ---@type table<integer,WorldbuffFlags>
 local CHRONOBOON_WB_INDICES = {
+    [16] = WB_FLAGS.Diremaul,
     [17] = WB_FLAGS.Diremaul,
     [18] = WB_FLAGS.Diremaul,
-    [19] = WB_FLAGS.Diremaul,
-    [20] = WB_FLAGS.Dragonslayer,
-    [21] = WB_FLAGS.Warchief,
-    [22] = WB_FLAGS.Zandalar,
-    [23] = WB_FLAGS.Songflower,
-    [24] = WB_FLAGS.Darkmoon,
-    [29] = WB_FLAGS.Warchief,
+    [19] = WB_FLAGS.Dragonslayer,
+    [20] = WB_FLAGS.Warchief,
+    [21] = WB_FLAGS.Zandalar,
+    [22] = WB_FLAGS.Songflower,
+    [23] = WB_FLAGS.Darkmoon,
 }
 
 ---@type table<integer,WorldbuffFlags>
