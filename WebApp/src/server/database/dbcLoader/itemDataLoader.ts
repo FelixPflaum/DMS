@@ -198,6 +198,12 @@ async function update(logger: Logger, force: boolean) {
         logger.logError("Could not update itemDbVersion settings value to " + currentBuild);
         process.exit(1);
     }
+
+    const setResTime = await setSetting("itemDbUpdated", Date.now().toString());
+    if (setResTime.isError) {
+        logger.logError("Could not update itemDbUpdated settings value to " + currentBuild);
+        process.exit(1);
+    }
 }
 
 export const checkAndUpdateItemDb = async (): Promise<void> => {

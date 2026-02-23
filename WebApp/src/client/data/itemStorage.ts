@@ -41,7 +41,6 @@ export const isItemDataLoaded = (version?: number): boolean => {
 
 /**
  * Load item data from API.
- * @param newVersion If set and larger than 0 will only load data if local version is older.
  * @returns true if data was loaded successfully, false otherwise.
  */
 export const loadItemData = async (): Promise<boolean> => {

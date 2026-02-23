@@ -55,7 +55,7 @@ authRouter.get("/check", async (req: Request, res: Response): Promise<void> => {
         apiRes.user.permissions = auth.user.permissions;
         apiRes.user.lastActivity = auth.user.lastActivity;
 
-        const itemDbVer = await getSetting("itemDbVersion");
+        const itemDbVer = await getSetting("itemDbUpdated");
         if (itemDbVer.isError) return send500Db(res);
         apiRes.itemDbVer = parseInt(itemDbVer.row?.svalue ?? "0") || 0;
     }
