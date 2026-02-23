@@ -4,12 +4,24 @@ import { queryDb } from "../database";
 import type { ItemDataRow } from "../types";
 import { getSetting, setSetting } from "../tableFunctions/settings";
 import { getAllItems } from "../tableFunctions/itemData";
+import { getConfig } from "@/server/config";
 
-const urlItem = "https://wago.tools/db2/Item/csv?branch=wow_classic_era";
-const urlSparse = "https://wago.tools/db2/ItemSparse/csv?branch=wow_classic_era";
+const branchStrs = ((): { wago: string; yak: string } => {
+    switch (getConfig().itemDataVersion) {
+        case "classic_era":
+            return { wago: "wow_classic_era", yak: "era" };
+        case "anniversary":
+            return { wago: "wow_anniversary", yak: "anniversary" };
+        default:
+            throw new Error("Invalid config item data version: " + getConfig().itemDataVersion);
+    }
+})();
+
+const urlItem = "https://wago.tools/db2/Item/csv?branch=" + branchStrs.wago;
+const urlSparse = "https://wago.tools/db2/ItemSparse/csv?branch=" + branchStrs.wago;
 function getAtlasUrl(_build: number): string {
     // Just take current live
-    return `https://www.townlong-yak.com/framexml/era/Helix/ArtTextureID.lua`;
+    return `https://www.townlong-yak.com/framexml/${branchStrs.yak}/Helix/ArtTextureID.lua`;
 }
 
 function getAtlasFromString(atlasStr: string, logger: Logger): Record<number, string> {

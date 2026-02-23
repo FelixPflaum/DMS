@@ -14,6 +14,7 @@ type ConfigData = {
     httpPort: number;
     httpOnlyLocal: boolean;
     hostClient: boolean;
+    itemDataVersion: string;
 };
 
 const config: ConfigData = {
@@ -30,6 +31,7 @@ const config: ConfigData = {
     httpPort: 9001,
     httpOnlyLocal: true,
     hostClient: false,
+    itemDataVersion: "classic_era",
 };
 let loaded = false;
 
