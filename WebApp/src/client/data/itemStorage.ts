@@ -1,5 +1,6 @@
 import type { ApiItemEntry, ApiItemListRes } from "@/shared/types";
 import { apiGet } from "../serverApi";
+import { config } from "../config";
 
 // TODO: make this not suck this much
 
@@ -85,7 +86,7 @@ export const getItemData = (itemId: number): ApiItemEntry | undefined => {
  * @returns
  */
 export const getItemInfoUrl = (itemId: number): string => {
-    return "https://www.wowhead.com/classic/item=" + itemId;
+    return `https://www.wowhead.com/${config.wowheadBranch}/item=${itemId}`;
 };
 
 /**

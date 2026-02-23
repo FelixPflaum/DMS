@@ -24,6 +24,13 @@ function getAtlasUrl(_build: number): string {
     return `https://www.townlong-yak.com/framexml/${branchStrs.yak}/Helix/ArtTextureID.lua`;
 }
 
+const isForceUpdateSet = (() => {
+    for (const arg of process.argv) {
+        if (arg == "itemforceupdate") return true;
+    }
+    return false;
+})();
+
 function getAtlasFromString(atlasStr: string, logger: Logger): Record<number, string> {
     const rgx = new RegExp(`(\\d+)</span>]=<span.+Interface.+/(.+)"</span>`);
     const lines = atlasStr.split("\n");
@@ -52,7 +59,7 @@ async function getCurrentBuild() {
     return build;
 }
 
-async function update(logger: Logger) {
+async function update(logger: Logger, force: boolean) {
     logger.log("Getting current build number...");
     const currentBuild = await getCurrentBuild();
     if (!currentBuild) {
@@ -66,7 +73,7 @@ async function update(logger: Logger) {
         logger.logError("Getting setting from DB failed.");
         process.exit(1);
     }
-    if (settingResult.row && parseInt(settingResult.row.svalue) >= currentBuild) {
+    if (!force && settingResult.row && parseInt(settingResult.row.svalue) >= currentBuild) {
         logger.log("Build is up to date.");
         return;
     }
@@ -202,15 +209,17 @@ export const checkAndUpdateItemDb = async (): Promise<void> => {
         process.exit(1);
     }
 
-    const lastUpdate = settingLastUpdateRes.row ? parseInt(settingLastUpdateRes.row.svalue) : 0;
-    const now = Date.now();
-    if (now - lastUpdate < 3600 * 1000) {
-        logger.log("Last update check recent, skipping.");
-        setSetting("itemDbLastCheck", Date.now().toString());
-        return;
+    if (!isForceUpdateSet) {
+        const lastUpdate = settingLastUpdateRes.row ? parseInt(settingLastUpdateRes.row.svalue) : 0;
+        const now = Date.now();
+        if (now - lastUpdate < 3600 * 1000) {
+            logger.log("Last update check recent, skipping.");
+            setSetting("itemDbLastCheck", Date.now().toString());
+            return;
+        }
     }
 
-    await update(logger);
+    await update(logger, isForceUpdateSet);
 
     const setLastRes = await setSetting("itemDbLastCheck", Date.now().toString());
     if (setLastRes.isError) {
