@@ -1035,7 +1035,7 @@ Client.OnItemUpdate:RegisterCallback(function(item, isAwardEvent)
                 local nextOrder = 99999999
                 local nextItemGuid ---@type string?
                 for _, it in pairs(Client.items) do
-                    if it.order ~= item.order and it.order < nextOrder and not it.awarded then
+                    if it.order ~= item.order and it.order < nextOrder and (not it.awarded and not it.isGarbage) then
                         nextOrder = it.order
                         nextItemGuid = it.guid
                     end
