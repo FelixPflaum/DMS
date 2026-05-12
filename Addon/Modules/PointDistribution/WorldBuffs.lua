@@ -119,11 +119,14 @@ local function GetWorldbuffCount(unit)
     return count, worldBuffs, booned
 end
 
----Get worldbuff points for unit.
+---Get worldbuff points for unit. Always returns 0 if not in classic.
 ---@param unit string
 ---@return integer count
 ---@return integer points
 function Worldbuffs.GetWorldbuffPoints(unit)
+    if not Env.IS_CLASSIC then
+        return 0, 0
+    end
     local count = GetWorldbuffCount(unit)
     return count, GetPoints(count)
 end

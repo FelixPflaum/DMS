@@ -7,6 +7,16 @@ local function LogDebug(...)
     Env:PrintDebug("PointDistrib:", ...)
 end
 
+local function SendRaidOrGroup(message)
+    local channel
+    if IsInRaid() then
+        channel = "RAID"
+    elseif IsInGroup() then
+        channel = "PARTY"
+    end
+    SendChatMessage(message, channel)
+end
+
 --------------------------------------------------------------------------
 --- Preperation points (distance and worldbuffs)
 --------------------------------------------------------------------------
@@ -23,39 +33,38 @@ end
 ---@param unit string
 ---@return boolean isInRange
 ---@return number distance
+---@return boolean sameInstance
 local function IsUnitInRange(unit)
     local maxDist = Env.settings.pointDistrib.inRangeReadyMaxDistance
-    if not IsInInstance() and maxDist > 40 then
-        local myX, myY, _, myMapID = UnitPosition("player")
-        local x, y, _, mapID = UnitPosition(unit)
-        if myMapID == mapID then
+    local myX, myY, _, myMapID = UnitPosition("player")
+    local x, y, _, mapID = UnitPosition(unit)
+    local sameMap = myMapID == mapID
+    if not IsInInstance() then
+        if sameMap and x and myX then
             local dist = GetDistance(myX, myY, x, y)
-            return dist <= maxDist, dist
+            return dist <= maxDist, dist, false
         end
-    elseif not InCombatLockdown() and CheckInteractDistance(unit, 4) then
-        return true, 28
-    elseif UnitInRange(unit) then -- 40y
-        return true, 40
+    elseif sameMap then
+        return true, 0, true
     end
-    return false, 9999
+    return false, 0, false
 end
-
-
 
 local PointDistributor = {}
 Env.PointDistributor = PointDistributor
 
 ---Get list of players, their range status and their worldbuff data.
----@return { name: string, inRange: boolean, distance: number, wbCount: integer, wbPoints:integer}[]
+---@return { name: string, inRange: boolean, sameInstance:boolean, distance: number, wbCount: integer, wbPoints:integer}[]
 function PointDistributor.GetPlayerReadyList()
     local playerList = {} ---@type {name:string,inRange:boolean,distance:number,wbCount:integer,wbPoints:integer}[]
     for unit in Env.MakeGroupIterator() do
         local name = UnitName(unit)
-        local inRange, distance = IsUnitInRange(unit)
+        local inRange, distance, sameInstance = IsUnitInRange(unit)
         local wbCount, wbPoints = Env.Worldbuffs.GetWorldbuffPoints(name)
         table.insert(playerList, {
             name = Ambiguate(name, "short"),
             inRange = inRange,
+            sameInstance = sameInstance,
             distance = distance,
             wbCount = wbCount,
             wbPoints = wbPoints,
@@ -65,26 +74,39 @@ function PointDistributor.GetPlayerReadyList()
     return playerList
 end
 
+local function GetReadyPointReason(isInRange, worldBuffCount)
+    if worldBuffCount > 0 then
+        return ("Is present: %s, WBs: %d"):format(tostring(isInRange), worldBuffCount)
+    end
+    return ("Is present: %s"):format(tostring(isInRange))
+end
+
 ---Award points based on whether players in group are in range and how many WBs they have.
-function PointDistributor.AwardReadyPointsToInRange()
+---@param ignoreRangeCheck boolean If true then ignore failed range checks.
+function PointDistributor.AwardReadyPointsToInRange(ignoreRangeCheck)
     local list = PointDistributor.GetPlayerReadyList()
-    local listNoSanity = {} ---@type string[]
+    local listNotPresent = {} ---@type string[]
+    local basePoints = Env.settings.pointDistrib.baseReadyPoints
     local inRangePoints = Env.settings.pointDistrib.inRangeReadyPoints
     for _, entry in ipairs(list) do
         if not Env.Database:GetPlayer(entry.name) then
             local classId = select(3, UnitClass(entry.name))
             Env.Database:AddPlayer(entry.name, classId, 0)
         end
-        local reason = ("InRange: %s, WBs: %d"):format(tostring(entry.inRange), entry.wbCount)
-        local points = entry.inRange and inRangePoints or 0
-        points = points + entry.wbPoints
+
+        local points = basePoints + entry.wbPoints
+        if entry.inRange or ignoreRangeCheck then
+            points = points + inRangePoints
+        end
+
         if points > 0 then
+            local reason = GetReadyPointReason(entry.inRange, entry.wbCount)
             Env.Database:AddPointsToPlayer(entry.name, points, "READY", reason)
         else
-            table.insert(listNoSanity, entry.name)
+            table.insert(listNotPresent, entry.name)
         end
     end
-    Env:PrintSuccess(L["Added preperation sanity for %d players. Following players received 0 sanity: %s"]:format(#list, table.concat(listNoSanity, ", ")))
+    Env:PrintSuccess(L["Added preperation sanity for %d players. Following players only got base sanity: %s"]:format(#list, table.concat(listNotPresent, ", ")))
 end
 
 --------------------------------------------------------------------------
@@ -115,10 +137,10 @@ local function AwardToRaid(amount, reasonType, reason, includeOffline)
             if not Env.Database:GetPlayer(entry.name) then
                 local classId = select(3, UnitClass(entry.name))
                 Env.Database:AddPlayer(entry.name, classId, 0)
-            else
-                table.insert(excludeList, entry.name)
             end
             Env.Database:AddPointsToPlayer(entry.name, amount, reasonType, reason)
+        else
+            table.insert(excludeList, entry.name)
         end
     end
     return #list, excludeList
@@ -130,14 +152,14 @@ end
 ---@param includeOffline boolean
 function PointDistributor.AwardRaidCompletePoints(amount, raidName, includeOffline)
     local playerCount, noPointsList = AwardToRaid(amount, "RAID", raidName, includeOffline)
-    Env:PrintSuccess(L["Added %d raid completion sanity to %d players in raid for: %s. Following players receivec no sanity: %s"]:format(amount, playerCount, raidName, table.concat(noPointsList, ", ")))
-end
-
----Give points to anyone in raid for other reasons.
----@param amount integer
----@param reason string
----@param includeOffline boolean
-function PointDistributor.AwardPointsToGroup(amount, reason, includeOffline)
-    local playerCount, noPointsList = AwardToRaid(amount, "CUSTOM", reason, includeOffline)
-    Env:PrintSuccess(L["Added %d sanity to %d players in raid for reason: %s. Following players receivec no sanity: %s"]:format(amount, playerCount, reason, table.concat(noPointsList, ", ")))
+    local msg
+    if #noPointsList > 0 then
+        local str = L["Added %d raid completion sanity to %d players in raid for: %s. Following players receive no sanity: %s"]
+        msg = str:format(amount, playerCount, raidName, table.concat(noPointsList, ", "))
+    else
+        local str = L["Added %d raid completion sanity to %d players in raid for: %s."]
+        msg = str:format(amount, playerCount, raidName)
+    end
+    Env:PrintSuccess(msg)
+    SendRaidOrGroup(msg)
 end

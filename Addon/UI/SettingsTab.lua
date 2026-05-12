@@ -308,20 +308,30 @@ local function CreateOptionTable()
                         type = "header",
                         name = L["Preperation"]
                     },
-                    inRangeReadyPoints = {
+                    baseReadyPoints = {
                         order = 2,
+                        name = L["Base Sanity"],
+                        desc = L["Sanity given for being in raid group when using the preperation distribution function."],
+                        type = "range",
+                        width = 2,
+                        min = 0,
+                        max = 100,
+                        step = 1,
+                    },
+                    inRangeReadyPoints = {
+                        order = 3,
                         name = L["In Range Sanity"],
                         desc = L["Sanity given for being in range when using the preperation distribution function."],
                         type = "range",
                         width = 1,
                         min = 0,
-                        max = 20,
+                        max = 100,
                         step = 1,
                     },
                     inRangeReadyMaxDistance = {
-                        order = 3,
+                        order = 4,
                         name = L["Max Distance"],
-                        desc = L["Maximum distance to count as in range. Only works in open world. 40y fallback used in instances!"],
+                        desc = L["Maximum distance to count as in range. Only works in open world. Same instance is always seen as in range."],
                         type = "range",
                         width = 1,
                         min = 40,
@@ -335,8 +345,9 @@ local function CreateOptionTable()
                         type = "range",
                         width = 1,
                         min = 0,
-                        max = 3,
+                        max = 10,
                         step = 0.1,
+                        hidden = function() return not Env.IS_CLASSIC end,
                     },
                     worldBuffPointsMax = {
                         order = 11,
@@ -345,8 +356,9 @@ local function CreateOptionTable()
                         type = "range",
                         width = 1,
                         min = 1,
-                        max = 10,
+                        max = 100,
                         step = 1,
+                        hidden = function() return not Env.IS_CLASSIC end,
                     },
                     worldBuffMinDuration = {
                         order = 12,
@@ -357,6 +369,7 @@ local function CreateOptionTable()
                         min = 0,
                         max = 3600,
                         step = 60,
+                        hidden = function() return not Env.IS_CLASSIC end,
                     },
                     spacerDesc = {
                         order = 19,
@@ -378,7 +391,7 @@ local function CreateOptionTable()
                         type = "range",
                         width = 2,
                         min = 0,
-                        max = 40,
+                        max = 100,
                         step = 1,
                     },
                 }

@@ -91,7 +91,8 @@ end
 -- Create frame when settings are ready.
 Env:OnAddonLoaded(function()
     ---@class DbWindow : ButtonWindow
-    mainWindow = Env.UI.CreateButtonWindow("DMSDistWindow", L["Sanity Distribution"], 450, 200, TOP_INSET, false, Env.settings.UI.DistWindow)
+    mainWindow = Env.UI.CreateButtonWindow("DMSDistWindow", L["Sanity Distribution"], 450, 200, TOP_INSET, false,
+        Env.settings.UI.DistWindow)
     mainWindow.onTopCloseClicked = Script_Close
     mainWindow:SetFrameStrata("HIGH")
 end)
@@ -106,12 +107,14 @@ end)
 
 local nearbyTable ---@type ST_ScrollingTable
 local nearbyInfoText ---@type FontString
+local sanityInfoText ---@type FontString
 
 local NEARBY_PLAYER_TABLE_INDICES = {
     NAME = 1,
     DISTANCE = 2,
     IN_RANGE = 3,
     WORLDBUFFS = 4,
+    SAME_INSTANCE = 5,
 }
 
 -- Dialog for confirming award of prep sanity to nearby raid members.
@@ -121,8 +124,9 @@ local confirmReadyAwardDialog = {
     buttons = {
         {
             text = L["Accept"],
+            ---@param arg {ignoreRangeCheck:boolean}
             on_click = function(self, arg)
-                Env.PointDistributor.AwardReadyPointsToInRange()
+                Env.PointDistributor.AwardReadyPointsToInRange(arg.ignoreRangeCheck)
             end
         },
         {
@@ -149,10 +153,19 @@ local function CellUpdateDistance(rowFrame, cellFrame, data, cols, row, realrow,
     if not fShow then return end
     local distance = data[realrow][column] ---@type number
     local inRange = data[realrow][NEARBY_PLAYER_TABLE_INDICES.IN_RANGE] ---@type integer
+    local sameInstance = data[realrow][NEARBY_PLAYER_TABLE_INDICES.SAME_INSTANCE] ---@type boolean
     if inRange == 1 then
-        cellFrame.text:SetText(("|cFF33AA33%.0f|r"):format(distance))
+        if sameInstance then
+            cellFrame.text:SetText(("|cFF33AA33%s|r"):format(L["In Instance"]))
+        else
+            cellFrame.text:SetText(("|cFF33AA33%.0f|r"):format(distance))
+        end
     else
-        cellFrame.text:SetText(("|cFFAA3333%.0f|r"):format(distance))
+        if sameInstance then
+            cellFrame.text:SetText(("|cFFAA3333%.0f|r"):format(distance))
+        else
+            cellFrame.text:SetText(("|cFFAA3333%s|r"):format(L["Wrong Zone"]))
+        end
     end
 end
 
@@ -166,14 +179,25 @@ local function UpdateNearbyPlayerTable()
     local list = Env.PointDistributor.GetPlayerReadyList()
     local inRangeCount = 0
     for _, entry in ipairs(list) do
-        local rowData = { entry.name, entry.distance, entry.inRange and 1 or 0, tostring(entry.wbCount) } ---@type any[]
+        local rowData = { entry.name, entry.distance, entry.inRange and 1 or 0, tostring(entry.wbCount), entry
+            .sameInstance } ---@type any[]
         table.insert(dataTable, rowData)
         if entry.inRange then
             inRangeCount = inRangeCount + 1
         end
     end
     nearbyTable:SetData(dataTable, true)
-    nearbyInfoText:SetText(L["%d / %d in range (%d y) for sanity."]:format(inRangeCount, #list, Env.settings.pointDistrib.inRangeReadyMaxDistance))
+    local distSettings = Env.settings.pointDistrib
+    nearbyInfoText:SetText(L["%d / %d in range (%d y) for sanity."]:format(inRangeCount, #list,
+        distSettings.inRangeReadyMaxDistance))
+    if Env.IS_CLASSIC then
+        sanityInfoText:SetText(L["Will award %d base, %d in range, %d/%d WBs"]
+            :format(distSettings.baseReadyPoints, distSettings.inRangeReadyPoints,
+                distSettings.worldBuffPoints, distSettings.worldBuffPointsMax))
+    else
+        sanityInfoText:SetText(L["Will award %d base, %d in range"]:format(distSettings.baseReadyPoints,
+            distSettings.inRangeReadyPoints))
+    end
     if mainWindow:IsShown() then
         nearbyUpdateTimer:StartUnique("nearbyUpdate", 2, UpdateNearbyPlayerTable, nil, true)
     end
@@ -214,13 +238,37 @@ Env:OnAddonLoaded(function()
     nearbyInfoText:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -15)
     nearbyInfoText:SetText("------------------------------------")
 
+    sanityInfoText = tabFrame:CreateFontString(nil, "OVERLAY", "GameTooltipTextSmall")
+    sanityInfoText:SetPoint("TOPLEFT", nearbyInfoText, "BOTTOMLEFT", 0, -15)
+    sanityInfoText:SetText("------------------------------------")
+
+    local ignoreRangeCheckCb = AceGUI:Create("CheckBox") ---@type any
+    ignoreRangeCheckCb.frame:SetParent(tabFrame)
+    ignoreRangeCheckCb.parent = tabFrame
+    ignoreRangeCheckCb.frame:Show()
+    ignoreRangeCheckCb.text:SetText(L["Ignore Range Check"])
+    ignoreRangeCheckCb:SetValue(false)
+    ignoreRangeCheckCb:SetPoint("TOPLEFT", sanityInfoText, "BOTTOMLEFT", 0, -15)
+    ignoreRangeCheckCb:SetWidth(150)
+
     local buttonAward = CreateFrame("Button", nil, tabFrame, "UIPanelButtonTemplate")
     buttonAward:SetText(L["Award Sanity"])
     buttonAward:SetWidth(buttonAward:GetTextWidth() + 30)
-    buttonAward:SetPoint("TOPLEFT", nearbyInfoText, "BOTTOMLEFT", 0, -10)
+    buttonAward:SetPoint("TOPLEFT", ignoreRangeCheckCb.frame, "BOTTOMLEFT", 0, -10)
     buttonAward:SetScript("OnClick", function()
         if not LibDialog:ActiveDialog(confirmReadyAwardDialog) then
             LibDialog:Spawn(confirmReadyAwardDialog)
+        end
+    end)
+
+    buttonAward:SetScript("OnClick", function()
+        local ignoreRangeCheck = ignoreRangeCheckCb:GetValue() ---@type boolean
+        if not LibDialog:ActiveDialog(confirmReadyAwardDialog) then
+            LibDialog:Dismiss(confirmReadyAwardDialog)
+        end
+        local dialog = LibDialog:Spawn(confirmReadyAwardDialog, { ignoreRangeCheck = ignoreRangeCheck }) ---@type any
+        if ignoreRangeCheck then
+            dialog.text:SetText(L["Really award sanity to all players? (Range ignored!)"])
         end
     end)
 
@@ -294,7 +342,7 @@ local function CellUpdateStatus(rowFrame, cellFrame, data, cols, row, realrow, c
     if online == 1 then
         cellFrame.text:SetText("")
     else
-        cellFrame.text:SetText("|cFFAA3333"..L["Offline"].."|r")
+        cellFrame.text:SetText("|cFFAA3333" .. L["Offline"] .. "|r")
     end
 end
 
@@ -304,7 +352,7 @@ Env:OnAddonLoaded(function()
     tabFrame:SetSize(420, TABLE_ROWS * TABLE_ROW_HEIGHT + 30)
 
     groupListTable = ScrollingTable:CreateST({
-        { name = L["Name"], width = 90, DoCellUpdate = CellUpdateName, sort = ScrollingTable.SORT_ASC },
+        { name = L["Name"],   width = 90, DoCellUpdate = CellUpdateName,   sort = ScrollingTable.SORT_ASC },
         { name = L["Status"], width = 70, DoCellUpdate = CellUpdateStatus, defaultsort = ScrollingTable.SORT_DSC },
     }, TABLE_ROWS, TABLE_ROW_HEIGHT, nil, tabFrame)
     groupListTable.frame:SetPoint("TOPRIGHT", 0, -nearbyTable.head:GetHeight() - 4)
@@ -373,7 +421,8 @@ Env:OnAddonLoaded(function()
         if not LibDialog:ActiveDialog(confirmRaidPointAward) then
             LibDialog:Dismiss(confirmRaidPointAward)
         end
-        local dialog = LibDialog:Spawn(confirmRaidPointAward, { points = pointNum, raidName = raid, includeOffline = includeOffline }) ---@type any
+        local dialog = LibDialog:Spawn(confirmRaidPointAward,
+            { points = pointNum, raidName = raid, includeOffline = includeOffline }) ---@type any
         dialog.text:SetText(L["Really award %d sanity to raid?"]:format(pointNum))
     end)
 

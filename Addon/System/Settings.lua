@@ -52,6 +52,7 @@ local defaultSettings = {
         worldBuffPoints = 1,
         worldBuffPointsMax = 5,
         worldBuffMinDuration = 40,
+        baseReadyPoints = 10,
         inRangeReadyPoints = 3,
         inRangeReadyMaxDistance = 100,
         raidCompleteDefaultPoints = 15,
