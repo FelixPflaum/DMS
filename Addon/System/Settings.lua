@@ -96,10 +96,10 @@ end
 Env:OnAddonLoaded(function()
     if DMS_Settings == nil then
         DMS_Settings = defaultSettings
+    else
+        UpdateSettings()
+        FillMissing(DMS_Settings, defaultSettings)
     end
-
-    UpdateSettings()
-    FillMissing(DMS_Settings, defaultSettings)
 
     ---@class (exact) AddonSettings : SettingsTable
     Env.settings = DMS_Settings

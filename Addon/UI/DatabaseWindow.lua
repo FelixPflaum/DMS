@@ -528,11 +528,9 @@ end
 
 ---@param rankIndex integer
 local function AddPlayersFromRankIndex(rankIndex)
-    local members = Env.Guild.memberCache[rankIndex]
-    if not members then return end
     local addCount = 0
-    for _, memberData in ipairs(members) do
-        if not Env.Database:GetPlayer(memberData.name) then
+    for _, memberData in ipairs(Env.Guild.memberCache) do
+        if memberData.rankIndex == rankIndex and not Env.Database:GetPlayer(memberData.name) then
             Env.Database:AddPlayer(memberData.name, memberData.classId, 0)
             addCount = addCount + 1
         end
