@@ -39,7 +39,7 @@ const PlayersPage = (): JSX.Element => {
     };
 
     const deletePlayer = async (playerEntry: ApiPlayerEntry, button: HTMLButtonElement) => {
-        const confirmWord = "UwU";
+        const confirmWord = "DELETE";
         const promptResult = prompt(
             `Really delete player ${playerEntry.playerName}?\nThe complete sanity and loot history of the player will be deleted!\nEnter ${confirmWord} to confirm.`
         );
