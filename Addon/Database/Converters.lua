@@ -181,7 +181,7 @@ function JsonToTable:ReadValue(json, start)
     elseif json:sub(start, start + 4) == "false" then
         return false, start + 4
     else
-        error("Invalid start of value at position: " .. start)
+        error("Invalid start of value at position: " .. start .. "\n" .. json:sub(start - 10, start + 10))
     end
 end
 
