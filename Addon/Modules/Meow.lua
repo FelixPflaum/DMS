@@ -4,7 +4,7 @@ local addonName = select(1, ...)
 local Env = select(2, ...)
 
 ---@param n string
-function GetPath(n)
+local function GetPath(n)
     return [[Interface\AddOns\]] .. addonName .. [[\Media\]] .. n
 end
 

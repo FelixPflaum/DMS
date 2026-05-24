@@ -37,8 +37,7 @@ local function CanUnitDecide(unitName)
         LogDebug("Unit is assist and can start.")
         return true
     else
-        local guildPerms = Env.Guild:GetGuildInfoData()
-        if guildPerms.allowedNames[unitName] then
+        if Env.Guild:CheckPerm(unitName, "START") then
             LogDebug("Sender has permission from guild info.")
             return true
         end

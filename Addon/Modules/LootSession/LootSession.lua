@@ -235,8 +235,7 @@ function Env.Session.CanUnitStartSession(unitName)
         canStart = true
         Env:PrintDebug("Sender is master looter and can start.")
     else
-        local guildPerms = Env.Guild:GetGuildInfoData()
-        if guildPerms.allowedNames[unitName] then
+        if Env.Guild:CheckPerm(unitName, "START") then
             canStart = true
             Env:PrintDebug("Sender has permission from guild info.")
         end

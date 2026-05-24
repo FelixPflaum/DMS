@@ -61,15 +61,17 @@ Env:RegisterEvent("GUILD_ROSTER_UPDATE", function()
     Guild.OnRosterDataUpdate:Trigger()
 end)
 
-function Guild:GetGuildInfoData()
+local function GetGuildInfoData()
     ---@class (exact) GuildInfoData
     ---@field allowedNames table<string,boolean>
     ---@field allowedRanks table<string,boolean>
     ---@field druid table<string,number>
+    ---@field druidRanks table<string,number>
     local data = { ---@type GuildInfoData
         allowedNames = {},
         allowedRanks = {},
         druid = {},
+        druidRanks = {},
     }
     local text = GetGuildInfoText()
     if text then
@@ -78,7 +80,7 @@ function Guild:GetGuildInfoData()
             local matchStart = matched:match("START=([^:]+)::") ---@type string|nil
             if matchStart then
                 for str in matchStart:gmatch("([^,]+)") do
-                    local rankMatch = str:match("R%-(.*)")
+                    local rankMatch = str:match("R_(.*)")
                     if rankMatch then
                         data.allowedRanks[rankMatch] = true
                     else
@@ -92,7 +94,12 @@ function Guild:GetGuildInfoData()
                 for str in matchDruid:gmatch("([^,]+)") do
                     local name, field = str:match("([^-]+)%-(%d+)")
                     if name and field then
-                        data.druid[name] = tonumber(field)
+                        local rankMatch = str:match("R_(.*)")
+                        if rankMatch then
+                            data.druidRanks[rankMatch] = tonumber(field)
+                        else
+                            data.druid[name] = tonumber(field)
+                        end
                     end
                 end
             end
@@ -105,12 +112,12 @@ end
 ---Check if character is guild member and has permission from guild info.
 ---@param charName string
 ---@param perm "START"|"DRUID"
----@param arg number
+---@param arg number?
 function Guild:CheckPerm(charName, perm, arg)
     if not self.memberCache[charName] then
         return false
     end
-    local infoData = self:GetGuildInfoData()
+    local infoData = GetGuildInfoData()
 
     if perm == "START" then
         if infoData.allowedNames[charName] then
@@ -126,12 +133,17 @@ function Guild:CheckPerm(charName, perm, arg)
     if perm == "DRUID" then
         local infoEntry = infoData.druid[charName]
         if not infoEntry then
-            return false
+            local guildRank = self.rankCache[self.memberCache[charName].rankIndex]
+            if guildRank and infoData.druidRanks[guildRank.name] then
+                infoEntry = infoData.druidRanks[guildRank.name]
+            else
+                return false
+            end
         end
         return bit.band(infoEntry, arg) ~= 0
     end
 
-    error("Invalid perm type "..perm)
+    error("Invalid perm type " .. perm)
 end
 
 Env:RegisterSlashCommand("testperm", "", function(args)
