@@ -151,7 +151,7 @@ local function AddPlayerPointHistory(playerName, change, newPoints, type, reason
         change = change,
         newPoints = newPoints,
         type = type,
-        reason = reason,
+        reason = reason or "",
     }
     LogDebug("Added player point history entry", playerName, change, newPoints, type, reason)
     table.insert(Env.Database.db.pointHistory, newEntry)
