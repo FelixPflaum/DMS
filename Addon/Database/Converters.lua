@@ -164,6 +164,8 @@ function JsonToTable:ReadObject(json, start)
     end
 end
 
+---TODO: This does not support null values. Don't think they should ever exist outside 
+---of error cases atm though, so probably actually better to not support it?
 ---@param json string
 ---@param start integer
 function JsonToTable:ReadValue(json, start)
