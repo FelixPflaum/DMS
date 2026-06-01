@@ -7,10 +7,16 @@ local function LogDebug(...)
     Env:PrintDebug("PointDistrib:", ...)
 end
 
+---Send message as raid warning if assistant or lead in raid, otherwise in raid or party depending on group type.
+---@param message string
 local function SendRaidOrGroup(message)
     local channel
     if IsInRaid() then
-        channel = "RAID"
+        if UnitIsGroupAssistant("player") or UnitIsGroupLeader("player", LE_PARTY_CATEGORY_HOME) then
+            channel = "RAID_WARNING"
+        else
+            channel = "RAID"
+        end
     elseif IsInGroup() then
         channel = "PARTY"
     end
@@ -106,7 +112,8 @@ function PointDistributor.AwardReadyPointsToInRange(ignoreRangeCheck)
             table.insert(listNotPresent, entry.name)
         end
     end
-    Env:PrintSuccess(L["Added preperation sanity for %d players. Following players only got base sanity: %s"]:format(#list, table.concat(listNotPresent, ", ")))
+    Env:PrintSuccess(L["Added preperation sanity for %d players. Following players only got base sanity: %s"]:format(
+    #list, table.concat(listNotPresent, ", ")))
 end
 
 --------------------------------------------------------------------------
@@ -131,7 +138,8 @@ local function AwardToRaid(amount, reasonType, reason, includeOffline)
     local excludeList = {} ---@type string[]
     if amount < 1 then return 0, excludeList end
     local list = PointDistributor.GetCurrentGroup()
-    LogDebug("Giving", amount, "points to everyone in raid.", reasonType, reason, "includeOffline:", tostring(includeOffline))
+    LogDebug("Giving", amount, "points to everyone in raid.", reasonType, reason, "includeOffline:",
+        tostring(includeOffline))
     for _, entry in ipairs(list) do
         if entry.isOnline or includeOffline then
             if not Env.Database:GetPlayer(entry.name) then
@@ -154,7 +162,8 @@ function PointDistributor.AwardRaidCompletePoints(amount, raidName, includeOffli
     local playerCount, noPointsList = AwardToRaid(amount, "RAID", raidName, includeOffline)
     local msg
     if #noPointsList > 0 then
-        local str = L["Added %d raid completion sanity to %d players in raid for: %s. Following players receive no sanity: %s"]
+        local str = L
+        ["Added %d raid completion sanity to %d players in raid for: %s. Following players receive no sanity: %s"]
         msg = str:format(amount, playerCount, raidName, table.concat(noPointsList, ", "))
     else
         local str = L["Added %d raid completion sanity to %d players in raid for: %s."]
