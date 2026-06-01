@@ -79,3 +79,5 @@ Modules/Decider/Decider.lua
 Modules/Decider/StartUI.lua
 
 Modules/MRT/MRT.lua
+
+Modules/StupidFeature2.lua
