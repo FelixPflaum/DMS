@@ -151,7 +151,7 @@ local INVTYPE_TO_SLOTS = {
     INVTYPE_TRINKET = { 13, 14 },
     INVTYPE_WEAPON = { 16, 17 },
     INVTYPE_SHIELD = 17,
-    INVTYPE_RANGED = Env.IS_CLASSIC and 18 or 16,
+    INVTYPE_RANGED = 18, -- TODO: Change to MH for addons that do not have ranged slot.
     INVTYPE_CLOAK = 15,
     INVTYPE_2HWEAPON = 16,
     -- INVTYPE_BAG = nil,
@@ -169,13 +169,86 @@ local INVTYPE_TO_SLOTS = {
     -- INVTYPE_PROFESSION_GEAR = { 21, 22, 24, 25 }
 }
 
+---@type table<integer,integer|integer[]>
+local tokenToItem = {
+    -- T4
+    [29757] = INVSLOT_HAND,
+    [29758] = INVSLOT_HAND,
+    [29756] = INVSLOT_HAND,
+    [29759] = INVSLOT_HEAD,
+    [29761] = INVSLOT_HEAD,
+    [29760] = INVSLOT_HEAD,
+    [29764] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=29764/pauldrons-of-the-fallen-defender
+    [29763] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=29763/pauldrons-of-the-fallen-champion
+    [29762] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=29762/pauldrons-of-the-fallen-hero
+    [29767] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=29767/leggings-of-the-fallen-defender
+    [29766] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=29766/leggings-of-the-fallen-champion
+    [29765] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=29765/leggings-of-the-fallen-hero
+    [29755] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=29755/chestguard-of-the-fallen-hero
+    [29754] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=29754/chestguard-of-the-fallen-champion
+    [29753] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=29753/chestguard-of-the-fallen-defender
+    [32385] = { INVSLOT_FINGER1, INVSLOT_FINGER2 }, -- https://www.wowhead.com/tbc/item=32385/magtheridons-head
+    -- T5
+    [30241] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=30241/gloves-of-the-vanquished-hero
+    [30240] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=30240/gloves-of-the-vanquished-defender
+    [30239] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=30239/gloves-of-the-vanquished-champion
+    [30247] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=30247/leggings-of-the-vanquished-hero
+    [30245] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=30245/leggings-of-the-vanquished-champion
+    [30246] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=30246/leggings-of-the-vanquished-defender
+    [30244] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30244/helm-of-the-vanquished-hero
+    [30243] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30243/helm-of-the-vanquished-defender
+    [30242] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30242/helm-of-the-vanquished-champion
+    [30248] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30248/pauldrons-of-the-vanquished-champion
+    [30249] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30249/pauldrons-of-the-vanquished-defender
+    [30250] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30250/pauldrons-of-the-vanquished-hero
+    [30236] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30236/chestguard-of-the-vanquished-champion
+    [30238] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30238/chestguard-of-the-vanquished-hero
+    [30237] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30237/chestguard-of-the-vanquished-defender
+    [32405] = INVSLOT_NECK,                         -- https://www.wowhead.com/tbc/item=32405/verdant-sphere#starts
+    -- T6
+    [31097] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=31097/helm-of-the-forgotten-conqueror
+    [31095] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=31095/helm-of-the-forgotten-protector
+    [31096] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=31096/helm-of-the-forgotten-vanquisher
+    [31102] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=31102/pauldrons-of-the-forgotten-vanquisher
+    [31101] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=31101/pauldrons-of-the-forgotten-conqueror
+    [31103] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=31103/pauldrons-of-the-forgotten-protector
+    [31100] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=31100/leggings-of-the-forgotten-protector
+    [31098] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=31098/leggings-of-the-forgotten-conqueror
+    [31099] = INVSLOT_LEGS,                         -- https://www.wowhead.com/tbc/item=31099/leggings-of-the-forgotten-vanquisher
+    [31091] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=31091/chestguard-of-the-forgotten-protector
+    [31089] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=31089/chestguard-of-the-forgotten-conqueror
+    [31090] = INVSLOT_CHEST,                        -- https://www.wowhead.com/tbc/item=31090/chestguard-of-the-forgotten-vanquisher
+    [31092] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=31092/gloves-of-the-forgotten-conqueror
+    [31093] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=31093/gloves-of-the-forgotten-vanquisher
+    [31094] = INVSLOT_HAND,                         -- https://www.wowhead.com/tbc/item=31094/gloves-of-the-forgotten-protector
+    [34848] = INVSLOT_WRIST,                        -- https://www.wowhead.com/tbc/item=34848/bracers-of-the-forgotten-conqueror
+    [34851] = INVSLOT_WRIST,                        -- https://www.wowhead.com/tbc/item=34851/bracers-of-the-forgotten-protector
+    [34852] = INVSLOT_WRIST,                        -- https://www.wowhead.com/tbc/item=34852/bracers-of-the-forgotten-vanquisher
+    [34856] = INVSLOT_FEET,                         -- https://www.wowhead.com/tbc/item=34856/boots-of-the-forgotten-conqueror
+    [34857] = INVSLOT_FEET,                         -- https://www.wowhead.com/tbc/item=34857/boots-of-the-forgotten-protector
+    [34858] = INVSLOT_FEET,                         -- https://www.wowhead.com/tbc/item=34858/boots-of-the-forgotten-vanquisher
+    [34854] = INVSLOT_WAIST,                        -- https://www.wowhead.com/tbc/item=34854/belt-of-the-forgotten-protector
+    [34855] = INVSLOT_WAIST,                        -- https://www.wowhead.com/tbc/item=34855/belt-of-the-forgotten-vanquisher
+    [34853] = INVSLOT_WAIST,                        -- https://www.wowhead.com/tbc/item=34853/belt-of-the-forgotten-conqueror
+}
+
 ---Get currently equipped items for inventory type.
 ---@param invType string
+---@param itemId integer
 ---@return string? item1Link
 ---@return string? item2Link If slot is ring, weapon, or trinket this will be the 2nd one.
-function Env.Item.GetCurrentlyEquippedItem(invType)
-    local slotOrSlots = INVTYPE_TO_SLOTS[invType]
-    if not slotOrSlots then return end
+function Env.Item.GetCurrentlyEquippedItem(invType, itemId)
+    ---@type integer|integer[]|nil
+    local slotOrSlots = nil
+
+    if tokenToItem[itemId] then
+        slotOrSlots = tokenToItem[itemId]
+    elseif INVTYPE_TO_SLOTS[invType] then
+        slotOrSlots = INVTYPE_TO_SLOTS[invType]
+    else
+        return
+    end
+
     if type(slotOrSlots) == "number" then
         return GetInventoryItemLink("player", slotOrSlots)
     end
