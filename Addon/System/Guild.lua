@@ -94,7 +94,7 @@ local function GetGuildInfoData()
                 for str in matchDruid:gmatch("([^,]+)") do
                     local name, field = str:match("([^-]+)%-(%d+)")
                     if name and field then
-                        local rankMatch = str:match("R_(.*)")
+                        local rankMatch = name:match("R_(.*)")
                         if rankMatch then
                             data.druidRanks[rankMatch] = tonumber(field)
                         else
