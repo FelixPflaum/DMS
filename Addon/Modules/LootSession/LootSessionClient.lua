@@ -414,7 +414,7 @@ Comm.Events.HMSG_ITEM_ANNOUNCE:RegisterCallback(function(data, sender)
         end
         Client.OnItemUpdate:Trigger(newItem, false)
 
-        local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc)
+        local current1, current2 = Env.Item.GetCurrentlyEquippedItem(itemEquipLoc, newItem.itemId)
         local current1Id = current1 and Env.Item.GetIdFromLink(current1) or nil
         local current2Id = current2 and Env.Item.GetIdFromLink(current2) or nil
         Comm.Send.CBMSG_ITEM_CURRENTLY_EQUIPPED(newItem.guid, { current1Id, current2Id })
