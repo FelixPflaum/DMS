@@ -24,7 +24,7 @@ const LootHistoryPage = (): JSX.Element => {
     });
     const loadctx = useLoadOverlayCtx();
     const loadBtnRef = useRef<HTMLButtonElement>(null);
-    const [searchTerm, setSearchTerm] = useState<string>("text");
+    const [searchTerm, setSearchTerm] = useState<string>("");
 
     const loadPage = async (page: number): Promise<void> => {
         loadctx.setLoading("fetchLootHistory", "Loading history...");
