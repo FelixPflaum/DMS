@@ -14,9 +14,16 @@ export const getItemData = (itemId: number): Promise<DbRowResult<ItemDataRow>> =
 /**
  * Get item data by name search.
  * @param searchTerm
+ * @param limit
  * @returns
  */
-export const searchItemByName = (searchTerm: string): Promise<DbRowsResult<ItemDataRow>> => {
+export const searchItemByName = (searchTerm: string, limit?: number): Promise<DbRowsResult<ItemDataRow>> => {
+    if (limit && limit > 0) {
+        return querySelect<ItemDataRow>(`SELECT * FROM itemData WHERE itemName LIKE ? LIMIT ?;`, [
+            "%" + searchTerm + "%",
+            limit,
+        ]);
+    }
     return querySelect<ItemDataRow>(`SELECT * FROM itemData WHERE itemName LIKE ?;`, ["%" + searchTerm + "%"]);
 };
 

@@ -15,7 +15,7 @@ const pool = mysql.createPool({
     database: getConfig().dbName,
 });
 
-export type DbDataValue = number | string | Date | string[];
+export type DbDataValue = number | string | Date | string[] | number[];
 
 /**
  * Query the DB.

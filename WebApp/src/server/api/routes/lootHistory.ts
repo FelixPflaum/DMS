@@ -5,10 +5,12 @@ import { getAuthFromRequest } from "../auth";
 import { send500Db, parseIntIfNumber, getStringIfString, checkAuth, sendApiResponse, send400 } from "../util";
 import type { ApiLootHistoryPageRes, ApiLootHistorySearchRes, LootHistorySearchInput } from "@/shared/types";
 import {
+    getLootHistoryByIds,
     getLootHistoryEntries,
     getLootHistoryPage,
     getLootHistorySearch,
 } from "@/server/database/tableFunctions/lootHistory";
+import { searchItemByName } from "@/server/database/tableFunctions/itemData";
 
 export const lootHistoryRouter = express.Router();
 
@@ -42,6 +44,32 @@ lootHistoryRouter.get("/search/:name/:start/:end", async (req: Request, res: Res
 
     const rowsResult = await getLootHistorySearch(filter);
     if (rowsResult.isError) return send500Db(res);
+    sendApiResponse<ApiLootHistorySearchRes>(res, { results: rowsResult.rows });
+});
+
+lootHistoryRouter.get("/searchitem/:search", async (req: Request, res: Response): Promise<void> => {
+    const auth = await getAuthFromRequest(req);
+    if (!checkAuth(res, auth, AccPermissions.DATA_VIEW)) return;
+
+    const search = getStringIfString(req.params.search);
+    if (!search) return send400(res, "No search input");
+
+    const itemResults = await searchItemByName(search, 100);
+    if (itemResults.isError) return send500Db(res);
+
+    if (itemResults.rows.length === 0) {
+        sendApiResponse<ApiLootHistorySearchRes>(res, { results: [] });
+        return;
+    }
+
+    const ids: number[] = [];
+    for (const row of itemResults.rows) {
+        ids.push(row.itemId);
+    }
+
+    const rowsResult = await getLootHistoryByIds(ids);
+    if (rowsResult.isError) return send500Db(res);
+
     sendApiResponse<ApiLootHistorySearchRes>(res, { results: rowsResult.rows });
 });
 

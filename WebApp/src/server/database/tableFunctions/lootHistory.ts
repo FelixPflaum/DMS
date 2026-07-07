@@ -62,6 +62,10 @@ export const getLootHistorySearch = (filter: LootHistorySearchInput, limit = 150
     return querySelect<LootHistoryRow>(sql, values);
 };
 
+export const getLootHistoryByIds = (ids: number[]): Promise<DbRowsResult<LootHistoryRow>> => {
+    return querySelect<LootHistoryRow>("SELECT * FROM lootHistory WHERE itemId IN (?)", [ids]);
+};
+
 /**
  * Create new history entry.
  * @param guid
