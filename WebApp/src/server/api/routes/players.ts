@@ -82,7 +82,7 @@ playerRouter.post("/create", async (req: Request, res: Response): Promise<void> 
     if (!classId || classId < 1 || classId > 13) return send400(res, "Invalid class id.");
     if (typeof points !== "number") return send400(res, "Invalid point value.");
 
-    const createRes = await createPlayer(playerName, classId, points);
+    const createRes = await createPlayer(playerName.trim(), classId, points);
     if (createRes.isError) return send500Db(res);
 
     if (createRes.duplicate) {
