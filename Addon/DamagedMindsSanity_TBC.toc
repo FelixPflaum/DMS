@@ -1,7 +1,7 @@
-## Interface: 20505
+## Interface: 20506
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Author: coolmodi
-## Version: 0.2.17
+## Version: 0.2.18
 ## Notes: 
 ## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups, DMS_Logs
 
