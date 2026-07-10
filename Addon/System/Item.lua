@@ -201,9 +201,9 @@ local tokenToItem = {
     [30248] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30248/pauldrons-of-the-vanquished-champion
     [30249] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30249/pauldrons-of-the-vanquished-defender
     [30250] = INVSLOT_SHOULDER,                     -- https://www.wowhead.com/tbc/item=30250/pauldrons-of-the-vanquished-hero
-    [30236] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30236/chestguard-of-the-vanquished-champion
-    [30238] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30238/chestguard-of-the-vanquished-hero
-    [30237] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=30237/chestguard-of-the-vanquished-defender
+    [30236] = INVSLOT_CHEST,                         -- https://www.wowhead.com/tbc/item=30236/chestguard-of-the-vanquished-champion
+    [30238] = INVSLOT_CHEST,                         -- https://www.wowhead.com/tbc/item=30238/chestguard-of-the-vanquished-hero
+    [30237] = INVSLOT_CHEST,                         -- https://www.wowhead.com/tbc/item=30237/chestguard-of-the-vanquished-defender
     [32405] = INVSLOT_NECK,                         -- https://www.wowhead.com/tbc/item=32405/verdant-sphere#starts
     -- T6
     [31097] = INVSLOT_HEAD,                         -- https://www.wowhead.com/tbc/item=31097/helm-of-the-forgotten-conqueror
