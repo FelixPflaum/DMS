@@ -19,6 +19,23 @@ local itemList = {}
 ---@diagnostic disable-next-line: inject-field
 Trade.OnItemsChanged = Env:NewEventEmitter()
 
+Env:OnAddonLoaded(function()
+    local charName = UnitName("player")
+    if DMS_Trades == nil then
+        ---@type table<string,AwardedItem[]>
+        DMS_Trades = {}
+    end
+    if DMS_Trades[charName] == nil then
+        DMS_Trades[charName] = {}
+    end
+    itemList = DMS_Trades[charName]
+
+    -- Delay so all onload functions are finished
+    C_Timer.After(1, function()
+        Trade.OnItemsChanged:Trigger(itemList)
+    end)
+end)
+
 ------------------------------------------------------------------------------------------------
 --- Tradable item list.
 ------------------------------------------------------------------------------------------------
