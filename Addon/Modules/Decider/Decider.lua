@@ -15,11 +15,15 @@ local SPIN_DURATION = 10
 ---@field title string
 ---@field data DeciderPlayerData[]
 ---@field resultPos integer
+---@field visualOffset number
+---@field version integer
 
 ---@enum OpcodeDecider
 local DECIDER_OPCODES = {
     SEND_DECISSION = 1,
 }
+
+local DECIDER_VERSION = 2
 
 local Net = Env.Net
 local DECIDER_COMM_PREFIX = "DMSDecide"
@@ -56,18 +60,28 @@ local function SendDecission(title, data, resultPos)
         title = title,
         data = data,
         resultPos = resultPos,
+        visualOffset = math.random(),
+        version = DECIDER_VERSION
     }
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    Net:Send(DECIDER_COMM_PREFIX, channel, DECIDER_OPCODES.SEND_DECISSION, "BULK", pck)
+    if IsInGroup() then
+        local channel = IsInRaid() and "RAID" or "PARTY"
+        Net:Send(DECIDER_COMM_PREFIX, channel, DECIDER_OPCODES.SEND_DECISSION, "BULK", pck)
+        return
+    end
+    Net:SendWhisper(DECIDER_COMM_PREFIX, UnitName("player"), DECIDER_OPCODES.SEND_DECISSION, "BULK", pck)
 end
 
 ---Show the wheel UI and spin it.
+---@param title string
 ---@param data {color:[number, number, number], text:string}[]
-local function StartWheel(title, data, target, duration)
+---@param target integer
+---@param duration number
+---@param visualOffset number
+local function StartWheel(title, data, target, duration, visualOffset)
     Env.DeciderUI:Show()
     Env.DeciderUI:SetTitle(title)
     Env.DeciderUI:SetData(data)
-    Env.DeciderUI:Spin(target, duration)
+    Env.DeciderUI:Spin(target, duration, visualOffset)
 
     decissionRunning = {
         title = title,
@@ -97,18 +111,23 @@ commHandler[DECIDER_OPCODES.SEND_DECISSION] = function(sender, data)
         return Env:PrintWarn(L["%s tried to spin the wheel but there's already one running!"]:format(sender))
     end
 
+    if data.version ~= DECIDER_VERSION then
+        return Env:PrintError(L["Received decider packet with wrong mismatched version from %s. Got %s but expect %d."]
+            :format(sender, tostring(data.version), DECIDER_VERSION))
+    end
+
     local wheelData = {}
     for _, member in ipairs(data.data) do
         table.insert(wheelData, { color = Env.UI.GetClassColor(member.classId).color, text = member.name })
     end
 
     Env:PrintSuccess(L["Wheelspin from %s: %s"]:format(sender, data.title))
-    StartWheel(data.title, wheelData, data.resultPos, SPIN_DURATION)
+    StartWheel(data.title, wheelData, data.resultPos, SPIN_DURATION, data.visualOffset)
 end
 
 Env:OnAddonLoaded(function(...)
     Env.Net:Register(DECIDER_COMM_PREFIX, function(channel, sender, opcode, data)
-        if channel ~= "RAID" and channel ~= "PARTY" then
+        if channel ~= "RAID" and channel ~= "PARTY" and not (channel == "WHISPER" and sender == UnitName("player")) then
             return
         end
         if commHandler[opcode] then

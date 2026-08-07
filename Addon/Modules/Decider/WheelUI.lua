@@ -315,7 +315,8 @@ end
 ---Visually spin the wheel.
 ---@param targetPos number
 ---@param duration number
-function GambaWheel:Spin(targetPos, duration)
+---@param visualOffset number
+function GambaWheel:Spin(targetPos, duration, visualOffset)
     local SOUND_MUSIC = Env.UI.GetMediaPath("quiz_loop.mp3")
     local SOUND_FIN = Env.UI.GetMediaPath("violin_win.mp3")
     assert(duration > 4, "duration must be  >4!")
@@ -331,6 +332,11 @@ function GambaWheel:Spin(targetPos, duration)
     local initSpeed = math.pi * 2
     local finalRotation = (7 / 9) * duration * initSpeed
     finalRotation = finalRotation + (math.pi * 2 - math.fmod(finalRotation, math.pi * 2)) - targetRotationOffset
+
+    -- Visually stop at offset position in target slice.
+    local pieceRad = self.slicesActive[targetPos].sliceSize
+    local randomTargetOffset = (visualOffset - 0.5) * pieceRad
+    finalRotation = finalRotation + randomTargetOffset
 
     if self.config.playSound then
         GW_PlaySound(self, SOUND_MUSIC)
@@ -403,6 +409,7 @@ end
 ---Spin the wheel.
 ---@param targetPos number The position it should stop at. Index of a data entry set with SetData().
 ---@param duration number Spin duration in seconds.
-function Env.DeciderUI:Spin(targetPos, duration)
-    gw:Spin(targetPos, duration)
+---@param visualOffset number Offset from center of target slice, between 0 and 1 where 0.5 is the center.  
+function Env.DeciderUI:Spin(targetPos, duration, visualOffset)
+    gw:Spin(targetPos, duration, visualOffset)
 end

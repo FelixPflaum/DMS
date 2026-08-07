@@ -9,7 +9,7 @@ local GetImagePath = Env.UI.GetImagePath
 
 local WIN_WIDTH = 350
 local TABLE_ROW_HEIGHT = 15
-local TABLE_ROWS = 8
+local TABLE_ROWS = 10
 
 local mainWindow ---@type DbWindow
 local entryTable ---@type ST_ScrollingTable
@@ -28,7 +28,7 @@ local currentData = {} ---@type table<string, integer>
 local function CellUpdateName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow)
     if not fShow then return end
     local name = data[realrow][column] ---@type string
-    local _, _, classId = UnitClass(name)
+    local classId = data[realrow][DATA_INDICES.CLASS_ID] ---@type integer
     if classId then
         cellFrame.text:SetText(ColorByClassId(name, classId))
     else
@@ -208,16 +208,43 @@ Env:OnAddonLoaded(function()
     local addMemberBtn = CreateAddMemberBtn(contentFrame, 135)
     addMemberBtn:SetPoint("TOPLEFT", fillClassBtn, "TOPLEFT", 0, -25)
 
+    local customEntryBox = CreateFrame("EditBox", nil, contentFrame, "InputBoxTemplate")
+    customEntryBox:SetAutoFocus(false)
+    customEntryBox:SetFontObject(ChatFontNormal)
+    customEntryBox:SetScript("OnEscapePressed", EditBox_ClearFocus)
+    customEntryBox:SetScript("OnEnterPressed", EditBox_ClearFocus)
+    customEntryBox:SetTextInsets(0, 0, 3, 3)
+    customEntryBox:SetMaxLetters(75)
+    customEntryBox:SetPoint("TOPLEFT", addMemberBtn, "TOPLEFT", 0, -25)
+    customEntryBox:SetHeight(19)
+    customEntryBox:SetWidth(135)
+
+    local customEntryAddBtn = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
+    customEntryAddBtn:SetText(L["Add Custom"])
+    customEntryAddBtn:SetWidth(135)
+    customEntryAddBtn:SetPoint("TOPLEFT", customEntryBox, "TOPLEFT", 0, -25)
+    customEntryAddBtn:SetScript("OnClick", function()
+        local text = customEntryBox:GetText()
+        currentData[text] = Env.UI.GetRandomClassId()
+        customEntryBox:ClearFocus()
+        customEntryBox:SetText("")
+        UpdateTable()
+    end)
+
     local buttonStart = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
     buttonStart:SetText(L["Spin!"])
     buttonStart:SetWidth(buttonStart:GetTextWidth() + 30)
-    buttonStart:SetPoint("TOP", addMemberBtn, "TOP", 0, -40)
+    buttonStart:SetPoint("TOP", customEntryAddBtn, "TOP", 0, -40)
     buttonStart:SetScript("OnClick", function()
         local data = {} ---@type DeciderPlayerData[]
         for name, classId in pairs(currentData) do
             table.insert(data, { name = name, classId = classId })
         end
-        Env.Decider.Start(titleBox:GetText(), data)
+        local heading = titleBox:GetText()
+        if heading == "" then
+            heading = L["No Title"]
+        end
+        Env.Decider.Start(heading, data)
     end)
 
     entryTable = ScrollingTable:CreateST({

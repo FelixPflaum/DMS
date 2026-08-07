@@ -19,31 +19,55 @@ function Env.UI.GetMediaPath(mediaName)
     return [[Interface\AddOns\]] .. addonName .. [[\Media\]] .. mediaName
 end
 
----@type table<string, {color:[number,number,number],argbstr:string}>
+---@type table<string, {color:[number,number,number],argbstr:string,classId:integer}>
 local classColors = {
-    DEATHKNIGHT = { color = { 0.77, 0.12, 0.23 }, argbstr = "FFC41E3A" },
-    DEMONHUNTER = { color = { 0.64, 0.19, 0.79 }, argbstr = "FFA330C9" },
-    DRUID = { color = { 1.00, 0.49, 0.04 }, argbstr = "FFFF7C0A" },
-    EVOKER = { color = { 0.20, 0.58, 0.50 }, argbstr = "FF33937F" },
-    HUNTER = { color = { 0.67, 0.83, 0.45 }, argbstr = "FFAAD372" },
-    MAGE = { color = { 0.25, 0.78, 0.92 }, argbstr = "FF3FC7EB" },
-    MONK = { color = { 0.00, 1.00, 0.60 }, argbstr = "FF00FF98" },
-    PALADIN = { color = { 0.96, 0.55, 0.73 }, argbstr = "FFF48CBA" },
-    PRIEST = { color = { 1.00, 1.00, 1.00 }, argbstr = "FFFFFFFF" },
-    ROGUE = { color = { 1.00, 0.96, 0.41 }, argbstr = "FFFFF468" },
-    SHAMAN = { color = { 0.00, 0.44, 0.87 }, argbstr = "FF0070DD" },
-    WARLOCK = { color = { 0.53, 0.53, 0.93 }, argbstr = "FF8788EE" },
-    WARRIOR = { color = { 0.78, 0.61, 0.43 }, argbstr = "FFC69B6D" },
+    DEATHKNIGHT = { color = { 0.77, 0.12, 0.23 }, argbstr = "FFC41E3A", classId = 6 },
+    DEMONHUNTER = { color = { 0.64, 0.19, 0.79 }, argbstr = "FFA330C9", classId = 12 },
+    DRUID = { color = { 1.00, 0.49, 0.04 }, argbstr = "FFFF7C0A", classId = 11 },
+    EVOKER = { color = { 0.20, 0.58, 0.50 }, argbstr = "FF33937F", classId = 13 },
+    HUNTER = { color = { 0.67, 0.83, 0.45 }, argbstr = "FFAAD372", classId = 3 },
+    MAGE = { color = { 0.25, 0.78, 0.92 }, argbstr = "FF3FC7EB", classId = 8 },
+    MONK = { color = { 0.00, 1.00, 0.60 }, argbstr = "FF00FF98", classId = 10 },
+    PALADIN = { color = { 0.96, 0.55, 0.73 }, argbstr = "FFF48CBA", classId = 2 },
+    PRIEST = { color = { 1.00, 1.00, 1.00 }, argbstr = "FFFFFFFF", classId = 5 },
+    ROGUE = { color = { 1.00, 0.96, 0.41 }, argbstr = "FFFFF468", classId = 4 },
+    SHAMAN = { color = { 0.00, 0.44, 0.87 }, argbstr = "FF0070DD", classId = 7 },
+    WARLOCK = { color = { 0.53, 0.53, 0.93 }, argbstr = "FF8788EE", classId = 9 },
+    WARRIOR = { color = { 0.78, 0.61, 0.43 }, argbstr = "FFC69B6D", classId = 1 },
 }
 
----@param classId integer|string
+local classIds = (function()
+    ---@type integer[]
+    local arr = {}
+    for classFile, v in pairs(classColors) do
+        table.insert(arr, v.classId)
+    end
+    return arr
+end)()
+
+local classIdToFile = (function()
+    ---@type table<integer,string>
+    local t = {}
+    for k, v in pairs(classColors) do
+        t[v.classId] = k
+    end
+    return t
+end)()
+
+---Get a random class ID, including all currently available retail classes.
+---@return integer
+function Env.UI.GetRandomClassId()
+    return classIds[math.random(1, #classIds)]
+end
+
+---@param classId integer
 ---@return {color:[number,number,number],argbstr:string}
 function Env.UI.GetClassColor(classId)
-    if type(classId) == "number" then
-        local _, classFile = GetClassInfo(classId)
-        return classColors[classFile]
+    local _, classFile = GetClassInfo(classId)
+    if not classFile then
+        classFile = classIdToFile[classId] or "WARRIOR"
     end
-    return classColors[classId]
+    return classColors[classFile]
 end
 
 ---@param str string
@@ -65,6 +89,19 @@ end
 function Env.UI.ColorStringFromArray(color, str)
     return string.format("|cFF%02x%02x%02x%s|r", math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255),
         str)
+end
+
+---Get RGB array from hex color string.
+---@param hexStr string A rgb hex string e.g. F23DCF.
+---@return [number,number,number] rgbArray
+function Env.UI.ColorArrayFromHex(hexStr)
+    if hexStr:len() ~= 6 then
+        error("ColorArrayFromHex used with invalid string length " .. hexStr:len())
+    end
+    local r = tonumber(hexStr:sub(1, 2), 16)
+    local g = tonumber(hexStr:sub(3, 4), 16)
+    local b = tonumber(hexStr:sub(5, 6), 16)
+    return { r, g, b }
 end
 
 ---@type fun()[]
