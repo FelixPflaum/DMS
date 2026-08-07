@@ -557,17 +557,16 @@ local function CreateOptionTable()
     return optionTable
 end
 
+---@type integer|nil
+local settingsCategoryId = nil
+
 --- Setup SV tables, check settings and setup settings menu
 Env:OnAddonLoaded(function()
     AceConfigRegistry:RegisterOptionsTable(addonName, CreateOptionTable())
-    AceConfigDialog:AddToBlizOptions(addonName, addonName)
+    local _, id = AceConfigDialog:AddToBlizOptions(addonName, addonName)
+    settingsCategoryId = id
 end)
 
 Env:RegisterSlashCommand("config", L["Opens the config window."], function()
-    if InterfaceOptionsFrame_OpenToCategory then
-        InterfaceOptionsFrame_OpenToCategory(addonName)
-        InterfaceOptionsFrame_OpenToCategory(addonName)
-    else
-        Settings.OpenToCategory(addonName)
-    end
+    C_SettingsUtil.OpenSettingsPanel(settingsCategoryId)
 end)
