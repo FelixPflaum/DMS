@@ -1264,3 +1264,5 @@ function InCombatLockdown() end
 ---@return number z Always 0.
 ---@return integer instanceId
 function UnitPosition(unit) end
+
+_G.VMRT = {}

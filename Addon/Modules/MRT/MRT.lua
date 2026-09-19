@@ -2,7 +2,7 @@
 local Env = select(2, ...)
 
 local L = Env:GetLocalization()
----@type LibScrollingTable
+---@type LibDialog
 local LibDialog = LibStub("LibDialog-1.1")
 -- TODO: Reuse from Database, probably a good idea to put it higher in the hirarchy
 local Base64 = Env.Base64

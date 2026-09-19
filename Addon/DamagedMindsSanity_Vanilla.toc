@@ -3,7 +3,7 @@
 ## Author: coolmodi
 ## Version: 0.2.18
 ## Notes: 
-## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups, DMS_Logs, DMS_Trades
+## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups, DMS_Logs, DMS_Trades, DMS_MData
 
 Libs\Ace3\LibStub\LibStub.lua
 Libs\Ace3\CallbackHandler-1.0\CallbackHandler-1.0.xml
@@ -81,3 +81,6 @@ Modules/Decider/StartUI.lua
 Modules/MRT/MRT.lua
 
 Modules/StupidFeature2.lua
+
+Modules/Quiz/Quiz.lua
+Modules/Quiz/QuizManagerUI.lua

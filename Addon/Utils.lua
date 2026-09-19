@@ -8,6 +8,7 @@ Env.IS_CLASSIC_SOD = Env.IS_CLASSIC and C_Engraving and C_Engraving.IsEngravingE
 Env.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 Env.IS_CATA = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 Env.IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+Env.IS_FOREVER = true -- TODO: placeholder for beta
 
 Env.classList = (function()
     ---@type {file:string, id:integer, displayText:string}[]
@@ -80,10 +81,30 @@ end
 ---@param depth integer
 ---@param maxDepth integer|nil
 function Env.PrintTable(t, depth, maxDepth)
+    if maxDepth and depth > maxDepth then return end
+
+    ---@type {type:string,key:string,value:any}[]
+    local values = {}
     for k, v in pairs(t) do
-        if maxDepth and depth > maxDepth then return end
-        print(string.rep("--", depth) .. " " .. k .. ": " .. tostring(v))
-        if type(v) == "table" then
+        table.insert(values, { type = type(v), key = k, value = v })
+    end
+
+    table.sort(values, function (a, b)
+        if a.type ~= b.type then
+            return a.type < b.type
+        end
+        return a.key < b.key
+    end)
+
+    for k, v in pairs(values) do
+        if v.type == "function" then
+            print(string.rep("-", depth) .. " " .. v.key .. "(): " .. tostring(v.value))
+        elseif v.type == "table" then
+            print(string.rep("-", depth) .. " [" .. v.key .. "]: " .. tostring(v.value))
+        else
+            print(string.rep("-", depth) .. " " .. v.key .. ": " .. tostring(v.value))
+        end
+        if type(v.type) == "table" then
             Env.PrintTable(v, depth + 1)
         end
     end

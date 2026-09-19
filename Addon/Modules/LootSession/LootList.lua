@@ -102,17 +102,31 @@ Env:RegisterSlashCommand("add", L["Add items to a session."], function(args)
     LootList.OnListUpdate:Trigger(itemList)
 end)
 
----@param self any
----@param button string|"LeftButton"
-hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
-    if IsAltKeyDown() then
-        local itemInfo = C_Container.GetContainerItemInfo(self:GetParent():GetID(), self:GetID())
-        if itemInfo then
-            table.insert(itemList, itemInfo.itemID)
+if Env.IS_FOREVER or Env.IS_RETAIL then
+    ---@param link string
+    ---@param itemLocation table
+    hooksecurefunc("HandleModifiedItemClick", function(link, itemLocation)
+        if IsAltKeyDown() then
+            local _, linkOptions = LinkUtil.ExtractLink(link)
+            local item = { strsplit(":", linkOptions) }
+            local itemId = tonumber(item[1])
+            table.insert(itemList, itemId)
             LootList.OnListUpdate:Trigger(itemList)
         end
-    end
-end)
+    end)
+else
+    ---@param self any
+    ---@param button string|"LeftButton"
+    hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
+        if IsAltKeyDown() then
+            local itemInfo = C_Container.GetContainerItemInfo(self:GetParent():GetID(), self:GetID())
+            if itemInfo then
+                table.insert(itemList, itemInfo.itemID)
+                LootList.OnListUpdate:Trigger(itemList)
+            end
+        end
+    end)
+end
 
 -- Add current items in list to (new) session.
 function LootList:AddListToSession()

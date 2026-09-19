@@ -861,9 +861,16 @@ local function CreateWindow()
     frame:EnableMouse(true)
     frame:MakeDraggable() ---@diagnostic disable-line: undefined-field
     frame:SetScript("OnMouseWheel", function(f, d) if IsControlKeyDown() then LibWindow.OnMouseWheel(f, d) end end)
-    frame.TitleText:SetText(addonName)
-    frame.portrait:SetTexture(GetImagePath("logo.png"))
-    frame.CloseButton:SetScript("OnClick", Script_OnCloseClicked)
+
+    if Env.IS_FOREVER or Env.IS_RETAIL then
+        frame.TitleContainer.TitleText:SetText(addonName)
+        frame.PortraitContainer.portrait:SetTexture(GetImagePath("logo.png"))
+        frame.CloseButton:SetScript("OnClick", Script_OnCloseClicked)
+    else
+        frame.TitleText:SetText(addonName)
+        frame.portrait:SetTexture(GetImagePath("logo.png"))
+        frame.CloseButton:SetScript("OnClick", Script_OnCloseClicked)
+    end
 
     -- Item details header
 
