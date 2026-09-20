@@ -1,5 +1,17 @@
 ## Interface: 20506
 ## Title: Damaged Minds |cFFa60e53Sanity
+## Category: Loot
+## Category-deDE: Beute
+## Category-esES: Botín
+## Category-esMX: Botín
+## Category-frFR: Butin 
+## Category-itIT: Bottino
+## Category-koKR: 전리품
+## Category-ptBR: Saque
+## Category-ruRU: Добыча
+## Category-zhCN: 战利品
+## Category-zhTW: 戰利品
+## IconTexture: Interface\AddOns\DamagedMindsSanity\UI\img\logo.png
 ## Author: coolmodi
 ## Version: 0.2.18
 ## Notes: 
