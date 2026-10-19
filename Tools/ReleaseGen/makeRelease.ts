@@ -64,7 +64,7 @@ function copyToFolder(path: string, list: FileList) {
 
 const releaseDir = join(__dirname, "releases");
 const tempDir = join(__dirname, addonFolderName);
-const zipFileName = addonFolderName + "-" + version + "-sod.zip";
+const zipFileName = addonFolderName + "-" + version + ".zip";
 
 console.log("Creating temp folder...");
 fs.mkdirSync(tempDir);
