@@ -8,7 +8,7 @@ Env.IS_CLASSIC_SOD = Env.IS_CLASSIC and C_Engraving and C_Engraving.IsEngravingE
 Env.IS_WRATH = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 Env.IS_CATA = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 Env.IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
-Env.IS_FOREVER = true -- TODO: placeholder for beta
+Env.IS_FOREVER = WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
 
 Env.classList = (function()
     ---@type {file:string, id:integer, displayText:string}[]
@@ -89,7 +89,7 @@ function Env.PrintTable(t, depth, maxDepth)
         table.insert(values, { type = type(v), key = k, value = v })
     end
 
-    table.sort(values, function (a, b)
+    table.sort(values, function(a, b)
         if a.type ~= b.type then
             return a.type < b.type
         end
@@ -104,8 +104,8 @@ function Env.PrintTable(t, depth, maxDepth)
         else
             print(string.rep("-", depth) .. " " .. v.key .. ": " .. tostring(v.value))
         end
-        if type(v.type) == "table" then
-            Env.PrintTable(v, depth + 1)
+        if v.type == "table" then
+            Env.PrintTable(v.value, depth + 1)
         end
     end
 end
@@ -153,4 +153,16 @@ function Env.ToShortTimeUnit(seconds)
     else
         return seconds .. "s"
     end
+end
+
+---In the forever client this will return first and last name together.
+---Otherwise it will just return the name as usual.
+---@param unit string
+---@return string
+function Env.UnitNameForever(unit)
+    if Env.IS_FOREVER then
+        local first, last = UnitName(unit)
+        return first .. " " .. last
+    end
+    return UnitName(unit)
 end

@@ -1,4 +1,4 @@
-## Interface: 11507
+## Interface: 11507, 20506, 16001
 ## Title: Damaged Minds |cFFa60e53Sanity
 ## Category: Loot
 ## Category-deDE: Beute
@@ -13,7 +13,7 @@
 ## Category-zhTW: 戰利品
 ## IconTexture: Interface\AddOns\DamagedMindsSanity\UI\img\logo.png
 ## Author: coolmodi
-## Version: 0.2.18
+## Version: 0.2.19
 ## Notes: 
 ## SavedVariables: DMS_Settings, DMS_Database, DMS_Backups, DMS_Logs, DMS_Trades, DMS_MData
 
@@ -93,6 +93,3 @@ Modules/Decider/StartUI.lua
 Modules/MRT/MRT.lua
 
 Modules/StupidFeature2.lua
-
-Modules/Quiz/Quiz.lua
-Modules/Quiz/QuizManagerUI.lua

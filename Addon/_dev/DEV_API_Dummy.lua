@@ -434,11 +434,6 @@ function CreateFrame(frameType, frameName, parentFrame, inheritsFrame) end
 ---@field Icon Texture
 ---@field Text FontString
 
---- name, rank, icon, castTime, minRange, maxRange
-function GetSpellInfo(spellId_spellName_spellLink)
-    return "name", "rank", "icon", 1, 1, 1;
-end
-
 function UIDropDownMenu_SetWidth(dropDown, width) end
 
 function UIDropDownMenu_Initialize(dropDown, initFunc) end

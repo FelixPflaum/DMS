@@ -65,42 +65,51 @@ local function GetGuildInfoData()
     ---@class (exact) GuildInfoData
     ---@field allowedNames table<string,boolean>
     ---@field allowedRanks table<string,boolean>
-    ---@field druid table<string,number>
-    ---@field druidRanks table<string,number>
+    ---@field namePermissions table<string,number>
+    ---@field rankPermissions table<string,number>
     local data = { ---@type GuildInfoData
         allowedNames = {},
         allowedRanks = {},
-        druid = {},
-        druidRanks = {},
+        namePermissions = {},
+        rankPermissions = {},
     }
     local text = GetGuildInfoText()
     if text then
-        local matched = text:match("DMS:::.*:::") ---@type string|nil
+        -- Expected format: 
+        -- DS>START=Name,R:Rank,Name2...;PERM=Name:123,R:Officer:123,...;<DS
+        local matched = text:match("DS>(.*)<DS") ---@type string|nil
         if matched then
-            local matchStart = matched:match("START=([^:]+)::") ---@type string|nil
-            if matchStart then
-                for str in matchStart:gmatch("([^,]+)") do
-                    local rankMatch = str:match("R_(.*)")
-                    if rankMatch then
-                        data.allowedRanks[rankMatch] = true
-                    else
-                        data.allowedNames[str] = true
-                    end
-                end
-            end
-
-            local matchDruid = matched:match("DRUID=([^:]-)::") ---@type string|nil
-            if matchDruid then
-                for str in matchDruid:gmatch("([^,]+)") do
-                    local name, field = str:match("([^-]+)%-(%d+)")
-                    if name and field then
-                        local rankMatch = name:match("R_(.*)")
-                        if rankMatch then
-                            data.druidRanks[rankMatch] = tonumber(field)
+            for entry in string.gmatch(text, "(%a+=[^;]+);") do
+                local sep = entry:find("=")
+                local key = entry:sub(1, sep - 1)
+                local val = entry:sub(sep + 1, #entry)
+                if key == "START" then
+                    for str in val:gmatch("([^,]+)") do
+                        if str:sub(1, 2) == "R:" then
+                            data.allowedRanks[str:sub(3)] = true
                         else
-                            data.druid[name] = tonumber(field)
+                            data.allowedNames[str] = true
                         end
                     end
+                elseif key == "PERM" then
+                    for str in val:gmatch("([^,]+)") do
+                        local name, field = str:match("^(.*):(%d+)$")
+                        if name and field then
+                            local number = tonumber(field)
+                            if not number then
+                                Env:PrintError("Invalid guild setting PERM value " ..
+                                str .. "! Permission field is not a number.")
+                            else
+                                if name:sub(1, 2) == "R:" then
+                                    data.rankPermissions[name:sub(3)] = number
+                                else
+                                    data.namePermissions[name] = number
+                                end
+                            end
+                        end
+                    end
+                else
+                    Env:PrintWarn("Invalid guild setting key " .. key)
                 end
             end
         end
@@ -111,9 +120,9 @@ end
 
 ---Check if character is guild member and has permission from guild info.
 ---@param charName string
----@param perm "START"|"DRUID"
----@param arg number?
-function Guild:CheckPerm(charName, perm, arg)
+---@param perm "START"|"PERM"
+---@param permBit integer?
+function Guild:CheckPerm(charName, perm, permBit)
     if not self.memberCache[charName] then
         return false
     end
@@ -130,26 +139,37 @@ function Guild:CheckPerm(charName, perm, arg)
         return false
     end
 
-    if perm == "DRUID" then
-        local infoEntry = infoData.druid[charName]
+    if perm == "PERM" then
+        local infoEntry = infoData.namePermissions[charName]
         if not infoEntry then
             local guildRank = self.rankCache[self.memberCache[charName].rankIndex]
-            if guildRank and infoData.druidRanks[guildRank.name] then
-                infoEntry = infoData.druidRanks[guildRank.name]
+            if guildRank and infoData.rankPermissions[guildRank.name] then
+                infoEntry = infoData.rankPermissions[guildRank.name]
             else
                 return false
             end
         end
-        return bit.band(infoEntry, arg) ~= 0
+        return bit.band(infoEntry, permBit) ~= 0
     end
 
     error("Invalid perm type " .. perm)
 end
 
 Env:RegisterSlashCommand("testperm", "", function(args)
-    local name = args[1]
-    local perm = args[2]
-    local arg = args[3]
+    ---@type string, string, string
+    local name, perm, arg
+    if Env.IS_FOREVER then
+        name = args[1] .. " " .. args[2]
+        perm = args[3]
+        arg = args[4]
+    else
+        name = args[1]
+        perm = args[2]
+        arg = args[3]
+    end
+    print("testing perm", perm, "for", name, "with arg", tostring(arg))
+    local infoData = GetGuildInfoData()
+    Env.PrintTable(infoData, 0)
     print(Guild:CheckPerm(name, perm, arg and tonumber(arg) or 0))
 end)
 

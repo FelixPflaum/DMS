@@ -8,7 +8,7 @@ local Guild = Env.Guild
 local PERMISSION = 64
 
 Env.Net:Register("DMSTTS", function(channel, sender, opcode, data, recvSize)
-    local senderHasPerm = Guild:CheckPerm(sender, "DRUID", PERMISSION)
+    local senderHasPerm = Guild:CheckPerm(sender, "PERM", PERMISSION)
 
     Env:PrintDebug("Received DMSTTS", sender, opcode, data, tostring(senderHasPerm))
 
