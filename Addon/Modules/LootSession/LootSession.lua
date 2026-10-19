@@ -2,6 +2,7 @@
 local Env = select(2, ...)
 
 local L = Env:GetLocalization()
+local UnitName = Env.UnitNameForever
 
 Env.Session = {}
 

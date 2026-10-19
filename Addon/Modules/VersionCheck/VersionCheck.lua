@@ -64,7 +64,7 @@ local function FillFromGroup()
     LogDebug("fill group")
     wipe(responseList)
     for unit in Env.MakeGroupIterator() do
-        local name = UnitName(unit)
+        local name = Env.UnitNameForever(unit)
         responseList[name] = {
             state = "waiting",
             version = "",

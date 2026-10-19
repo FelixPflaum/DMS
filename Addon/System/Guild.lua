@@ -39,6 +39,7 @@ Env.Guild = Guild
 ---@diagnostic disable-next-line: inject-field
 Guild.OnRosterDataUpdate = Env:NewEventEmitter()
 
+--TODO: Guild info doesn'T seem to update without opening the inof panel manually
 Env:RegisterEvent("GUILD_ROSTER_UPDATE", function()
     local memberCount = GetNumGuildMembers()
     wipe(Guild.rankCache)

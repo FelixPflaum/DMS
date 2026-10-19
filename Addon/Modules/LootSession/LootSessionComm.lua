@@ -3,6 +3,7 @@ local Env = select(2, ...)
 
 local L = Env:GetLocalization()
 local Net = Env.Net
+local UnitName = Env.UnitNameForever
 
 local COMM_SESSION_PREFIX = "DMSS"
 local COMM_VERSION = 5

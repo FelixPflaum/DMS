@@ -4,7 +4,7 @@ import { join } from "path";
 
 const addonFolderName = "DamagedMindsSanity";
 const base = join(__dirname, "../../Addon");
-const version = fs.readFileSync(join(base, "/DamagedMindsSanity_Vanilla.toc"), "utf8").match(/## Version: (.*)/)![1];
+const version = fs.readFileSync(join(base, "/DamagedMindsSanity.toc"), "utf8").match(/## Version: (.*)/)![1];
 
 function shouldIgnore(file: string, isDir: boolean) {
     if (isDir) {

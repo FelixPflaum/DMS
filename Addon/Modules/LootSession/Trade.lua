@@ -1,6 +1,8 @@
 ---@class AddonEnv
 local Env = select(2, ...)
 
+local UnitName = Env.UnitNameForever
+
 local function LogDebug(...)
     Env:PrintDebug("Trade:", ...)
 end

@@ -6,6 +6,7 @@ local function LogDebug(...)
 end
 
 local L = Env:GetLocalization()
+local UnitName = Env.UnitNameForever
 
 local SPIN_DURATION = 10
 

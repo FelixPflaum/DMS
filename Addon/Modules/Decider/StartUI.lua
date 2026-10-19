@@ -6,6 +6,7 @@ local L = Env:GetLocalization()
 local ScrollingTable = LibStub("ScrollingTable")
 local ColorByClassId = Env.UI.ColorByClassId
 local GetImagePath = Env.UI.GetImagePath
+local UnitName = Env.UnitNameForever
 
 local WIN_WIDTH = 350
 local TABLE_ROW_HEIGHT = 15

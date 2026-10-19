@@ -14,6 +14,7 @@ local function LogDebug(...)
 end
 
 local MakeGuid = Env.Database.GenerateHistGuid
+local UnitName = Env.UnitNameForever
 
 ------------------------------------------------------------------------------------
 --- Data Structure Types

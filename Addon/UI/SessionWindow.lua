@@ -14,6 +14,7 @@ local ColorByClassId = Env.UI.ColorByClassId
 local DoWhenItemInfoReady = Env.Item.DoWhenItemInfoReady
 local ColorStringFromArray = Env.UI.ColorStringFromArray
 local DoesRollCountAsPointRoll = Env.PointLogic.DoesRollCountAsPointRoll
+local UnitName = Env.UnitNameForever
 
 local Host = Env.SessionHost
 local Client = Env.SessionClient
@@ -509,7 +510,7 @@ do
             cellFrame:SetScript("OnEnter", nil)
             return
         end
-        local icon = itemId and GetItemIcon(itemId)
+        local icon = itemId and C_Item.GetItemIconByID(itemId)
         cellFrame:SetNormalTexture(icon or [[Interface/Icons/inv_misc_questionmark]])
         cellFrame:SetScript("OnEnter", function() Env.UI.ShowItemTooltip(cellFrame, "item:" .. itemId) end)
         cellFrame:SetScript("OnLeave", GameTooltip_Hide)

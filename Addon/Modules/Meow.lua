@@ -8,7 +8,7 @@ local function GetPath(n)
     return [[Interface\AddOns\]] .. addonName .. [[\Media\]] .. n
 end
 
-local UnitNameForever = Env.UnitNameForever
+local UnitName = Env.UnitNameForever
 
 local Guild = Env.Guild
 
@@ -25,7 +25,7 @@ local PURR_PERM = 4
 local ROAR_PERM = 8
 
 local function GetUnitIdFromFullName(fullName)
-    if UnitNameForever("player") == fullName then
+    if UnitName("player") == fullName then
         return "player"
     end
 
@@ -36,7 +36,7 @@ local function GetUnitIdFromFullName(fullName)
     local unitId
     for i = 1, numMembers do
         unitId = unit .. i
-        if UnitNameForever(unitId) == fullName then
+        if UnitName(unitId) == fullName then
             return unitId
         end
     end
@@ -65,7 +65,7 @@ Env:RegisterEvent("CHAT_MSG_TEXT_EMOTE", function(...)
     local text = select(1, ...)
     local senderGuid = select(12, ...)
     -- Forever fix. Source name is some random garbage if emote is done by player.
-    local sender = (UnitGUID("player") == senderGuid) and UnitNameForever("player") or select(2, ...)
+    local sender = (UnitGUID("player") == senderGuid) and UnitName("player") or select(2, ...)
 
     ---@cast text string
     ---@cast sender string

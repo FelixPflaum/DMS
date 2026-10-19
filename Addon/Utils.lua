@@ -158,10 +158,11 @@ end
 ---In the forever client this will return first and last name together.
 ---Otherwise it will just return the name as usual.
 ---@param unit string
----@return string
+---@return string?
 function Env.UnitNameForever(unit)
     if Env.IS_FOREVER then
         local first, last = UnitName(unit)
+        if first == nil then return nil end
         return first .. " " .. last
     end
     return UnitName(unit)

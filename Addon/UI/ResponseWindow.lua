@@ -5,6 +5,7 @@ local LibDialog = LibStub("LibDialog-1.1")
 local L = Env:GetLocalization()
 
 local GetImagePath = Env.UI.GetImagePath
+local UnitName = Env.UnitNameForever
 
 local Client = Env.SessionClient
 local frame ---@type ResponseFrame

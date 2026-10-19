@@ -492,11 +492,6 @@ function C_Item.DoesItemExistByID(itemId) end
 ---@return boolean
 function C_Item.IsItemDataCachedByID(itemId) end
 
----Return the icon texture for the item.
----@param itemID integer
----@return string
-function GetItemIcon(itemID) end
-
 function UIDropDownMenu_SetText(self, text) end
 
 --- See UIDropDownMenu_CreateInfo

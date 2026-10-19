@@ -5,6 +5,7 @@ local L = Env:GetLocalization()
 local Comm = Env.SessionComm
 local LootStatus = Env.Session.LootCandidateStatus
 local ShouldAutopass = Env.Session.ShouldAutopass
+local UnitName = Env.UnitNameForever
 
 local function LogDebug(...)
     Env:PrintDebug("Client:", ...)

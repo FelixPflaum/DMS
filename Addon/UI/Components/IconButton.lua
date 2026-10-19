@@ -21,7 +21,7 @@ end
 ---@param itemId integer|nil
 ---@param arg any Data given to the click callback.
 local function SetItemData(self, itemId, arg)
-    local icon = itemId and GetItemIcon(itemId) or nil
+    local icon = itemId and C_Item.GetItemIconByID(itemId) or nil
     if not icon then
         self:SetNormalTexture([[Interface/Icons/inv_misc_questionmark]])
     else
