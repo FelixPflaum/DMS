@@ -11,7 +11,7 @@
 ## Category-ruRU: Добыча
 ## Category-zhCN: 战利品
 ## Category-zhTW: 戰利品
-## IconTexture: Interface\AddOns\DamagedMindsSanity\UI\img\logo.png
+## IconTexture: Interface\AddOns\DamagedMindsSanity\UI\img\logo_trans.png
 ## Author: coolmodi
 ## Version: 0.2.19
 ## Notes: 
